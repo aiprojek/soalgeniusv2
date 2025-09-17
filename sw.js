@@ -1,9 +1,10 @@
-const CACHE_NAME = 'soalgenius-cache-v2';
+// Nama cache baru untuk memicu pembaruan
+const CACHE_NAME = 'soalgenius-cache-v3';
 const urlsToCache = [
   '/',
   './index.html',
   './manifest.json',
-  // TS/TSX Files (assuming a dev environment that serves them directly)
+  // TS/TSX Files (pastikan semua file terdaftar)
   './index.tsx',
   './types.ts',
   './App.tsx',
@@ -21,6 +22,7 @@ const urlsToCache = [
   './views/PreviewView.tsx',
   './views/QuestionBankView.tsx',
   './views/SettingsView.tsx',
+  './views/HelpView.tsx', // File yang ditambahkan
   // External CDN Assets
   'https://cdn.tailwindcss.com',
   'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css',
@@ -43,13 +45,23 @@ self.addEventListener('message', (event) => {
   }
 });
 
+// --- Logika instalasi yang diperbarui dan lebih tangguh ---
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('Opened cache and caching assets');
-        return cache.addAll(urlsToCache);
-      })
+    caches.open(CACHE_NAME).then((cache) => {
+      console.log('Membuka cache dan memulai caching aset...');
+      const cachePromises = urlsToCache.map((urlToCache) => {
+        // Menggunakan cache.add untuk setiap URL secara individual
+        // dan menangkap error agar tidak menghentikan seluruh proses
+        return cache.add(urlToCache).catch((err) => {
+          console.warn(`Gagal menyimpan ke cache: ${urlToCache}`, err);
+        });
+      });
+      // Menunggu semua proses penambahan cache selesai
+      return Promise.all(cachePromises).then(() => {
+        console.log('Semua aset yang tersedia berhasil disimpan ke cache.');
+      });
+    })
   );
 });
 
@@ -60,6 +72,7 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheWhitelist.indexOf(cacheName) === -1) {
+            console.log('Menghapus cache lama:', cacheName);
             return caches.delete(cacheName);
           }
         })
@@ -74,19 +87,22 @@ self.addEventListener('fetch', (event) => {
   }
   
   event.respondWith(
+    // 1. Coba cari di cache terlebih dahulu (Cache-First Strategy)
     caches.match(event.request)
       .then((response) => {
         if (response) {
-          return response; // Return from cache
+          return response; // Jika ada di cache, langsung kembalikan
         }
         
-        // Not in cache, fetch from network and cache it
+        // 2. Jika tidak ada di cache, ambil dari jaringan
         const fetchRequest = event.request.clone();
         return fetch(fetchRequest).then((response) => {
+          // Jika gagal mengambil dari jaringan, kembalikan response error
           if (!response || response.status !== 200) {
             return response;
           }
 
+          // 3. Jika berhasil, simpan salinannya ke cache untuk penggunaan offline berikutnya
           const responseToCache = response.clone();
           caches.open(CACHE_NAME)
             .then((cache) => {
