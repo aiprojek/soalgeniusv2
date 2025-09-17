@@ -1,20 +1,64 @@
+<!--
+  SoalGenius: Aplikasi Pembuat Soal Ujian
+  =======================================
+  File HTML utama ini berfungsi sebagai titik masuk (entry point) untuk seluruh aplikasi.
+  - Memuat semua stylesheet, font, dan skrip yang diperlukan.
+  - Menyediakan titik mount (root element) untuk aplikasi React.
+  - Menginisialisasi tema (terang/gelap) untuk mencegah FOUC (Flash of Unstyled Content).
+  - Mendefinisikan meta tag penting untuk SEO dan PWA.
+-->
 <!DOCTYPE html>
 <html lang="id">
   <head>
+    <!-- Basic Meta Tags -->
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SoalGenius</title>
+    <title>SoalGenius: Aplikasi Pembuat Soal Ujian</title>
+
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Aplikasi untuk membantu guru membuat soal ujian dengan mudah. Dilengkapi editor canggih, pratinjau langsung, dan bisa bekerja 100% offline." />
+    <meta name="keywords" content="pembuat soal, aplikasi guru, ujian online, cetak soal, format ujian, soalgenius, aiprojek, editor soal, offline, pwa, aplikasi pendidikan" />
+    <meta name="author" content="AI Projek" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://aiprojek.github.io/soalgeniusv2/" />
+
+    <!-- Open Graph / Facebook Meta Tags -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://aiprojek.github.io/soalgeniusv2/" />
+    <meta property="og:title" content="SoalGenius: Aplikasi Pembuat Soal Ujian" />
+    <meta property="og:description" content="Buat, kelola, dan cetak soal ujian profesional dengan mudah. Bekerja 100% offline, mendukung berbagai jenis soal, dan dilengkapi pratinjau langsung." />
+    <meta property="og:site_name" content="SoalGenius" />
+
+    <!-- Twitter Card Meta Tags -->
+    <meta property="twitter:card" content="summary" />
+    <meta property="twitter:url" content="https://aiprojek.github.io/soalgeniusv2/" />
+    <meta property="twitter:title" content="SoalGenius: Aplikasi Pembuat Soal Ujian" />
+    <meta property="twitter:description" content="Buat, kelola, dan cetak soal ujian profesional dengan mudah. Bekerja 100% offline, mendukung berbagai jenis soal, dan dilengkapi pratinjau langsung." />
+
+    <!-- PWA & Favicon -->
     <link rel="icon" href="./icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="./icon.svg">
     <link rel="manifest" href="./manifest.json">
+    
+    <!-- Theme Color for Browser UI -->
     <meta name="theme-color" content="#f1f5f9" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#0f172a" media="(prefers-color-scheme: dark)">
+
+    <!-- External Stylesheets -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Areef+Ruqaa:wght@400;700&family=Liberation+Sans:ital,wght@0,400;0,700;1,400;1,700&family=Liberation+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css">
+
+    <!-- Custom Application Styles -->
+    <!--
+      Gaya kustom untuk:
+      1. Mendefinisikan variabel warna CSS untuk tema terang dan gelap (CSS Variables).
+      2. Mengatur gaya global dan media cetak.
+      3. Menyesuaikan tampilan editor React Quill agar sesuai dengan tema aplikasi.
+    -->
     <style>
       :root {
         --bg-primary: #f1f5f9; /* slate-100 */
@@ -175,35 +219,53 @@
         height: 24px;
       }
     </style>
-  <script>
-    // Immediately invoked function to apply theme from localStorage and prevent FOUC
-    (function() {
-      try {
-        const theme = localStorage.getItem('soalgenius_theme');
-        if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-          document.documentElement.classList.add('dark');
-        } else {
-          document.documentElement.classList.remove('dark');
+    
+    <!-- Theme Initializer Script -->
+    <!--
+      Skrip ini dieksekusi secepat mungkin untuk membaca tema dari localStorage
+      dan menerapkannya ke elemen <html>. Ini mencegah 'flash of unstyled content' (FOUC)
+      di mana tema default mungkin muncul sesaat sebelum tema pilihan pengguna dimuat.
+    -->
+    <script>
+      (function() {
+        try {
+          const theme = localStorage.getItem('soalgenius_theme');
+          if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (e) {
+          console.error('Could not apply theme from localStorage', e);
         }
-      } catch (e) {
-        console.error('Could not apply theme from localStorage', e);
+      })();
+    </script>
+    
+    <!-- ESM Import Map -->
+    <!--
+      Import Map memungkinkan kita untuk menggunakan nama modul 'kosong' (bare module specifiers)
+      di dalam file JavaScript, seperti 'import React from "react"'.
+      Ini menyederhanakan manajemen dependensi tanpa memerlukan proses build yang kompleks.
+    -->
+    <script type="importmap">
+      {
+        "imports": {
+          "react": "https://aistudiocdn.com/react@^18.2.0",
+          "react-dom/": "https://aistudiocdn.com/react-dom@^18.2.0/",
+          "react/": "https://aistudiocdn.com/react@^18.2.0/",
+          "react-quill": "https://esm.sh/react-quill@2.0.0",
+          "quill": "https://esm.sh/quill@2.0.2"
+        }
       }
-    })();
-  </script>
-  <script type="importmap">
-{
-  "imports": {
-    "react": "https://aistudiocdn.com/react@^18.2.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^18.2.0/",
-    "react/": "https://aistudiocdn.com/react@^18.2.0/",
-    "react-quill": "https://esm.sh/react-quill@2.0.0",
-    "quill": "https://esm.sh/quill@2.0.2"
-  }
-}
-</script>
-</head>
+    </script>
+  </head>
   <body>
+    <!-- React Mount Point -->
+    <!-- Elemen ini adalah 'akar' di mana seluruh aplikasi React akan di-render. -->
     <div id="root"></div>
+
+    <!-- Main Application Entry Script -->
+    <!-- Memuat file utama aplikasi React sebagai modul ES6. -->
     <script type="module" src="./index.tsx"></script>
   </body>
 </html>
