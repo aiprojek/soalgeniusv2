@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SoalGenius</title>
+    <link rel="icon" href="./icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="./icon.svg">
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#f1f5f9" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0f172a" media="(prefers-color-scheme: dark)">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Areef+Ruqaa:wght@400;700&family=Liberation+Sans:ital,wght@0,400;0,700;1,400;1,700&family=Liberation+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css">
+    <style>
+      :root {
+        --bg-primary: #f1f5f9; /* slate-100 */
+        --bg-secondary: #ffffff; /* white */
+        --bg-tertiary: #f8fafc; /* slate-50 */
+        --bg-muted: #f1f5f9; /* slate-100 */
+        --bg-hover: #e2e8f0; /* slate-200 */
+        --bg-accent: #3b82f6; /* blue-600 */
+        --bg-accent-hover: #2563eb; /* blue-700 */
+
+        --text-primary: #1e293b; /* slate-800 */
+        --text-secondary: #475569; /* slate-600 */
+        --text-muted: #94a3b8; /* slate-400 */
+        --text-accent: #3b82f6; /* blue-600 */
+        --text-on-accent: #ffffff;
+
+        --border-primary: #e2e8f0; /* slate-200 */
+        --border-secondary: #cbd5e1; /* slate-300 */
+        --border-focus: #3b82f6;
+
+        --shadow-color: rgba(0, 0, 0, 0.1);
+      }
+
+      html.dark {
+        --bg-primary: #0f172a; /* slate-900 */
+        --bg-secondary: #1e293b; /* slate-800 */
+        --bg-tertiary: #1e293b; /* slate-800 */
+        --bg-muted: #334155; /* slate-700 */
+        --bg-hover: #334155; /* slate-700 */
+        --bg-accent: #60a5fa; /* blue-400 */
+        --bg-accent-hover: #3b82f6; /* blue-500 */
+
+        --text-primary: #e2e8f0; /* slate-200 */
+        --text-secondary: #94a3b8; /* slate-400 */
+        --text-muted: #64748b; /* slate-500 */
+        --text-accent: #60a5fa; /* blue-400 */
+        --text-on-accent: #0f172a;
+
+        --border-primary: #334155; /* slate-700 */
+        --border-secondary: #475569; /* slate-600 */
+        --border-focus: #60a5fa;
+
+        --shadow-color: rgba(0, 0, 0, 0.4);
+      }
+
+      body {
+        background-color: var(--bg-primary);
+        color: var(--text-primary);
+      }
+
+      @media print {
+        body {
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+      }
+      /* Custom styles for React Quill to match app theme */
+      .so-genius-quill-wrapper {
+        border: 1px solid var(--border-secondary);
+        border-radius: 0.5rem; /* rounded-lg */
+        background-color: var(--bg-secondary);
+      }
+      .so-genius-quill-wrapper .ql-toolbar.ql-snow {
+          border: none;
+          border-bottom: 1px solid var(--border-primary);
+          border-top-left-radius: 0.5rem; /* rounded-lg */
+          border-top-right-radius: 0.5rem;
+          background-color: var(--bg-tertiary);
+          padding: 8px;
+          /* --- Styles for scrollable toolbar --- */
+          white-space: nowrap; /* Prevent button groups from wrapping */
+          overflow-x: auto;    /* Enables horizontal scrolling */
+          scrollbar-width: thin; /* Firefox */
+          scrollbar-color: var(--border-secondary) var(--bg-tertiary); /* Firefox */
+      }
+      /* Custom scrollbar for Webkit browsers (Chrome, Safari) */
+      .so-genius-quill-wrapper .ql-toolbar.ql-snow::-webkit-scrollbar {
+        height: 5px;
+      }
+      .so-genius-quill-wrapper .ql-toolbar.ql-snow::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .so-genius-quill-wrapper .ql-toolbar.ql-snow::-webkit-scrollbar-thumb {
+        background-color: var(--border-secondary);
+        border-radius: 10px;
+        border: 1px solid var(--bg-tertiary); /* creates padding around thumb */
+      }
+      .so-genius-quill-wrapper .ql-container.ql-snow {
+          border: none;
+          font-size: 1rem;
+          color: var(--text-primary);
+          border-bottom-left-radius: 0.5rem;
+          border-bottom-right-radius: 0.5rem;
+          min-height: 42px;
+          max-height: 150px;
+          width: auto;
+          overflow-y: auto;
+          display: flex;
+      }
+      .so-genius-quill-wrapper .ql-editor {
+        padding: 0.75rem;
+        width: 100%;
+        flex-grow: 1;
+      }
+      .so-genius-quill-wrapper .ql-editor p {
+        margin: 0;
+      }
+      .so-genius-quill-wrapper .ql-editor.ql-blank::before{
+        font-style: normal;
+        color: var(--text-muted);
+        left: 0.75rem;
+      }
+      /* --- Dark Mode Quill Styles --- */
+      html.dark .so-genius-quill-wrapper .ql-snow .ql-stroke {
+        stroke: var(--text-secondary);
+      }
+      html.dark .so-genius-quill-wrapper .ql-snow .ql-fill {
+        fill: var(--text-secondary);
+      }
+      html.dark .so-genius-quill-wrapper .ql-snow .ql-picker-label {
+        color: var(--text-secondary);
+      }
+       html.dark .so-genius-quill-wrapper .ql-snow .ql-picker-options {
+        background-color: var(--bg-secondary);
+        border-color: var(--border-primary);
+      }
+
+      /* Adjust Bootstrap icon size and alignment inside the toolbar */
+      .so-genius-quill-wrapper .ql-toolbar.ql-snow .ql-formats button,
+      .so-genius-quill-wrapper .ql-toolbar.ql-snow .ql-formats .ql-picker-label {
+        font-size: 1.1rem;
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      /* Custom styles for compact option editors */
+      .so-genius-quill-option-wrapper .ql-toolbar.ql-snow {
+        padding: 4px 8px;
+      }
+      .so-genius-quill-option-wrapper .ql-container.ql-snow {
+        min-height: 40px;
+        max-height: 120px;
+        font-size: 0.95rem;
+      }
+      .so-genius-quill-option-wrapper .ql-editor {
+        padding: 0.5rem;
+      }
+      .so-genius-quill-option-wrapper .ql-editor.ql-blank::before {
+        left: 0.5rem;
+      }
+      .so-genius-quill-option-wrapper .ql-toolbar.ql-snow .ql-formats button,
+      .so-genius-quill-option-wrapper .ql-toolbar.ql-snow .ql-formats .ql-picker-label {
+        font-size: 1rem;
+        width: 24px;
+        height: 24px;
+      }
+    </style>
+  <script>
+    // Immediately invoked function to apply theme from localStorage and prevent FOUC
+    (function() {
+      try {
+        const theme = localStorage.getItem('soalgenius_theme');
+        if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      } catch (e) {
+        console.error('Could not apply theme from localStorage', e);
+      }
+    })();
+  </script>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^18.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^18.2.0/",
+    "react/": "https://aistudiocdn.com/react@^18.2.0/",
+    "react-quill": "https://esm.sh/react-quill@2.0.0",
+    "quill": "https://esm.sh/quill@2.0.2"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./index.tsx"></script>
+  </body>
+</html>

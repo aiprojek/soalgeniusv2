@@ -1,0 +1,18 @@
+{
+  "name": "SoalGenius",
+  "short_name": "SoalGenius",
+  "description": "An application to help teachers create exam questions easily without worrying about formatting. It provides a simple editor, a live preview, and options to print or export the exam as a self-contained HTML file.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f1f5f9",
+  "theme_color": "#3b82f6",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
+    }
+  ]
+}
