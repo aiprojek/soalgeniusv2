@@ -79,6 +79,9 @@ const HelpView = () => {
           <FeatureCard icon="bi-journal-richtext" title="Bank Soal Personal">
             Simpan soal-soal terbaik Anda untuk digunakan kembali di ujian lain, mempercepat proses pembuatan soal.
           </FeatureCard>
+           <FeatureCard icon="bi-shuffle" title="Acak Soal (Varian)">
+            Buat varian soal yang berbeda secara otomatis dari satu naskah ujian untuk mencegah kecurangan.
+          </FeatureCard>
            <FeatureCard icon="bi-cloud-arrow-up-fill" title="Backup & Restore Data">
             Amankan semua data ujian dan pengaturan Anda dalam satu file JSON, dan pulihkan kapan saja dengan mudah.
           </FeatureCard>
