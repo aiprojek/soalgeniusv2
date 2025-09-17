@@ -43,6 +43,7 @@ Kolaborasi ini memungkinkan SoalGenius dikembangkan dengan kecepatan luar biasa 
 -   **📰 Tata Letak Dua Kolom**: Hemat kertas dengan mengatur soal agar tampil dalam format dua kolom secara otomatis.
 -   **🖨️ Ekspor & Cetak**: Simpan ujian sebagai file HTML mandiri atau cetak langsung ke printer/PDF.
 -   **🏦 Bank Soal Personal**: Simpan soal-soal terbaik Anda untuk digunakan kembali di ujian lain, mempercepat proses pembuatan soal.
+-   **🎲 Acak Soal (Varian)**: Buat varian soal yang berbeda secara otomatis dari satu naskah ujian untuk mencegah kecurangan.
 -   **☁️ Backup & Restore**: Amankan semua data ujian dan pengaturan Anda dalam satu file JSON, dan pulihkan kapan saja.
 -   **📴 Bekerja Penuh Offline**: Setelah halaman dimuat, tidak ada lagi koneksi internet yang diperlukan.
 -   **🌙 Mode Terang & Gelap**: Pilih tema tampilan yang nyaman untuk mata Anda.
