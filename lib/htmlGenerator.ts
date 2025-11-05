@@ -166,6 +166,8 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
                         break;
                     }
                     case QuestionType.TABLE:
+                    case QuestionType.TABLE_MULTIPLE_CHOICE:
+                    case QuestionType.TABLE_COMPLEX_MULTIPLE_CHOICE:
                         if (q.tableData) {
                             let colgroupHtml = '';
                             if (q.tableData.columnWidths && q.tableData.columnWidths.some(w => w !== null)) {
@@ -176,22 +178,46 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
                                 });
                                 colgroupHtml += '</colgroup>';
                             }
-                            choicesHtml = `<table class="question-fill-table">${colgroupHtml}<tbody>`;
+                            let tableRender = `<table class="question-fill-table">${colgroupHtml}<tbody>`;
                             q.tableData.rows.forEach((row, rowIndex) => {
                                 const rowHeight = q.tableData.rowHeights?.[rowIndex];
                                 const rowStyle = rowHeight ? `style="height: ${rowHeight}px;"` : '';
-                                choicesHtml += `<tr ${rowStyle}>`;
+                                tableRender += `<tr ${rowStyle}>`;
                                 row.cells.forEach(cell => {
                                     if (cell.isMerged) return;
                                     const vaStyle = cell.verticalAlign ? `vertical-align: ${cell.verticalAlign};` : '';
                                     const cellStyle = vaStyle ? `style="${vaStyle}"` : '';
                                     const colspan = cell.colspan ? `colspan="${cell.colspan}"` : '';
                                     const rowspan = cell.rowspan ? `rowspan="${cell.rowspan}"` : '';
-                                    choicesHtml += `<td ${colspan} ${rowspan} ${cellStyle}>${cell.content}</td>`;
+                                    tableRender += `<td ${colspan} ${rowspan} ${cellStyle}>${cell.content}</td>`;
                                 });
-                                choicesHtml += '</tr>';
+                                tableRender += '</tr>';
                             });
-                            choicesHtml += '</tbody></table>';
+                            tableRender += '</tbody></table>';
+                            choicesHtml = tableRender;
+                        }
+
+                        // Add choices for table multiple choice variants
+                        if (q.type === QuestionType.TABLE_MULTIPLE_CHOICE || q.type === QuestionType.TABLE_COMPLEX_MULTIPLE_CHOICE) {
+                             const listClass = q.type === QuestionType.TABLE_MULTIPLE_CHOICE ? 'choices-list' : 'choices-grid-complex';
+                             const isGrid = listClass === 'choices-grid-complex';
+                             let choiceRender = '';
+                             if (isGrid) {
+                                choiceRender = `
+                                    <div class="${listClass} choices-list-2-col">
+                                        ${(q.choices || []).map((choice, index) => `
+                                            <div class="choice-item-complex">
+                                                <span class="checkbox-box"></span>
+                                                <span class="choice-letter">${isRTL ? toArabicLetter(index) : String.fromCharCode(97 + index)}.</span>
+                                                <div class="choice-text">${choice.text}</div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                `;
+                             } else {
+                                choiceRender = `<ol class="${listClass} choices-list-2-col">${(q.choices || []).map((c, idx) => `<li><span class="choice-marker"><bdi>${isRTL ? toArabicLetter(idx) : String.fromCharCode(97 + idx)}.</bdi></span><div class="choice-text">${c.text}</div></li>`).join('')}</ol>`;
+                             }
+                             choicesHtml += choiceRender;
                         }
                         break;
                 }
@@ -357,6 +383,38 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
                             answerText = tableHtml;
                         }
                         break;
+                    case QuestionType.TABLE_MULTIPLE_CHOICE:
+                    case QuestionType.TABLE_COMPLEX_MULTIPLE_CHOICE: {
+                        const key = q.tableChoiceAnswerKey || {};
+                        const choices = q.choices || [];
+                        if (Object.keys(key).length > 0) {
+                            answerText = (q.tableData?.rows || []).map((row, rowIndex) => {
+                                const rowAnswer = key[row.id];
+                                const rowLabel = `Baris ${isRTL ? toArabicNumeral(rowIndex + 1) : rowIndex + 1}`;
+
+                                if (!rowAnswer || (Array.isArray(rowAnswer) && rowAnswer.length === 0)) {
+                                    return `<div><bdi>${rowLabel}:</bdi> <span class="no-answer">${T.noAnswer}</span></div>`;
+                                }
+
+                                const getChoiceLabel = (choiceId: string) => {
+                                    const choice = choices.find(c => c.id === choiceId);
+                                    if (!choice) return '?';
+                                    const choiceIndex = choices.indexOf(choice);
+                                    return isRTL ? toArabicLetter(choiceIndex) : String.fromCharCode(65 + choiceIndex);
+                                };
+
+                                let answerDisplay: string;
+                                if (Array.isArray(rowAnswer)) {
+                                    answerDisplay = rowAnswer.map(getChoiceLabel).join(', ');
+                                } else {
+                                    answerDisplay = getChoiceLabel(rowAnswer as string);
+                                }
+                                
+                                return `<div><bdi>${rowLabel}:</bdi> ${answerDisplay}</div>`;
+                            }).join('');
+                        }
+                        break;
+                    }
                     case QuestionType.SHORT_ANSWER:
                     case QuestionType.ESSAY:
                         if(q.answerKey) answerText = `<span>${q.answerKey as string}</span>`;

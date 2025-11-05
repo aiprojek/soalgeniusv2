@@ -55,42 +55,55 @@ const HelpView = () => {
       <div className="bg-[var(--bg-secondary)] p-6 rounded-xl shadow-lg border border-[var(--border-primary)]">
         <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-6 text-center">Fitur Unggulan</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+          {/* FIX: Pass description as children to FeatureCard component */}
           <FeatureCard icon="bi-pencil-square" title="Editor Canggih">
             Format teks (bold, italic), sisipkan gambar, atur perataan, dan gunakan superskrip/subskrip dengan mudah.
           </FeatureCard>
+           {/* FIX: Pass description as children to FeatureCard component */}
            <FeatureCard icon="bi-list-ol" title="Berbagai Jenis Soal">
             Mendukung Pilihan Ganda (termasuk kompleks), Esai, Isian Singkat, Menjodohkan, Benar-Salah, hingga Tabel Isian.
           </FeatureCard>
+          {/* FIX: Pass description as children to FeatureCard component */}
           <FeatureCard icon="bi-eye-fill" title="Pratinjau Langsung">
             Lihat tampilan akhir soal atau kunci jawaban secara real-time saat mengedit melalui tab "Pratinjau".
           </FeatureCard>
+          {/* FIX: Pass description as children to FeatureCard component */}
           <FeatureCard icon="bi-translate" title="Dukungan Teks Arab (RTL)">
             Tulis soal berbahasa Arab dengan mudah. Arah teks, penomoran, dan tata letak otomatis menyesuaikan.
           </FeatureCard>
+          {/* FIX: Pass description as children to FeatureCard component */}
           <FeatureCard icon="bi-rulers" title="Format Kertas Fleksibel">
             Atur ukuran kertas (A4, F4), margin, jenis dan ukuran font, serta spasi baris sesuai kebutuhan di menu Pengaturan.
           </FeatureCard>
+          {/* FIX: Pass description as children to FeatureCard component */}
           <FeatureCard icon="bi-layout-split" title="Tata Letak Kolom Ganda">
             Hemat kertas dengan mengatur soal agar tampil dalam format dua kolom secara otomatis pada pratinjau.
           </FeatureCard>
+          {/* FIX: Pass description as children to FeatureCard component */}
           <FeatureCard icon="bi-file-earmark-arrow-down-fill" title="Ekspor & Cetak">
             Simpan ujian sebagai file HTML mandiri atau cetak langsung ke printer/PDF dari halaman Pratinjau.
           </FeatureCard>
+          {/* FIX: Pass description as children to FeatureCard component */}
           <FeatureCard icon="bi-journal-richtext" title="Bank Soal Personal">
             Simpan soal-soal terbaik Anda untuk digunakan kembali di ujian lain, mempercepat proses pembuatan soal.
           </FeatureCard>
+           {/* FIX: Pass description as children to FeatureCard component */}
            <FeatureCard icon="bi-shuffle" title="Acak Soal (Varian)">
             Buat varian soal yang berbeda secara otomatis dari satu naskah ujian untuk mencegah kecurangan.
           </FeatureCard>
+           {/* FIX: Pass description as children to FeatureCard component */}
            <FeatureCard icon="bi-cloud-arrow-up-fill" title="Backup & Restore Data">
             Amankan semua data ujian dan pengaturan Anda dalam satu file JSON, dan pulihkan kapan saja dengan mudah.
           </FeatureCard>
+           {/* FIX: Pass description as children to FeatureCard component */}
            <FeatureCard icon="bi-wifi-off" title="100% Offline">
             Setelah halaman dimuat pertama kali, aplikasi tidak lagi memerlukan koneksi internet untuk bekerja.
           </FeatureCard>
+           {/* FIX: Pass description as children to FeatureCard component */}
            <FeatureCard icon="bi-moon-stars-fill" title="Mode Terang & Gelap">
             Pilih tema tampilan yang nyaman untuk mata Anda, baik saat bekerja di siang hari maupun malam hari.
           </FeatureCard>
+          {/* FIX: Pass description as children to FeatureCard component */}
           <FeatureCard icon="bi-app-indicator" title="Aplikasi Instan (PWA)">
             Instal SoalGenius di desktop atau ponsel Anda untuk pengalaman seperti aplikasi asli. Akses lebih cepat dan mudah.
           </FeatureCard>
@@ -101,9 +114,11 @@ const HelpView = () => {
       <div className="bg-[var(--bg-secondary)] p-6 rounded-xl shadow-lg border border-[var(--border-primary)]">
         <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-6 text-center">Panduan Cepat</h2>
         <div className="space-y-8">
+           {/* FIX: Pass description as children to GuideStep component */}
            <GuideStep number={1} title="Membuat & Mengelola Ujian">
              <p>Dari halaman utama <strong className="text-[var(--text-accent)]">Arsip Ujian</strong>, klik tombol <code className="bg-[var(--bg-muted)] px-2 py-1 rounded">Buat Ujian Baru</code> untuk memulai. Gunakan ikon-ikon pada setiap kartu ujian untuk mengedit, mencetak, mengacak, menyalin, atau menghapus ujian.</p>
            </GuideStep>
+           {/* FIX: Pass description as children to GuideStep component */}
            <GuideStep number={2} title="Menggunakan Editor Soal">
             <ul className="list-disc list-inside space-y-2">
               <li><strong>Informasi Ujian:</strong> Isi detail seperti Judul, Mapel, dan Kelas. Di sini Anda juga bisa mengubah <strong className="text-[var(--text-accent)]">Arah Tulis</strong> ke RTL untuk soal Arab.</li>
@@ -113,13 +128,16 @@ const HelpView = () => {
               <li><strong>Kunci Jawaban:</strong> Isi kunci jawaban di bawah setiap soal untuk digunakan pada pratinjau kunci jawaban.</li>
             </ul>
            </GuideStep>
+           {/* FIX: Pass description as children to GuideStep component */}
            <GuideStep number={3} title="Pratinjau, Simpan & Cetak">
               <p>Saat mengedit, gunakan tab <strong className="text-[var(--text-accent)]">Pratinjau</strong> dan <strong className="text-[var(--text-accent)]">Kunci Jawaban</strong> untuk melihat tampilan akhir. Perubahan disimpan otomatis.</p>
               <p>Untuk mencetak atau ekspor ke HTML, kembali ke halaman <strong className="text-[var(--text-accent)]">Arsip Ujian</strong> dan klik ikon <i className="bi bi-printer-fill text-green-600"></i> pada kartu ujian yang diinginkan.</p>
            </GuideStep>
+           {/* FIX: Pass description as children to GuideStep component */}
            <GuideStep number={4} title="Backup & Restore Data">
             <p>Gunakan menu navigasi (ikon di kanan atas pada desktop, atau menu burger di mobile) untuk mengakses fitur <strong className="text-[var(--text-accent)]">Backup</strong> dan <strong className="text-[var(--text-accent)]">Restore</strong>. Lakukan backup secara berkala untuk menjaga keamanan data Anda.</p>
            </GuideStep>
+           {/* FIX: Pass description as children to GuideStep component */}
            <GuideStep number={5} title="Instalasi Aplikasi (PWA)">
              <p>Dapatkan akses lebih cepat dengan menginstal SoalGenius di perangkat Anda:</p>
              <ul className="list-disc list-inside space-y-2">

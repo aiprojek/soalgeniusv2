@@ -40,7 +40,8 @@ const SettingsView = () => {
             const reader = new FileReader();
             reader.onload = (event) => {
                 setSettings(s => {
-                    const newLogos: [string | null, string | null] = [...s.logos];
+                    // FIX: Explicitly cast the spread array to a tuple to satisfy TypeScript's strict type checking for `logos`.
+                    const newLogos = [...s.logos] as [string | null, string | null];
                     newLogos[index] = event.target?.result as string;
                     return { ...s, logos: newLogos };
                 });
@@ -51,7 +52,8 @@ const SettingsView = () => {
 
     const handleLogoRemove = (index: 0 | 1) => {
          setSettings(s => {
-            const newLogos: [string | null, string | null] = [...s.logos];
+            // FIX: Explicitly cast the spread array to a tuple to satisfy TypeScript's strict type checking for `logos`.
+            const newLogos = [...s.logos] as [string | null, string | null];
             newLogos[index] = null;
             return { ...s, logos: newLogos };
         });

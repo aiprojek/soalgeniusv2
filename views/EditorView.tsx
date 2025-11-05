@@ -133,6 +133,8 @@ const ltrTranslations = {
     [QuestionType.ESSAY]: 'Esai / Uraian',
     [QuestionType.MATCHING]: 'Menjodohkan',
     [QuestionType.TABLE]: 'Tabel Isian',
+    [QuestionType.TABLE_MULTIPLE_CHOICE]: 'Tabel Pilihan Ganda',
+    [QuestionType.TABLE_COMPLEX_MULTIPLE_CHOICE]: 'Tabel Pilihan Ganda Kompleks',
   },
   // Auto-instructions for new sections
   instructionMap: {
@@ -142,7 +144,9 @@ const ltrTranslations = {
     [QuestionType.ESSAY]: 'Jawablah pertanyaan di bawah ini dengan benar!',
     [QuestionType.MATCHING]: 'Jodohkan pernyataan di kolom A dengan jawaban yang sesuai di kolom B!',
     [QuestionType.TRUE_FALSE]: 'Tentukan apakah pernyataan berikut Benar atau Salah!',
-    [QuestionType.TABLE]: 'Jawablah pertanyaan di bawah ini dengan benar!',
+    [QuestionType.TABLE]: 'Lengkapilah tabel isian berikut dengan jawaban yang tepat!',
+    [QuestionType.TABLE_MULTIPLE_CHOICE]: 'Lengkapilah tabel berikut dengan memilih jawaban yang paling tepat!',
+    [QuestionType.TABLE_COMPLEX_MULTIPLE_CHOICE]: 'Lengkapilah tabel berikut. Jawaban benar bisa lebih dari satu untuk setiap baris.',
   },
 };
 
@@ -231,6 +235,8 @@ const rtlTranslations: typeof ltrTranslations = {
     [QuestionType.ESSAY]: 'مقالي',
     [QuestionType.MATCHING]: 'المطابقة',
     [QuestionType.TABLE]: 'تعبئة الجدول',
+    [QuestionType.TABLE_MULTIPLE_CHOICE]: 'جدول الاختيار من متعدد',
+    [QuestionType.TABLE_COMPLEX_MULTIPLE_CHOICE]: 'جدول الاختيار من متعدد المركب',
   },
   // Auto-instructions Overrides
   instructionMap: {
@@ -240,7 +246,9 @@ const rtlTranslations: typeof ltrTranslations = {
     [QuestionType.ESSAY]: 'أجب عن الأسئلة التالية بشكل صحيح!',
     [QuestionType.MATCHING]: 'طابق بين العبارات في العمود أ والإجابات المناسبة في العمود ب!',
     [QuestionType.TRUE_FALSE]: 'حدد ما إذا كانت العبارات التالية صحيحة أم خاطئة!',
-    [QuestionType.TABLE]: 'أجب عن الأسئلة التالية بشكل صحيح!',
+    [QuestionType.TABLE]: 'املأ الجدول التالي بالإجابات الصحيحة!',
+    [QuestionType.TABLE_MULTIPLE_CHOICE]: 'أكمل الجدول التالي باختيار الإجابة الأنسب!',
+    [QuestionType.TABLE_COMPLEX_MULTIPLE_CHOICE]: 'أكمل الجدول التالي. يمكن أن تكون هناك أكثر من إجابة صحيحة لكل صف.',
   },
 };
 
@@ -866,6 +874,52 @@ const QuestionEditor: React.FC<{
                         ))}
                     </div>
                 );
+            case QuestionType.TABLE_MULTIPLE_CHOICE:
+                return (question.tableData?.rows || []).map((row, rowIndex) => (
+                    <div key={row.id} className="p-2 rounded-md hover:bg-[var(--bg-hover)] border-b border-[var(--border-primary)] last:border-b-0">
+                        <div className="font-semibold mb-2">Baris {rowIndex + 1}</div>
+                        <div className="flex flex-wrap gap-x-4 gap-y-2">
+                            {(question.choices || []).map((choice, choiceIndex) => (
+                                <label key={choice.id} className="flex items-center space-x-2">
+                                    <input type="radio" name={`answer-${question.id}-${row.id}`} value={choice.id}
+                                        checked={(question.tableChoiceAnswerKey || {})[row.id] === choice.id}
+                                        onChange={(e) => {
+                                            const newKey = { ...(question.tableChoiceAnswerKey || {}), [row.id]: e.target.value };
+                                            updateField('tableChoiceAnswerKey', newKey);
+                                        }}
+                                        className="form-radio text-blue-600 bg-transparent border-[var(--border-secondary)]"
+                                    />
+                                    <div className="text-[var(--text-primary)] text-sm" dangerouslySetInnerHTML={{ __html: choice.text || `Opsi ${String.fromCharCode(65 + choiceIndex)}`}}></div>
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+                ));
+            case QuestionType.TABLE_COMPLEX_MULTIPLE_CHOICE:
+                 return (question.tableData?.rows || []).map((row, rowIndex) => (
+                    <div key={row.id} className="p-2 rounded-md hover:bg-[var(--bg-hover)] border-b border-[var(--border-primary)] last:border-b-0">
+                        <div className="font-semibold mb-2">Baris {rowIndex + 1}</div>
+                        <div className="flex flex-wrap gap-x-4 gap-y-2">
+                            {(question.choices || []).map((choice, choiceIndex) => (
+                                <label key={choice.id} className="flex items-center space-x-2">
+                                    <input type="checkbox" value={choice.id}
+                                        checked={((question.tableChoiceAnswerKey || {})[row.id] as string[] || []).includes(choice.id)}
+                                        onChange={(e) => {
+                                            const currentAnswers = ((question.tableChoiceAnswerKey || {})[row.id] as string[] || []);
+                                            const newAnswers = e.target.checked
+                                                ? [...currentAnswers, choice.id]
+                                                : currentAnswers.filter(id => id !== choice.id);
+                                            const newKey = { ...(question.tableChoiceAnswerKey || {}), [row.id]: newAnswers };
+                                            updateField('tableChoiceAnswerKey', newKey);
+                                        }}
+                                        className="form-checkbox text-blue-600 bg-transparent border-[var(--border-secondary)] rounded"
+                                    />
+                                     <div className="text-[var(--text-primary)] text-sm" dangerouslySetInnerHTML={{ __html: choice.text || `Opsi ${String.fromCharCode(65 + choiceIndex)}`}}></div>
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+                ));
             case QuestionType.SHORT_ANSWER:
             case QuestionType.ESSAY:
                 return <input type="text" value={question.answerKey as string || ''} onChange={e => handleAnswerKeyChange(e.target.value)} placeholder={T.answerKeyPlaceholder} className="p-2 border border-[var(--border-secondary)] rounded-md w-full bg-[var(--bg-secondary)]" />;
@@ -903,7 +957,7 @@ const QuestionEditor: React.FC<{
             />
             
             {/* Question Type Specific Editor */}
-            {(question.type === QuestionType.MULTIPLE_CHOICE || question.type === QuestionType.COMPLEX_MULTIPLE_CHOICE) && (
+            {(question.type === QuestionType.MULTIPLE_CHOICE || question.type === QuestionType.COMPLEX_MULTIPLE_CHOICE || question.type === QuestionType.TABLE_MULTIPLE_CHOICE || question.type === QuestionType.TABLE_COMPLEX_MULTIPLE_CHOICE) && (
                 <div className="mt-4 space-y-3 ps-4 border-s-2 border-[var(--border-primary)]">
                     {(question.choices || []).map((choice, choiceIndex) => (
                         <div key={choice.id} className="flex items-start space-x-2">
@@ -924,17 +978,19 @@ const QuestionEditor: React.FC<{
                     <button onClick={addChoice} className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-semibold text-sm flex items-center space-x-1 pt-2">
                        <PlusIcon className="text-base" /> <span>{T.addOption}</span>
                     </button>
-                    <div className="pt-2">
-                        <label className="flex items-center space-x-2 text-sm text-[var(--text-secondary)]">
-                            <input
-                                type="checkbox"
-                                checked={!!question.isTwoColumns}
-                                onChange={e => updateField('isTwoColumns', e.target.checked)}
-                                className="form-checkbox rounded text-blue-600 bg-transparent border-[var(--border-secondary)] focus:ring-blue-500"
-                            />
-                            <span>{T.twoColumnLayout}</span>
-                        </label>
-                    </div>
+                    {(question.type === QuestionType.MULTIPLE_CHOICE || question.type === QuestionType.COMPLEX_MULTIPLE_CHOICE) && (
+                        <div className="pt-2">
+                            <label className="flex items-center space-x-2 text-sm text-[var(--text-secondary)]">
+                                <input
+                                    type="checkbox"
+                                    checked={!!question.isTwoColumns}
+                                    onChange={e => updateField('isTwoColumns', e.target.checked)}
+                                    className="form-checkbox rounded text-blue-600 bg-transparent border-[var(--border-secondary)] focus:ring-blue-500"
+                                />
+                                <span>{T.twoColumnLayout}</span>
+                            </label>
+                        </div>
+                    )}
                 </div>
             )}
             
@@ -994,7 +1050,7 @@ const QuestionEditor: React.FC<{
                 </div>
             )}
 
-            {question.type === QuestionType.TABLE && question.tableData && (
+            {(question.type === QuestionType.TABLE || question.type === QuestionType.TABLE_MULTIPLE_CHOICE || question.type === QuestionType.TABLE_COMPLEX_MULTIPLE_CHOICE) && question.tableData && (
                 <TableBuilder 
                     tableData={question.tableData}
                     onTableChange={(newTable) => updateField('tableData', newTable)}
@@ -1570,6 +1626,24 @@ const EditorView: React.FC<{ examId: string; onBack: () => void }> = ({ examId, 
                         columnWidths: [null, null],
                     };
                     newQuestion.tableAnswerKey = {};
+                    break;
+                }
+                case QuestionType.TABLE_MULTIPLE_CHOICE:
+                case QuestionType.TABLE_COMPLEX_MULTIPLE_CHOICE: {
+                    const cell1: TableCellData = { id: crypto.randomUUID(), content: 'Pernyataan 1' };
+                    const cell2: TableCellData = { id: crypto.randomUUID(), content: '' };
+                    const cell3: TableCellData = { id: crypto.randomUUID(), content: 'Pernyataan 2' };
+                    const cell4: TableCellData = { id: crypto.randomUUID(), content: '' };
+                    newQuestion.tableData = {
+                        rows: [
+                            { id: crypto.randomUUID(), cells: [cell1, cell2] },
+                            { id: crypto.randomUUID(), cells: [cell3, cell4] },
+                        ],
+                        rowHeights: [null, null],
+                        columnWidths: [null, null],
+                    };
+                    newQuestion.choices = [{ id: crypto.randomUUID(), text: 'Pilihan A' }, { id: crypto.randomUUID(), text: 'Pilihan B' }];
+                    newQuestion.tableChoiceAnswerKey = {};
                     break;
                 }
             }

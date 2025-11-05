@@ -6,6 +6,8 @@ export enum QuestionType {
   MATCHING = 'Menjodohkan',
   TRUE_FALSE = 'Benar-Salah',
   TABLE = 'Tabel Isian',
+  TABLE_MULTIPLE_CHOICE = 'Tabel Pilihan Ganda',
+  TABLE_COMPLEX_MULTIPLE_CHOICE = 'Tabel Pilihan Ganda Kompleks',
 }
 
 export interface MultipleChoiceOption {
@@ -45,10 +47,10 @@ export interface Question {
   type: QuestionType;
   text: string;
   // Options for different types
-  choices?: MultipleChoiceOption[];      // For MC, Complex MC
+  choices?: MultipleChoiceOption[];      // For MC, Complex MC, Table MC, Table Complex MC
   matchingPrompts?: MatchingItem[];    // For Matching
   matchingAnswers?: MatchingItem[];    // For Matching
-  tableData?: TableData;                 // For Table
+  tableData?: TableData;                 // For Table, Table MC, Table Complex MC
   // Settings
   hasAnswerSpace?: boolean;              // For Essay
   subQuestions?: Question[];             // For Essay, Short Answer
@@ -57,6 +59,7 @@ export interface Question {
   answerKey?: string | string[];         // For MC (string of choice id), Complex MC (string[] of choice ids), Short Answer (string), Essay (string), True/False (string: 'true'/'false')
   matchingKey?: { promptId: string; answerId: string }[];
   tableAnswerKey?: Record<string, string>; // For Table, maps cell id to answer string
+  tableChoiceAnswerKey?: { [rowId: string]: string | string[] }; // For Table MC/Complex MC, maps row id to choice id(s)
 }
 
 export interface Section {
