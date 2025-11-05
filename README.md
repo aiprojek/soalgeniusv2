@@ -25,7 +25,7 @@ SoalGenius bukan hanya aplikasi biasa; ini adalah hasil dari **kolaborasi erat a
     -   **Problem Solver**: Memberikan solusi cepat untuk tantangan teknis dan algoritma yang kompleks.
     -   **Refactor & Optimasi**: Membantu merapikan dan mengoptimalkan kode untuk performa yang lebih baik.
 
--   **Peran Manusia (AI Projek) sebagai Sutradara & Kurator**:
+-   **Peran Manusia sebagai Sutradara & Kurator**:
     -   **Arsitek & Visioner**: Merancang konsep awal, arsitektur aplikasi, dan pengalaman pengguna (UI/UX) secara keseluruhan.
     -   **Prompt Engineer**: Memberikan arahan yang presisi dan kreatif kepada AI untuk menghasilkan kode yang sesuai dengan visi.
     -   **Quality Control**: Melakukan review, debugging, dan integrasi terhadap kode yang dihasilkan AI, memastikan kualitas, keamanan, dan kohesi aplikasi.
