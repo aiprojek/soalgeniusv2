@@ -42,6 +42,59 @@ if (icons['align']) {
 }
 // --- End Custom Quill Icons ---
 
+// --- Start Image Compression Utility ---
+/**
+ * Compresses an image from a base64 string.
+ * @param base64Str The base64 string of the image.
+ * @param maxWidth The maximum width of the output image.
+ * @param maxHeight The maximum height of the output image.
+ * @param quality The quality of the output JPEG image (0 to 1).
+ * @returns A promise that resolves with the compressed base64 string.
+ */
+const compressImage = (base64Str: string, maxWidth = 1280, maxHeight = 1280, quality = 0.85): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.src = base64Str;
+        img.onload = () => {
+            let { width, height } = img;
+
+            // Calculate the new dimensions while maintaining aspect ratio
+            if (width > height) {
+                if (width > maxWidth) {
+                    height *= maxWidth / width;
+                    width = maxWidth;
+                }
+            } else {
+                if (height > maxHeight) {
+                    width *= maxHeight / height;
+                    height = maxHeight;
+                }
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                return reject(new Error('Could not get canvas context'));
+            }
+
+            // Draw the image onto the canvas
+            ctx.drawImage(img, 0, 0, width, height);
+
+            // Export the canvas as a new base64 string (JPEG format for best compression)
+            const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+            resolve(compressedBase64);
+        };
+        img.onerror = (error) => {
+            console.error("Image loading error for compression:", error);
+            reject(new Error("Failed to load image for compression."));
+        };
+    });
+};
+// --- End Image Compression Utility ---
+
 // --- Start Translations ---
 const ltrTranslations = {
   // Main UI (Header, Tabs)
@@ -279,18 +332,29 @@ const RichTextEditor: React.FC<{
         input.onchange = () => {
             if (input.files) {
                 const file = input.files[0];
-                if (file.size > 2 * 1024 * 1024) { // 2MB size limit
-                    addToast('Ukuran gambar tidak boleh melebihi 2MB.', 'error');
+                if (file.size > 2 * 1024 * 1024) { // 2MB size limit before compression
+                    addToast('Ukuran gambar asli tidak boleh melebihi 2MB.', 'error');
                     return;
                 }
 
                 const reader = new FileReader();
-                reader.onload = (e) => {
+                reader.onload = async (e) => {
                     const editor = quillRef.current?.getEditor();
-                    if (editor) {
-                        const range = editor.getSelection(true);
-                        // The result is a base64 string
-                        editor.insertEmbed(range.index, 'image', e.target?.result as string);
+                    if (editor && e.target?.result) {
+                        try {
+                            addToast('Mengompres gambar...', 'info');
+                            const originalBase64 = e.target.result as string;
+                            const compressedBase64 = await compressImage(originalBase64);
+                            
+                            const range = editor.getSelection(true);
+                            editor.insertEmbed(range.index, 'image', compressedBase64);
+                        } catch (error) {
+                            console.error("Image compression failed:", error);
+                            addToast('Gagal mengompres gambar. Gambar asli disisipkan.', 'error');
+                            // Fallback to original image if compression fails
+                            const range = editor.getSelection(true);
+                            editor.insertEmbed(range.index, 'image', e.target.result as string);
+                        }
                     }
                 };
                 reader.readAsDataURL(file);
