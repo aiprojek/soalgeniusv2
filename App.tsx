@@ -1,11 +1,9 @@
-
-
-
 import React, { useState, useCallback, useEffect } from 'react';
 import type { Exam, Settings } from './types';
 import { ModalProvider, useModal } from './contexts/ModalContext';
 import { ToastProvider, useToast } from './contexts/ToastContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { migrateFromLocalStorage } from './lib/migration';
 
 import MainLayout from './components/MainLayout';
 import ArchiveView from './views/ArchiveView';
@@ -22,17 +20,30 @@ function AppContent() {
     const [view, setView] = useState<View>('archive');
     const [editingExamId, setEditingExamId] = useState<string | null>(null);
     const [previewingExamId, setPreviewingExamId] = useState<string | null>(null);
+    const [isMigrating, setIsMigrating] = useState(true);
     const { addToast } = useToast();
     const { showConfirm } = useModal();
 
     useEffect(() => {
-        // Check if we are in a browser environment that supports service workers
-        // and if we are not running inside an iframe (like the AI Studio preview).
+        // Jalankan migrasi saat aplikasi pertama kali dimuat
+        const runMigration = async () => {
+            try {
+                await migrateFromLocalStorage();
+            } catch (error) {
+                console.error("Proses migrasi gagal:", error);
+                addToast("Gagal memigrasi data lama. Beberapa data mungkin tidak muncul.", "error");
+            } finally {
+                setIsMigrating(false);
+            }
+        };
+        runMigration();
+    }, [addToast]);
+    
+    useEffect(() => {
         if ('serviceWorker' in navigator && window.self === window.top) {
             const registerServiceWorker = async () => {
                 try {
                     const registration = await navigator.serviceWorker.register('/sw.js');
-                    
                     registration.onupdatefound = () => {
                         const installingWorker = registration.installing;
                         if (installingWorker) {
@@ -42,9 +53,7 @@ function AppContent() {
                                         title: "Pembaruan Tersedia",
                                         content: "Versi baru SoalGenius telah diunduh. Muat ulang untuk mendapatkan fitur terbaru.",
                                         confirmLabel: "Muat Ulang",
-                                        onConfirm: () => {
-                                            installingWorker.postMessage({ type: 'SKIP_WAITING' });
-                                        }
+                                        onConfirm: () => installingWorker.postMessage({ type: 'SKIP_WAITING' }),
                                     });
                                 }
                             };
@@ -56,7 +65,6 @@ function AppContent() {
             };
 
             registerServiceWorker();
-
             let refreshing = false;
             navigator.serviceWorker.addEventListener('controllerchange', () => {
                 if (!refreshing) {
@@ -64,27 +72,14 @@ function AppContent() {
                     refreshing = true;
                 }
             });
-        } else if (window.self !== window.top) {
-            console.log('Running in a sandboxed environment (iframe), skipping service worker registration.');
         }
     }, [showConfirm]);
 
+    const handleNavigate = useCallback((newView: View) => setView(newView), []);
+    const handleEditExam = useCallback((id: string) => { setEditingExamId(id); setView('editor'); }, []);
+    const handlePreviewExam = useCallback((id: string) => { setPreviewingExamId(id); setView('preview'); }, []);
 
-    const handleNavigate = useCallback((newView: View) => {
-        setView(newView);
-    }, []);
-
-    const handleEditExam = useCallback((id: string) => {
-        setEditingExamId(id);
-        setView('editor');
-    }, []);
-    
-    const handlePreviewExam = useCallback((id: string) => {
-        setPreviewingExamId(id);
-        setView('preview');
-    }, []);
-
-    const handleCreateExam = useCallback(() => {
+    const handleCreateExam = useCallback(async () => {
         const newExam: Exam = {
             id: crypto.randomUUID(),
             title: 'Ujian Baru Tanpa Judul',
@@ -103,10 +98,15 @@ function AppContent() {
             direction: 'ltr',
             layoutColumns: 1,
         };
-        saveExam(newExam);
-        addToast('Ujian baru berhasil dibuat.', 'success');
-        setEditingExamId(newExam.id);
-        setView('editor');
+        try {
+            await saveExam(newExam);
+            addToast('Ujian baru berhasil dibuat.', 'success');
+            setEditingExamId(newExam.id);
+            setView('editor');
+        } catch (error) {
+            console.error("Gagal membuat ujian baru:", error);
+            addToast('Gagal membuat ujian baru.', 'error');
+        }
     }, [addToast]);
 
     const handleBackToArchive = useCallback(() => {
@@ -114,6 +114,17 @@ function AppContent() {
         setPreviewingExamId(null);
         setView('archive');
     }, []);
+
+    if (isMigrating) {
+        return (
+            <div className="flex h-screen w-screen items-center justify-center bg-[var(--bg-primary)] text-[var(--text-primary)]">
+                <div className="text-center">
+                    <div className="text-2xl font-bold">Soal<span className="text-[var(--text-accent)]">Genius</span></div>
+                    <p className="mt-2 text-sm text-[var(--text-secondary)]">Mempersiapkan data Anda...</p>
+                </div>
+            </div>
+        );
+    }
     
     if (view === 'editor' && editingExamId) {
         return <EditorView examId={editingExamId} onBack={handleBackToArchive} />;

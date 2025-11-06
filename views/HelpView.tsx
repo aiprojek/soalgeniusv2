@@ -55,6 +55,7 @@ const HelpView = () => {
       <div className="bg-[var(--bg-secondary)] p-6 rounded-xl shadow-lg border border-[var(--border-primary)]">
         <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-6 text-center">Fitur Unggulan</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+          {/* FIX: Converted self-closing FeatureCard components to include children content as required by the component's props. */}
           <FeatureCard icon="bi-pencil-square" title="Editor Canggih">
             Format teks (bold, italic), sisipkan gambar, atur perataan, dan gunakan superskrip/subskrip dengan mudah.
           </FeatureCard>
@@ -101,6 +102,7 @@ const HelpView = () => {
       <div className="bg-[var(--bg-secondary)] p-6 rounded-xl shadow-lg border border-[var(--border-primary)]">
         <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-6 text-center">Panduan Cepat</h2>
         <div className="space-y-8">
+           {/* FIX: Converted self-closing GuideStep components to include children content as required by the component's props. */}
            <GuideStep number={1} title="Membuat & Mengelola Ujian">
              <p>Dari halaman utama <strong className="text-[var(--text-accent)]">Arsip Ujian</strong>, klik tombol <code className="bg-[var(--bg-muted)] px-2 py-1 rounded">Buat Ujian Baru</code> untuk memulai. Gunakan ikon-ikon pada setiap kartu ujian untuk mengedit, mencetak, mengacak, menyalin, atau menghapus ujian.</p>
            </GuideStep>

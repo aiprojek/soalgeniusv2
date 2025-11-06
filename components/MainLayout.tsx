@@ -3,21 +3,19 @@ import type { View } from '../App';
 import { useModal } from '../contexts/ModalContext';
 import { useToast } from '../contexts/ToastContext';
 import { getAllExams, getSettings } from '../lib/storage';
+import { db } from '../lib/db';
 import { 
     BurgerMenuIcon, CloseIcon, ArchiveIcon, BankIcon, BackupIcon, RestoreIcon, SettingsIcon, HelpIcon
 } from './Icons';
-
-const EXAMS_STORAGE_KEY = 'soalgenius_exams';
-const SETTINGS_STORAGE_KEY = 'soalgenius_settings';
 
 const MainLayout: React.FC<{
     children: React.ReactNode;
     currentView: View;
     onNavigate: (view: View) => void;
 }> = ({ children, currentView, onNavigate }) => {
-    const [isSidebarOpen, setSidebarOpen] = useState(false); // User's intent to open/close
-    const [isAnimating, setIsAnimating] = useState(false);   // Controls animation classes (opacity, transform)
-    const [isRendered, setIsRendered] = useState(false);     // Controls DOM presence (visibility)
+    const [isSidebarOpen, setSidebarOpen] = useState(false);
+    const [isAnimating, setIsAnimating] = useState(false);
+    const [isRendered, setIsRendered] = useState(false);
 
     const restoreInputRef = useRef<HTMLInputElement>(null);
     const { showConfirm } = useModal();
@@ -26,19 +24,15 @@ const MainLayout: React.FC<{
     useEffect(() => {
         if (isSidebarOpen) {
             setIsRendered(true);
-            // Short delay to ensure the element is rendered before applying animation classes
             const timer = setTimeout(() => setIsAnimating(true), 10);
             return () => clearTimeout(timer);
         } else {
-            // Start the closing animation
             setIsAnimating(false);
-            // Wait for animation to finish before removing from DOM
-            const timer = setTimeout(() => setIsRendered(false), 300); // Must match transition duration
+            const timer = setTimeout(() => setIsRendered(false), 300);
             return () => clearTimeout(timer);
         }
     }, [isSidebarOpen]);
     
-    // Lock body scroll when sidebar is visible
     useEffect(() => {
         if (isRendered) {
             document.body.style.overflow = 'hidden';
@@ -46,26 +40,29 @@ const MainLayout: React.FC<{
             document.body.style.overflow = '';
         }
         return () => {
-            document.body.style.overflow = ''; // Cleanup on component unmount
+            document.body.style.overflow = '';
         };
     }, [isRendered]);
 
-    const handleBackup = useCallback(() => {
+    const handleBackup = useCallback(async () => {
         try {
-            const exams = getAllExams();
-            const settings = getSettings();
+            const exams = await getAllExams();
+            const settings = await getSettings();
+            const bankQuestions = await db.bankQuestions.toArray();
+
             const backupData = {
-                source: 'SoalGenius',
-                version: 1,
+                source: 'SoalGeniusDB',
+                version: 2,
                 createdAt: new Date().toISOString(),
-                data: { exams, settings }
+                data: { exams, settings, bankQuestions }
             };
+
             const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
             const date = new Date().toISOString().split('T')[0];
-            a.download = `soalgenius_backup_${date}.json`;
+            a.download = `soalgenius_backup_v2_${date}.json`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -93,7 +90,7 @@ const MainLayout: React.FC<{
                 if (typeof text !== 'string') throw new Error("File reading error");
                 const backupData = JSON.parse(text);
 
-                if (backupData.source !== 'SoalGenius' || !backupData.data.exams || !backupData.data.settings) {
+                if ((backupData.source !== 'SoalGeniusDB' && backupData.source !== 'SoalGenius') || !backupData.data) {
                     addToast('File backup tidak valid atau rusak.', 'error');
                     return;
                 }
@@ -103,11 +100,26 @@ const MainLayout: React.FC<{
                     content: "Apakah Anda yakin ingin merestore data? Semua data ujian dan pengaturan saat ini akan ditimpa.",
                     confirmVariant: "danger",
                     confirmLabel: "Restore",
-                    onConfirm: () => {
-                        localStorage.setItem(EXAMS_STORAGE_KEY, JSON.stringify(backupData.data.exams));
-                        localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(backupData.data.settings));
-                        addToast('Data berhasil direstore. Aplikasi akan dimuat ulang.', 'success');
-                        setTimeout(() => window.location.reload(), 1500);
+                    onConfirm: async () => {
+                        try {
+                             await db.transaction('rw', db.exams, db.settings, db.bankQuestions, async () => {
+                                // Hapus semua data yang ada
+                                await db.exams.clear();
+                                await db.settings.clear();
+                                await db.bankQuestions.clear();
+
+                                // Masukkan data baru
+                                if (backupData.data.exams) await db.exams.bulkPut(backupData.data.exams);
+                                if (backupData.data.settings) await db.settings.put({ ...backupData.data.settings, key: 'app_settings' });
+                                if (backupData.data.bankQuestions) await db.bankQuestions.bulkPut(backupData.data.bankQuestions);
+                            });
+
+                            addToast('Data berhasil direstore. Aplikasi akan dimuat ulang.', 'success');
+                            setTimeout(() => window.location.reload(), 1500);
+                        } catch(err) {
+                            console.error("Gagal melakukan restore ke database", err);
+                            addToast('Terjadi kesalahan saat menyimpan data restore.', 'error');
+                        }
                     },
                 });
 

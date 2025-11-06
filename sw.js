@@ -1,5 +1,5 @@
 // Nama cache baru untuk memicu pembaruan
-const CACHE_NAME = 'soalgenius-cache-v3';
+const CACHE_NAME = 'soalgenius-cache-v5-jsdelivr';
 const urlsToCache = [
   '/',
   './index.html',
@@ -14,6 +14,8 @@ const urlsToCache = [
   './contexts/ToastContext.tsx',
   './contexts/ThemeContext.tsx',
   './hooks/useHistoryState.ts',
+  './lib/db.ts',
+  './lib/migration.ts',
   './lib/htmlGenerator.ts',
   './lib/storage.ts',
   './lib/utils.ts',
@@ -22,19 +24,21 @@ const urlsToCache = [
   './views/PreviewView.tsx',
   './views/QuestionBankView.tsx',
   './views/SettingsView.tsx',
-  './views/HelpView.tsx', // File yang ditambahkan
+  './views/HelpView.tsx',
   // External CDN Assets
   'https://cdn.tailwindcss.com',
   'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css',
   'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/fonts/bootstrap-icons.woff2?8d200488724b4831353fea889319d65c',
   'https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Areef+Ruqaa:wght@400;700&family=Liberation+Sans:ital,wght@0,400;0,700;1,400;1,700&family=Liberation+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap',
   'https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css',
-  // Import-map Assets
+  // Import-map Assets (React)
   'https://aistudiocdn.com/react@^18.2.0',
   'https://aistudiocdn.com/react-dom@^18.2.0/client',
   'https://aistudiocdn.com/react@^18.2.0/jsx-runtime',
-  'https://esm.sh/react-quill@2.0.0',
-  'https://esm.sh/quill@2.0.2',
+  // Import-map Assets (JSDelivr for stability)
+  'https://cdn.jsdelivr.net/npm/react-quill@2.0.0/+esm',
+  'https://cdn.jsdelivr.net/npm/quill@2.0.2/+esm',
+  'https://cdn.jsdelivr.net/npm/dexie@4.0.7/+esm',
   // PWA Icons
   './icon.svg',
 ];

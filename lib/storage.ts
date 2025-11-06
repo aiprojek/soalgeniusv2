@@ -1,11 +1,18 @@
-import type { Exam, Settings, Section, BankQuestion, Question } from '../types';
+import { db } from './db';
+import type { Exam, Settings, BankQuestion, Question } from '../types';
 import { QuestionType } from '../types';
 
+// Kunci ini hanya digunakan untuk proses migrasi dari localStorage.
 export const EXAMS_STORAGE_KEY = 'soalgenius_exams';
 export const SETTINGS_STORAGE_KEY = 'soalgenius_settings';
 export const QBANK_STORAGE_KEY = 'soalgenius_qbank';
 
-const initialExam: Exam = {
+// Kunci statis untuk data pengaturan di dalam IndexedDB
+const SETTINGS_DB_KEY = 'app_settings';
+
+// Data awal ini sekarang diekspor untuk digunakan oleh skrip migrasi
+// jika tidak ada data yang ditemukan di localStorage.
+export const initialExam: Exam = {
     id: 'b23a7125-e2f6-4a47-8141-5509c95aad45',
     title: 'Ujian Akhir Semester - Contoh',
     subject: 'Ilmu Pengetahuan Alam',
@@ -54,7 +61,7 @@ const initialExam: Exam = {
     ]
 };
 
-const defaultSettings: Settings = {
+export const defaultSettings: Settings = {
     examHeaderLines: [
         { id: crypto.randomUUID(), text: 'PEMERINTAH KOTA CONTOH' },
         { id: crypto.randomUUID(), text: 'DINAS PENDIDIKAN DAN KEBUDAYAAN' },
@@ -77,109 +84,75 @@ function shuffleArray<T>(array: T[]): T[] {
     return newArray;
 }
 
-// Updated to handle data migration from old format
-export const getAllExams = (): Exam[] => {
-    try {
-        const examsJson = localStorage.getItem(EXAMS_STORAGE_KEY);
-        if (!examsJson) {
-            localStorage.setItem(EXAMS_STORAGE_KEY, JSON.stringify([initialExam]));
-            return [initialExam];
-        }
-        const exams = JSON.parse(examsJson) as (Exam & { questions?: any[] })[];
-        
-        // Migration logic for exams
-        const migratedExams = exams.map(exam => {
-            // Migrate old format (questions at root) to sections
-            if (exam.questions && !exam.sections) {
-                console.log(`Migrating exam: ${exam.title}`);
-                const newSection: Section = {
-                    id: crypto.randomUUID(),
-                    instructions: 'I. Jawablah pertanyaan-pertanyaan berikut dengan benar!',
-                    questions: exam.questions.map((q: any, index: number) => ({
-                        ...q,
-                        number: String(index + 1),
-                        choices: q.choices || undefined,
-                    })),
-                };
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                const { questions, ...restOfExam } = exam;
-                return { ...restOfExam, sections: [newSection] };
-            }
-            // Add default direction if missing
-             if (!exam.direction) {
-                exam.direction = 'ltr';
-            }
-            // Add default layout columns if missing
-            if (exam.layoutColumns === undefined) {
-                exam.layoutColumns = 1;
-            }
-            return exam;
-        });
+// --- FUNGSI UJIAN (EXAM) ---
 
-        return migratedExams;
+export const getAllExams = async (): Promise<Exam[]> => {
+    try {
+        // Mengambil semua ujian dan mengurutkannya berdasarkan tanggal (terbaru dulu)
+        return await db.exams.orderBy('date').reverse().toArray();
     } catch (e) {
-        console.error("Gagal memuat ujian dari localStorage", e);
+        console.error("Gagal memuat ujian dari IndexedDB", e);
         return [];
     }
 };
 
-export const getExam = (id: string): Exam | undefined => {
-    const exams = getAllExams();
-    return exams.find(exam => exam.id === id);
-};
-
-export const saveExam = (examToSave: Exam): Exam[] => {
-    const exams = getAllExams();
-    const existingIndex = exams.findIndex(exam => exam.id === examToSave.id);
-    if (existingIndex > -1) {
-        exams[existingIndex] = examToSave;
-    } else {
-        exams.unshift(examToSave);
+export const getExam = async (id: string): Promise<Exam | undefined> => {
+    try {
+        return await db.exams.get(id);
+    } catch (e) {
+        console.error(`Gagal memuat ujian dengan id ${id}`, e);
+        return undefined;
     }
-    localStorage.setItem(EXAMS_STORAGE_KEY, JSON.stringify(exams));
-    return exams;
 };
 
-export const deleteExam = (id: string): Exam[] => {
-    let exams = getAllExams();
-    exams = exams.filter(exam => exam.id !== id);
-    localStorage.setItem(EXAMS_STORAGE_KEY, JSON.stringify(exams));
-    return exams;
+export const saveExam = async (examToSave: Exam): Promise<string> => {
+    try {
+        // .put() akan meng-update jika ada, atau menambahkan jika baru.
+        return await db.exams.put(examToSave);
+    } catch (e) {
+        console.error("Gagal menyimpan ujian", e);
+        throw e;
+    }
 };
 
-export const duplicateExam = (id: string): Exam[] => {
-    const examToCopy = getExam(id);
-    if (!examToCopy) return getAllExams();
+export const deleteExam = async (id: string): Promise<void> => {
+    try {
+        await db.exams.delete(id);
+    } catch (e) {
+        console.error("Gagal menghapus ujian", e);
+        throw e;
+    }
+};
+
+export const duplicateExam = async (id: string): Promise<Exam> => {
+    const examToCopy = await getExam(id);
+    if (!examToCopy) throw new Error("Ujian tidak ditemukan untuk diduplikasi");
     
     const newExam: Exam = {
-        ...JSON.parse(JSON.stringify(examToCopy)),
+        ...JSON.parse(JSON.stringify(examToCopy)), // Deep copy
         id: crypto.randomUUID(),
         title: `${examToCopy.title} (Salinan)`,
         status: 'draft',
     };
-    return saveExam(newExam);
+    await saveExam(newExam);
+    return newExam;
 };
 
-// Updated to shuffle questions and create numbered variants
-export const shuffleExam = (id: string): Exam[] => {
-    const allExams = getAllExams();
+export const shuffleExam = async (id: string): Promise<Exam> => {
+    const allExams = await getAllExams();
     const examToShuffle = allExams.find(exam => exam.id === id);
-    if (!examToShuffle) return allExams;
+    if (!examToShuffle) throw new Error("Ujian tidak ditemukan untuk diacak");
 
-    // Determine the base title, removing any existing " - Varian X" suffix
     const variantRegex = / - Varian \d+$/;
     const baseTitle = examToShuffle.title.replace(variantRegex, '').trim();
 
-    // Find the highest existing variant number for this base title
     let highestVariant = 0;
     allExams.forEach(exam => {
         if (exam.title.startsWith(baseTitle)) {
             const match = exam.title.match(/ - Varian (\d+)$/);
             if (match && match[1]) {
                 const variantNumber = parseInt(match[1], 10);
-                if (variantNumber > highestVariant) {
-                    highestVariant = variantNumber;
-                }
+                if (variantNumber > highestVariant) highestVariant = variantNumber;
             }
         }
     });
@@ -197,75 +170,71 @@ export const shuffleExam = (id: string): Exam[] => {
         })),
         status: 'draft',
     };
-    return saveExam(newExam);
+    await saveExam(newExam);
+    return newExam;
 };
 
 
-export const getSettings = (): Settings => {
+// --- FUNGSI PENGATURAN (SETTINGS) ---
+
+export const getSettings = async (): Promise<Settings> => {
     try {
-        const settingsJson = localStorage.getItem(SETTINGS_STORAGE_KEY);
-        if (!settingsJson) {
-            localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(defaultSettings));
-            return defaultSettings;
+        const settings = await db.settings.get(SETTINGS_DB_KEY);
+        // Hapus properti 'key' sebelum mengembalikan
+        if (settings) {
+            const { key, ...rest } = settings;
+            return { ...defaultSettings, ...rest };
         }
-        
-        const loadedSettings = JSON.parse(settingsJson);
-
-        // Migration logic for old single logo format
-        if (loadedSettings.logo !== undefined) {
-            loadedSettings.logos = [loadedSettings.logo, null];
-            delete loadedSettings.logo;
-        }
-        
-        // Ensure logos is always a two-element array
-        if (!loadedSettings.logos) {
-            loadedSettings.logos = [null, null];
-        } else if (loadedSettings.logos.length === 1) {
-            loadedSettings.logos = [loadedSettings.logos[0], null];
-        }
-
-
-        return { ...defaultSettings, ...loadedSettings };
+        return defaultSettings;
     } catch (e) {
-        console.error("Gagal memuat pengaturan dari localStorage", e);
+        console.error("Gagal memuat pengaturan dari IndexedDB", e);
         return defaultSettings;
     }
 };
 
-export const saveSettings = (settings: Settings) => {
-    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+export const saveSettings = async (settings: Settings): Promise<void> => {
+    try {
+        // Menambahkan 'key' yang diperlukan oleh skema database
+        await db.settings.put({ ...settings, key: SETTINGS_DB_KEY });
+    } catch (e) {
+        console.error("Gagal menyimpan pengaturan", e);
+        throw e;
+    }
 };
 
 
-// --- Question Bank Functions ---
+// --- FUNGSI BANK SOAL (QUESTION BANK) ---
 
-export const getBankQuestions = (): BankQuestion[] => {
+export const getBankQuestions = async (): Promise<BankQuestion[]> => {
     try {
-        const bankJson = localStorage.getItem(QBANK_STORAGE_KEY);
-        return bankJson ? JSON.parse(bankJson) : [];
+        return await db.bankQuestions.orderBy('createdAt').reverse().toArray();
     } catch (e) {
-        console.error("Gagal memuat bank soal dari localStorage", e);
+        console.error("Gagal memuat bank soal dari IndexedDB", e);
         return [];
     }
 };
 
-export const saveQuestionToBank = (question: Question, metadata: { subject: string; class: string }): BankQuestion[] => {
-    const bank = getBankQuestions();
-    const newBankQuestion: BankQuestion = {
-        bankId: crypto.randomUUID(),
-        question: JSON.parse(JSON.stringify(question)), // Deep copy to prevent reference issues
-        subject: metadata.subject,
-        class: metadata.class,
-        createdAt: new Date().toISOString(),
-    };
-    const newBank = [newBankQuestion, ...bank];
-    localStorage.setItem(QBANK_STORAGE_KEY, JSON.stringify(newBank));
-    return newBank;
+export const saveQuestionToBank = async (question: Question, metadata: { subject: string; class: string }): Promise<string> => {
+    try {
+        const newBankQuestion: BankQuestion = {
+            bankId: crypto.randomUUID(),
+            question: JSON.parse(JSON.stringify(question)), // Deep copy
+            subject: metadata.subject,
+            class: metadata.class,
+            createdAt: new Date().toISOString(),
+        };
+        return await db.bankQuestions.add(newBankQuestion);
+    } catch (e) {
+        console.error("Gagal menyimpan soal ke bank", e);
+        throw e;
+    }
 };
 
-export const deleteQuestionFromBank = (bankId: string): BankQuestion[] => {
-    let bank = getBankQuestions();
-    bank = bank.filter(bq => bq.bankId !== bankId);
-    localStorage.setItem(QBANK_STORAGE_KEY, JSON.stringify(bank));
-    return bank;
+export const deleteQuestionFromBank = async (bankId: string): Promise<void> => {
+    try {
+        await db.bankQuestions.delete(bankId);
+    } catch (e) {
+        console.error("Gagal menghapus soal dari bank", e);
+        throw e;
+    }
 };

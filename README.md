@@ -74,7 +74,7 @@ Dapatkan akses lebih cepat dengan menginstal SoalGenius di perangkat Anda:
 -   **Frontend**: React.js, TypeScript
 -   **Editor Teks**: Quill.js
 -   **Styling**: Tailwind CSS
--   **Penyimpanan Lokal**: `localStorage` API
+-   **Penyimpanan Lokal**: Dexie.js (IndexedDB)
 -   **Offline**: Service Workers (Progressive Web App)
 
 ## 🤝 Kontribusi & Dukungan

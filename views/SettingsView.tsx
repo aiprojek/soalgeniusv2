@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import type { Settings } from '../types';
 import { getSettings, saveSettings } from '../lib/storage';
 import { useToast } from '../contexts/ToastContext';
@@ -6,28 +6,44 @@ import { useTheme } from '../contexts/ThemeContext';
 import { PlusIcon, TrashIcon } from '../components/Icons';
 
 const SettingsView = () => {
-    const [settings, setSettings] = useState<Settings>(getSettings);
+    const [settings, setSettings] = useState<Settings | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const { addToast } = useToast();
     const { theme, setTheme } = useTheme();
 
-    const handleSave = useCallback(() => {
+    useEffect(() => {
+        const loadSettings = async () => {
+            const data = await getSettings();
+            setSettings(data);
+        };
+        loadSettings();
+    }, []);
+
+    const handleSave = useCallback(async () => {
+        if (!settings) return;
         setIsSaving(true);
-        saveSettings(settings);
-        setTimeout(() => {
+        try {
+            await saveSettings(settings);
             addToast('Pengaturan berhasil disimpan.', 'success');
+        } catch (error) {
+            addToast('Gagal menyimpan pengaturan.', 'error');
+        } finally {
             setIsSaving(false);
-        }, 300);
+        }
     }, [settings, addToast]);
+    
+    const updateSettings = (updater: (s: Settings) => Settings) => {
+        setSettings(prev => prev ? updater(prev) : null);
+    };
 
     const handleHeaderChange = (id: string, newText: string) => {
-        setSettings(s => ({...s, examHeaderLines: s.examHeaderLines.map(line => line.id === id ? {...line, text: newText} : line)}));
+        updateSettings(s => ({...s, examHeaderLines: s.examHeaderLines.map(line => line.id === id ? {...line, text: newText} : line)}));
     };
     const addHeaderLine = () => {
-        setSettings(s => ({...s, examHeaderLines: [...s.examHeaderLines, {id: crypto.randomUUID(), text: ''}]}));
+        updateSettings(s => ({...s, examHeaderLines: [...s.examHeaderLines, {id: crypto.randomUUID(), text: ''}]}));
     };
     const removeHeaderLine = (id: string) => {
-        setSettings(s => ({...s, examHeaderLines: s.examHeaderLines.filter(line => line.id !== id)}));
+        updateSettings(s => ({...s, examHeaderLines: s.examHeaderLines.filter(line => line.id !== id)}));
     };
 
     const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>, index: 0 | 1) => {
@@ -39,8 +55,7 @@ const SettingsView = () => {
             }
             const reader = new FileReader();
             reader.onload = (event) => {
-                setSettings(s => {
-                    // FIX: Explicitly cast the spread array to a tuple to satisfy TypeScript's strict type checking for `logos`.
+                updateSettings(s => {
                     const newLogos = [...s.logos] as [string | null, string | null];
                     newLogos[index] = event.target?.result as string;
                     return { ...s, logos: newLogos };
@@ -51,8 +66,7 @@ const SettingsView = () => {
     };
 
     const handleLogoRemove = (index: 0 | 1) => {
-         setSettings(s => {
-            // FIX: Explicitly cast the spread array to a tuple to satisfy TypeScript's strict type checking for `logos`.
+         updateSettings(s => {
             const newLogos = [...s.logos] as [string | null, string | null];
             newLogos[index] = null;
             return { ...s, logos: newLogos };
@@ -61,9 +75,13 @@ const SettingsView = () => {
 
     const handleMarginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
-        setSettings(s => ({...s, margins: {...s.margins, [name]: Number(value) }}));
+        updateSettings(s => ({...s, margins: {...s.margins, [name]: Number(value) }}));
     };
     
+    if (!settings) {
+        return <div className="text-center py-16">Memuat pengaturan...</div>;
+    }
+
     return (
         <div className="space-y-8">
             <div>
@@ -97,13 +115,7 @@ const SettingsView = () => {
                 <div className="space-y-3">
                     {settings.examHeaderLines.map((line) => (
                         <div key={line.id} className="flex items-center space-x-2">
-                            <input
-                                type="text"
-                                value={line.text}
-                                onChange={(e) => handleHeaderChange(line.id, e.target.value)}
-                                placeholder="Teks baris kop"
-                                className="flex-grow p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]"
-                            />
+                            <input type="text" value={line.text} onChange={(e) => handleHeaderChange(line.id, e.target.value)} placeholder="Teks baris kop" className="flex-grow p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]" />
                             <button onClick={() => removeHeaderLine(line.id)} aria-label={`Hapus baris kop: ${line.text}`} className="text-[var(--text-muted)] hover:text-red-500 dark:hover:text-red-400 p-2 rounded-full hover:bg-red-50 dark:hover:bg-red-900/50 transition-colors" disabled={settings.examHeaderLines.length <= 1}>
                                 <TrashIcon className="text-base" />
                             </button>
@@ -114,7 +126,6 @@ const SettingsView = () => {
                     </button>
                 </div>
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                    {/* Left Logo */}
                     <div>
                         <h4 className="font-semibold text-[var(--text-secondary)] mb-2">Logo Kiri (Opsional)</h4>
                         {settings.logos[0] ? (
@@ -126,7 +137,6 @@ const SettingsView = () => {
                              <input type="file" aria-label="Unggah logo kiri" accept="image/*" onChange={(e) => handleLogoUpload(e, 0)} className="text-sm text-[var(--text-secondary)] file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 dark:file:bg-blue-900/50 file:text-blue-700 dark:file:text-blue-300 hover:file:bg-blue-100 dark:hover:file:bg-blue-900" />
                         )}
                     </div>
-                    {/* Right Logo */}
                     <div>
                         <h4 className="font-semibold text-[var(--text-secondary)] mb-2">Logo Kanan (Opsional)</h4>
                         {settings.logos[1] ? (
@@ -146,7 +156,7 @@ const SettingsView = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label htmlFor="paperSize" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Ukuran Kertas</label>
-                        <select id="paperSize" value={settings.paperSize} onChange={(e) => setSettings(s => ({...s, paperSize: e.target.value as Settings['paperSize']}))} className="p-2 border border-[var(--border-secondary)] rounded-md w-full bg-[var(--bg-secondary)]">
+                        <select id="paperSize" value={settings.paperSize} onChange={(e) => updateSettings(s => ({...s, paperSize: e.target.value as Settings['paperSize']}))} className="p-2 border border-[var(--border-secondary)] rounded-md w-full bg-[var(--bg-secondary)]">
                             <option value="A4">A4</option>
                             <option value="F4">F4</option>
                             <option value="Legal">Legal</option>
@@ -155,11 +165,11 @@ const SettingsView = () => {
                     </div>
                      <div>
                         <label htmlFor="fontSize" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Ukuran Huruf Soal (pt)</label>
-                        <input type="number" id="fontSize" name="fontSize" min="8" max="24" step="1" value={settings.fontSize} onChange={(e) => setSettings(s => ({...s, fontSize: Number(e.target.value)}))} className="p-2 border border-[var(--border-secondary)] rounded-md w-full bg-[var(--bg-secondary)]" />
+                        <input type="number" id="fontSize" name="fontSize" min="8" max="24" step="1" value={settings.fontSize} onChange={(e) => updateSettings(s => ({...s, fontSize: Number(e.target.value)}))} className="p-2 border border-[var(--border-secondary)] rounded-md w-full bg-[var(--bg-secondary)]" />
                     </div>
                     <div>
                         <label htmlFor="fontFamily" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Jenis Huruf (Font)</label>
-                        <select id="fontFamily" value={settings.fontFamily} onChange={(e) => setSettings(s => ({...s, fontFamily: e.target.value as Settings['fontFamily']}))} className="p-2 border border-[var(--border-secondary)] rounded-md w-full bg-[var(--bg-secondary)]">
+                        <select id="fontFamily" value={settings.fontFamily} onChange={(e) => updateSettings(s => ({...s, fontFamily: e.target.value as Settings['fontFamily']}))} className="p-2 border border-[var(--border-secondary)] rounded-md w-full bg-[var(--bg-secondary)]">
                             <option value="Liberation Serif">Liberation Serif</option>
                             <option value="Liberation Sans">Liberation Sans</option>
                             <option value="Amiri">Amiri (untuk Arab)</option>
@@ -168,7 +178,7 @@ const SettingsView = () => {
                     </div>
                     <div>
                         <label htmlFor="lineSpacing" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Jarak Antar Baris</label>
-                        <input type="number" id="lineSpacing" name="lineSpacing" min="1" max="3" step="0.05" value={settings.lineSpacing} onChange={(e) => setSettings(s => ({...s, lineSpacing: Number(e.target.value)}))} className="p-2 border border-[var(--border-secondary)] rounded-md w-full bg-[var(--bg-secondary)]" />
+                        <input type="number" id="lineSpacing" name="lineSpacing" min="1" max="3" step="0.05" value={settings.lineSpacing} onChange={(e) => updateSettings(s => ({...s, lineSpacing: Number(e.target.value)}))} className="p-2 border border-[var(--border-secondary)] rounded-md w-full bg-[var(--bg-secondary)]" />
                     </div>
                     <div className="md:col-span-2">
                         <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Margin Kertas (mm)</label>

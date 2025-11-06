@@ -58,14 +58,14 @@ const ArchiveView: React.FC<{
     onPreviewExam: (id: string) => void;
 }> = ({ onEditExam, onCreateExam, onPreviewExam }) => {
     const [exams, setExams] = useState<Exam[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-    const [searchInput, setSearchInput] = useState(''); // For controlled input
+    const [searchInput, setSearchInput] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
     const [subjectFilter, setSubjectFilter] = useState('');
     const [classFilter, setClassFilter] = useState('');
     const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
     
-    // Temporary states for the modal
     const [tempStatusFilter, setTempStatusFilter] = useState('');
     const [tempSubjectFilter, setTempSubjectFilter] = useState('');
     const [tempClassFilter, setTempClassFilter] = useState('');
@@ -73,9 +73,22 @@ const ArchiveView: React.FC<{
     const { showConfirm } = useModal();
     const { addToast } = useToast();
 
+    const loadExams = useCallback(async () => {
+        setIsLoading(true);
+        try {
+            const data = await getAllExams();
+            setExams(data);
+        } catch (error) {
+            console.error("Gagal memuat ujian:", error);
+            addToast("Gagal memuat daftar ujian.", "error");
+        } finally {
+            setIsLoading(false);
+        }
+    }, [addToast]);
+
     useEffect(() => {
-        setExams(getAllExams());
-    }, []);
+        loadExams();
+    }, [loadExams]);
 
     const handleDelete = useCallback((id: string) => {
         showConfirm({
@@ -83,30 +96,44 @@ const ArchiveView: React.FC<{
             content: 'Apakah Anda yakin ingin menghapus ujian ini? Aksi ini tidak dapat dibatalkan.',
             confirmVariant: 'danger',
             confirmLabel: 'Hapus',
-            onConfirm: () => {
-                setExams(deleteExam(id));
-                addToast('Ujian berhasil dihapus.', 'success');
+            onConfirm: async () => {
+                try {
+                    await deleteExam(id);
+                    addToast('Ujian berhasil dihapus.', 'success');
+                    loadExams(); // Muat ulang daftar ujian
+                } catch (error) {
+                     addToast('Gagal menghapus ujian.', 'error');
+                }
             }
         });
-    }, [showConfirm, addToast]);
+    }, [showConfirm, addToast, loadExams]);
 
-    const handleCopy = useCallback((id: string) => {
-        setExams(duplicateExam(id));
-        addToast('Ujian berhasil disalin.', 'success');
-    }, [addToast]);
+    const handleCopy = useCallback(async (id: string) => {
+        try {
+            await duplicateExam(id);
+            addToast('Ujian berhasil disalin.', 'success');
+            loadExams();
+        } catch(error) {
+            addToast('Gagal menyalin ujian.', 'error');
+        }
+    }, [addToast, loadExams]);
     
-    const handleShuffle = useCallback((id: string) => {
-        setExams(shuffleExam(id));
-        addToast('Varian ujian acak berhasil dibuat.', 'success');
-    }, [addToast]);
+    const handleShuffle = useCallback(async (id: string) => {
+        try {
+            await shuffleExam(id);
+            addToast('Varian ujian acak berhasil dibuat.', 'success');
+            loadExams();
+        } catch(error) {
+            addToast('Gagal membuat varian ujian.', 'error');
+        }
+    }, [addToast, loadExams]);
     
     const totalQuestions = (exam: Exam) => exam.sections.reduce((acc, section) => acc + section.questions.length, 0);
 
     const { uniqueSubjects, uniqueClasses } = useMemo(() => {
         const subjects = new Set<string>();
         const classes = new Set<string>();
-        // Use all exams for filters, not just filtered ones
-        getAllExams().forEach(exam => {
+        exams.forEach(exam => {
             if (exam.subject) subjects.add(exam.subject);
             if (exam.class) classes.add(exam.class);
         });
@@ -114,7 +141,7 @@ const ArchiveView: React.FC<{
             uniqueSubjects: Array.from(subjects).sort(),
             uniqueClasses: Array.from(classes).sort()
         };
-    }, [exams]); // Depends on exams to re-calculate if exams list changes
+    }, [exams]);
 
     const filteredExams = useMemo(() => {
         return exams.filter(exam => {
@@ -158,16 +185,22 @@ const ArchiveView: React.FC<{
         if (e.key === 'Enter') handleSearch();
     };
 
+    if (isLoading) {
+        return (
+            <div className="text-center py-16">
+                <p className="text-[var(--text-secondary)]">Memuat daftar ujian...</p>
+            </div>
+        );
+    }
+
     return (
         <>
             <div className="flex justify-between items-center mb-6 gap-4">
                 <h2 className="text-2xl font-bold text-[var(--text-primary)]">Arsip Ujian</h2>
-                {/* Desktop: Full button */}
                 <button onClick={onCreateExam} className="hidden md:flex flex-shrink-0 items-center space-x-2 bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] text-[var(--text-on-accent)] font-semibold py-2 px-4 rounded-lg transition-all duration-200 shadow hover:shadow-lg">
                     <PlusIcon />
                     <span>Buat Ujian Baru</span>
                 </button>
-                {/* Mobile: Icon buttons */}
                 <div className="md:hidden flex items-center space-x-2">
                      <button onClick={onCreateExam} aria-label="Buat Ujian Baru" className="flex items-center justify-center h-10 w-10 bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] text-[var(--text-on-accent)] rounded-full shadow-md">
                         <PlusIcon className="text-lg" />
@@ -178,8 +211,7 @@ const ArchiveView: React.FC<{
                 </div>
             </div>
 
-            {/* Mobile Search Bar */}
-             <div className="relative mb-6 md:hidden">
+            <div className="relative mb-6 md:hidden">
                 <input
                     type="text"
                     placeholder="Cari ujian..."
@@ -193,10 +225,8 @@ const ArchiveView: React.FC<{
                 </button>
             </div>
 
-            {/* Desktop Combined Search & Filter */}
             {exams.length > 0 && (
                 <div className="hidden md:grid bg-[var(--bg-secondary)] p-4 rounded-lg shadow-md mb-6 grid-cols-5 gap-4">
-                    {/* Search */}
                     <div className="relative col-span-2">
                         <input
                             type="text"
@@ -210,7 +240,6 @@ const ArchiveView: React.FC<{
                             <SearchIcon className="text-xl"/>
                         </button>
                     </div>
-                    {/* Filters */}
                     <select aria-label="Filter berdasarkan status" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)] w-full">
                         <option value="">Semua Status</option>
                         <option value="draft">Draf</option>
@@ -227,7 +256,6 @@ const ArchiveView: React.FC<{
                 </div>
             )}
             
-            {/* Mobile Filter Modal */}
             {isFilterModalOpen && (
                 <div className="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-50" role="dialog" aria-modal="true">
                      <div className="bg-[var(--bg-secondary)] rounded-lg shadow-xl w-full max-w-sm m-4">
