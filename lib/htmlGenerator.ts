@@ -510,6 +510,8 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
             width: ${paperDimensions[paperSize].width};
             min-height: calc(${paperDimensions[paperSize].width} * 1.414); /* A4 aspect ratio approximation */
             padding: ${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm;
+            transform-origin: top;
+            transition: transform 0.2s ease-in-out;
         }
 
         /* Print-specific Styles */
@@ -521,7 +523,7 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
             }
             .no-print { display: none !important; }
             .exam-sheet-container { padding: 0 !important; }
-            .exam-sheet { box-shadow: none !important; border: none !important; margin: 0 !important; padding: 0 !important; width: 100%; min-height: auto; }
+            .exam-sheet { box-shadow: none !important; border: none !important; margin: 0 !important; padding: 0 !important; width: 100%; min-height: auto; transform: none !important; }
         }
 
         /* --- Semantic Component Styles: HEADER --- */
@@ -757,6 +759,70 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
       window.addEventListener('resize', debouncedAdjust);
     </script>
     `;
+    
+    const autoZoomScript = `
+    <script>
+      function autoZoomOnMobile() {
+        const sheet = document.querySelector('.exam-sheet');
+        if (!sheet) return;
+        
+        // This should only run on smaller screens, not on desktop where user might want 1:1 view.
+        // Let's use a threshold, e.g., 850px, which is roughly the width of the paper.
+        const isSmallScreen = window.innerWidth < 850;
+
+        if (isSmallScreen) {
+            const viewportWidth = document.documentElement.clientWidth;
+            // offsetWidth includes borders, which is what we want for layout calculation.
+            const sheetWidth = sheet.offsetWidth;
+            
+            // Add a small padding of 16px total (8px each side) for better visuals.
+            const targetWidth = viewportWidth - 16;
+
+            if (sheetWidth > targetWidth) {
+                const scale = targetWidth / sheetWidth;
+                sheet.style.transform = \`scale(\${scale})\`;
+                
+                // Adjust margin to reclaim vertical space that transform leaves empty.
+                const scaledHeight = sheet.offsetHeight * scale;
+                const marginOffset = sheet.offsetHeight - scaledHeight;
+                sheet.style.marginBottom = \`-\${marginOffset}px\`;
+            } else {
+                 sheet.style.transform = 'scale(1)';
+                 sheet.style.marginBottom = '0';
+            }
+        } else {
+            // On larger screens, ensure no scaling is applied.
+            sheet.style.transform = 'scale(1)';
+            sheet.style.marginBottom = '0';
+        }
+      }
+
+      function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+          const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+          };
+          clearTimeout(timeout);
+          timeout = setTimeout(later, wait);
+        };
+      }
+
+      const debouncedAutoZoom = debounce(autoZoomOnMobile, 150);
+
+      document.addEventListener('DOMContentLoaded', () => {
+        // Run after fonts are loaded to get correct dimensions.
+        if (document.fonts) {
+            document.fonts.ready.then(() => setTimeout(autoZoomOnMobile, 100));
+        } else {
+            setTimeout(autoZoomOnMobile, 250); // Fallback
+        }
+      });
+
+      window.addEventListener('resize', debouncedAutoZoom);
+    </script>
+`;
 
     return `
 <!DOCTYPE html>
@@ -778,6 +844,7 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
         </main>
     </div>
     ${dynamicHeaderScript}
+    ${autoZoomScript}
 </body>
 </html>`;
 };

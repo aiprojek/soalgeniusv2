@@ -101,7 +101,7 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
         const baseName = [subjectPart, classPart, titlePart, timestamp].filter(Boolean).join('_');
         
         const currentMode = showAnswerKey ? 'answer_key' : 'exam';
-        const contentToExport = generateHtmlContent(exam, settings, currentMode, true); // ALWAYS include print button for export
+        const contentToExport = generateHtmlContent(exam, settings, currentMode, false); // Do not include print button for export
         const blob = new Blob([contentToExport], { type: 'text/html' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
