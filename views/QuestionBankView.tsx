@@ -4,6 +4,7 @@ import { useModal } from '../contexts/ModalContext';
 import { useToast } from '../contexts/ToastContext';
 import type { BankQuestion, Question } from '../types';
 import { TrashIcon, PlusIcon } from '../components/Icons';
+import { stripHtml } from '../lib/utils';
 
 interface QuestionBankViewProps {
   isModalMode?: boolean;
@@ -125,7 +126,7 @@ const QuestionBankView: React.FC<QuestionBankViewProps> = ({ isModalMode = false
                         <div key={bq.bankId} className="bg-[var(--bg-secondary)] p-4 rounded-lg shadow-md border border-[var(--border-primary)] flex gap-4">
                             {isModalMode && (
                                 <div className="flex-shrink-0 flex items-center justify-center">
-                                    <input type="checkbox" aria-label={`Pilih soal: ${bq.question.text.substring(0, 50)}`} className="h-5 w-5 rounded text-blue-600 bg-transparent border-[var(--border-secondary)] focus:ring-blue-500" checked={selectedQuestionIds.has(bq.bankId)} onChange={() => handleSelectQuestion(bq.bankId)} />
+                                    <input type="checkbox" aria-label={`Pilih soal: ${stripHtml(bq.question.text).substring(0, 100)}`} className="h-5 w-5 rounded text-blue-600 bg-transparent border-[var(--border-secondary)] focus:ring-blue-500" checked={selectedQuestionIds.has(bq.bankId)} onChange={() => handleSelectQuestion(bq.bankId)} />
                                 </div>
                             )}
                             <div className="flex-grow">

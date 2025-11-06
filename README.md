@@ -37,7 +37,7 @@ Kolaborasi ini memungkinkan SoalGenius dikembangkan dengan kecepatan luar biasa 
 
 -   **✍️ Editor Canggih**: Format teks (bold, italic), sisipkan gambar, atur perataan, dan gunakan superskrip/subskrip dengan mudah.
 -   **📚 Berbagai Jenis Soal**: Mendukung Pilihan Ganda (termasuk kompleks), Esai, Isian Singkat, Menjodohkan, Benar-Salah, hingga Tabel Isian.
--   **👁️ Pratinjau Langsung**: Lihat tampilan akhir soal atau kunci jawaban secara real-time saat Anda mengedit.
+-   **👁️ Pratinau Langsung**: Lihat tampilan akhir soal atau kunci jawaban secara real-time saat Anda mengedit.
 -   **🌍 Dukungan Teks Arab (RTL)**: Tulis soal berbahasa Arab dengan mudah. Arah teks, penomoran, dan tata letak otomatis menyesuaikan.
 -   **📏 Format Kertas Fleksibel**: Atur ukuran kertas (A4, F4), margin, jenis dan ukuran font, serta spasi baris sesuai kebutuhan.
 -   **📰 Tata Letak Dua Kolom**: Hemat kertas dengan mengatur soal agar tampil dalam format dua kolom secara otomatis.

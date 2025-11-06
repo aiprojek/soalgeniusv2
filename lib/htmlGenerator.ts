@@ -1,5 +1,6 @@
 import type { Exam, Settings } from '../types';
 import { QuestionType } from '../types';
+import { escapeHtml } from './utils';
 
 // Helper functions for RTL
 const toArabicNumeral = (n: string | number): string => {
@@ -91,7 +92,7 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
             <header class="exam-header">
                 <div class="logo-container logo-left ${!leftLogo ? 'is-empty' : ''}">${leftLogoContent}</div>
                 <div class="header-text">
-                    ${examHeaderLines.map(line => `<p>${line.text}</p>`).join('')}
+                    ${examHeaderLines.map(line => `<p>${escapeHtml(line.text)}</p>`).join('')}
                 </div>
                 <div class="logo-container logo-right ${!rightLogo ? 'is-empty' : ''}">${rightLogoContent}</div>
             </header>
@@ -232,14 +233,14 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
                 if (isRTL) {
                     const translatedText = instructionTranslations[text as keyof typeof instructionTranslations] || text;
                     // For RTL, as requested, we remove the number to avoid formatting issues.
-                    instructionContent = `<span class="instruction-text">${translatedText}</span>`;
+                    instructionContent = `<span class="instruction-text">${escapeHtml(translatedText)}</span>`;
                 } else {
                     const roman = instructionParts[1].trim();
                     const numberComponent = `<bdi>${roman}.</bdi>`;
-                    instructionContent = `<span class="instruction-number">${numberComponent}</span><span class="instruction-text">${text}</span>`;
+                    instructionContent = `<span class="instruction-number">${numberComponent}</span><span class="instruction-text">${escapeHtml(text)}</span>`;
                 }
             } else {
-                instructionContent = `<span>${section.instructions}</span>`;
+                instructionContent = `<span>${escapeHtml(section.instructions)}</span>`;
             }
 
             return `
@@ -270,7 +271,7 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
             ${headerHtml}
             <div class="header-divider"></div>
             <div class="exam-title-container">
-                 <h2>${exam.title}</h2>
+                 <h2>${escapeHtml(exam.title)}</h2>
             </div>
             <div class="meta-container">
                 <table class="student-info">
@@ -283,12 +284,12 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
                         <tr>
                             <td>${T.class}</td>
                             <td class="colon">:</td>
-                            <td class="value">${exam.class}</td>
+                            <td class="value">${escapeHtml(exam.class)}</td>
                         </tr>
                         <tr>
                             <td>${T.subject}</td>
                             <td class="colon">:</td>
-                            <td class="value">${exam.subject}</td>
+                            <td class="value">${escapeHtml(exam.subject)}</td>
                         </tr>
                         <tr>
                             <td>${T.date}</td>
@@ -298,7 +299,7 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
                         <tr>
                             <td>${T.examTime}</td>
                             <td class="colon">:</td>
-                            <td class="value">${exam.waktuUjian || ''}</td>
+                            <td class="value">${escapeHtml(exam.waktuUjian || '')}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -374,7 +375,7 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
                                     const colspan = cell.colspan ? `colspan="${cell.colspan}"` : '';
                                     const rowspan = cell.rowspan ? `rowspan="${cell.rowspan}"` : '';
                                     // Show original content and the answer
-                                    const answerContent = answer ? `<span class="answer-value">${answer.replace(/\n/g, '<br/>')}</span>` : '';
+                                    const answerContent = answer ? `<span class="answer-value">${escapeHtml(answer).replace(/\n/g, '<br/>')}</span>` : '';
                                     tableHtml += `<td ${colspan} ${rowspan} ${cellStyle}><div class="original-content">${content}</div>${answerContent}</td>`;
                                 });
                                 tableHtml += '</tr>';
@@ -417,7 +418,7 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
                     }
                     case QuestionType.SHORT_ANSWER:
                     case QuestionType.ESSAY:
-                        if(q.answerKey) answerText = `<span>${q.answerKey as string}</span>`;
+                        if(q.answerKey) answerText = `<span>${escapeHtml(q.answerKey as string)}</span>`;
                         break;
                  }
 
@@ -437,14 +438,14 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
                 if (isRTL) {
                     const translatedText = instructionTranslations[text as keyof typeof instructionTranslations] || text;
                     // For RTL, as requested, we remove the number to avoid formatting issues.
-                    instructionContent = `<span class="instruction-text">${translatedText}</span>`;
+                    instructionContent = `<span class="instruction-text">${escapeHtml(translatedText)}</span>`;
                 } else {
                     const roman = instructionParts[1].trim();
                     const numberComponent = `<bdi>${roman}.</bdi>`;
-                    instructionContent = `<span class="instruction-number">${numberComponent}</span><span class="instruction-text">${text}</span>`;
+                    instructionContent = `<span class="instruction-number">${numberComponent}</span><span class="instruction-text">${escapeHtml(text)}</span>`;
                 }
             } else {
-                instructionContent = `<span>${section.instructions}</span>`;
+                instructionContent = `<span>${escapeHtml(section.instructions)}</span>`;
             }
 
             return `
@@ -458,11 +459,11 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
          mainContentHtml = `
             <div class="answer-key-title">
                 <h2>${T.answerKeyTitle}</h2>
-                <h3>${exam.title}</h3>
+                <h3>${escapeHtml(exam.title)}</h3>
                 <div class="answer-key-meta">
-                    <span>${T.subject}: <strong>${exam.subject || ''}</strong></span>
+                    <span>${T.subject}: <strong>${escapeHtml(exam.subject || '')}</strong></span>
                     <span class="separator">|</span>
-                    <span>${T.class}: <strong>${exam.class || ''}</strong></span>
+                    <span>${T.class}: <strong>${escapeHtml(exam.class || '')}</strong></span>
                 </div>
             </div>
             ${sectionsHtml}
@@ -830,7 +831,7 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${exam.title || 'Ujian'}</title>
+    <title>${escapeHtml(exam.title || 'Ujian')}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Areef+Ruqaa:wght@400;700&family=Liberation+Sans:ital,wght@0,400;0,700;1,400;1,700&family=Liberation+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
