@@ -58,3 +58,13 @@ export const DiscussionIcon = ({ className }: IconProps) => <i className={`bi bi
 // Icons for Column Layout
 export const CardTextIcon = ({ className }: IconProps) => <i className={`bi bi-card-text ${className || ''}`}></i>;
 export const LayoutSplitIcon = ({ className }: IconProps) => <i className={`bi bi-layout-split ${className || ''}`}></i>;
+
+// Icons for Dropbox Sync
+export const DropboxIcon = ({ className }: IconProps) => <i className={`bi bi-dropbox ${className || ''}`}></i>;
+export const CloudUploadIcon = ({ className }: IconProps) => <i className={`bi bi-cloud-upload-fill ${className || ''}`}></i>;
+export const CloudDownloadIcon = ({ className }: IconProps) => <i className={`bi bi-cloud-download-fill ${className || ''}`}></i>;
+export const CloudCheckIcon = ({ className }: IconProps) => <i className={`bi bi-cloud-check-fill ${className || ''}`}></i>;
+
+// Icons for AI Features
+export const StarsIcon = ({ className }: IconProps) => <i className={`bi bi-stars ${className || ''}`}></i>;
+export const RobotIcon = ({ className }: IconProps) => <i className={`bi bi-robot ${className || ''}`}></i>;

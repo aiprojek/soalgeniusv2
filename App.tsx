@@ -1,9 +1,10 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import type { Exam, Settings } from './types';
+import type { Exam } from './types';
 import { ModalProvider, useModal } from './contexts/ModalContext';
 import { ToastProvider, useToast } from './contexts/ToastContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { migrateFromLocalStorage } from './lib/migration';
+import { saveDropboxToken, isDropboxConnected, checkForCloudUpdates, downloadFromDropbox, hasUnsavedLocalChanges } from './lib/dropbox';
 
 import MainLayout from './components/MainLayout';
 import ArchiveView from './views/ArchiveView';
@@ -24,6 +25,23 @@ function AppContent() {
     const { addToast } = useToast();
     const { showConfirm } = useModal();
 
+    // Handle Dropbox OAuth Redirect
+    useEffect(() => {
+        const hash = window.location.hash;
+        if (hash && hash.includes('access_token=')) {
+            const params = new URLSearchParams(hash.substring(1)); // remove #
+            const accessToken = params.get('access_token');
+            if (accessToken) {
+                saveDropboxToken(accessToken);
+                addToast('Berhasil terhubung ke Dropbox!', 'success');
+                // Bersihkan URL tanpa refresh
+                window.history.replaceState(null, '', window.location.pathname);
+                // Arahkan user ke Settings agar mereka sadar sudah terhubung
+                setView('settings'); 
+            }
+        }
+    }, [addToast]);
+
     useEffect(() => {
         // Jalankan migrasi saat aplikasi pertama kali dimuat
         const runMigration = async () => {
@@ -38,6 +56,51 @@ function AppContent() {
         };
         runMigration();
     }, [addToast]);
+
+    // --- Automatic Cloud Sync Check ---
+    useEffect(() => {
+        if (!isMigrating && isDropboxConnected()) {
+            const checkSync = async () => {
+                const hasUpdates = await checkForCloudUpdates();
+                if (hasUpdates) {
+                    showConfirm({
+                        title: "Sinkronisasi Data Cloud",
+                        content: "Terdeteksi data yang lebih baru di Dropbox (mungkin dari perangkat lain). Apakah Anda ingin mengunduhnya? Data lokal saat ini akan ditimpa.",
+                        confirmLabel: "Unduh & Sinkronkan",
+                        confirmVariant: "primary",
+                        onConfirm: async () => {
+                            try {
+                                addToast('Mengunduh pembaruan...', 'info');
+                                await downloadFromDropbox();
+                                addToast('Aplikasi telah disinkronkan dengan Cloud. Memuat ulang...', 'success');
+                                setTimeout(() => window.location.reload(), 1500);
+                            } catch (e) {
+                                addToast('Gagal menyinkronkan data.', 'error');
+                            }
+                        }
+                    });
+                }
+            };
+            // Delay slightly to ensure DB is ready
+            setTimeout(checkSync, 2000);
+        }
+    }, [isMigrating, showConfirm, addToast]);
+
+    // --- Unsaved Changes Guard (Before Unload) ---
+    useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (isDropboxConnected() && hasUnsavedLocalChanges()) {
+                // Modern browsers ignore the custom message, but triggering the event
+                // causes the standard "Leave site? Changes you made may not be saved" dialog.
+                e.preventDefault();
+                e.returnValue = ''; 
+                return '';
+            }
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, []);
     
     useEffect(() => {
         if ('serviceWorker' in navigator && window.self === window.top) {

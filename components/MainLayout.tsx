@@ -4,8 +4,10 @@ import { useModal } from '../contexts/ModalContext';
 import { useToast } from '../contexts/ToastContext';
 import { getAllExams, getSettings } from '../lib/storage';
 import { db } from '../lib/db';
+import { isDropboxConnected, uploadToDropbox, downloadFromDropbox } from '../lib/dropbox';
 import { 
-    BurgerMenuIcon, CloseIcon, ArchiveIcon, BankIcon, BackupIcon, RestoreIcon, SettingsIcon, HelpIcon
+    BurgerMenuIcon, CloseIcon, ArchiveIcon, BankIcon, BackupIcon, RestoreIcon, SettingsIcon, HelpIcon,
+    CloudUploadIcon, CloudDownloadIcon, DropboxIcon
 } from './Icons';
 
 const MainLayout: React.FC<{
@@ -16,10 +18,16 @@ const MainLayout: React.FC<{
     const [isSidebarOpen, setSidebarOpen] = useState(false);
     const [isAnimating, setIsAnimating] = useState(false);
     const [isRendered, setIsRendered] = useState(false);
+    const [hasDropbox, setHasDropbox] = useState(false);
 
     const restoreInputRef = useRef<HTMLInputElement>(null);
     const { showConfirm } = useModal();
     const { addToast } = useToast();
+
+    // Check Dropbox status on mount and whenever sidebar opens
+    useEffect(() => {
+        setHasDropbox(isDropboxConnected());
+    }, [isSidebarOpen]);
 
     useEffect(() => {
         if (isSidebarOpen) {
@@ -133,6 +141,45 @@ const MainLayout: React.FC<{
         };
         reader.readAsText(file);
     }, [showConfirm, addToast]);
+
+    // --- Dropbox Actions in Sidebar ---
+    const handleCloudUpload = async () => {
+        showConfirm({
+            title: "Upload ke Dropbox",
+            content: "Ini akan menimpa file backup di Dropbox Anda dengan data dari perangkat ini. Lanjutkan?",
+            confirmLabel: "Upload",
+            onConfirm: async () => {
+                try {
+                    addToast('Mengupload ke Dropbox...', 'info');
+                    await uploadToDropbox();
+                    addToast('Berhasil upload data ke Dropbox.', 'success');
+                    setSidebarOpen(false);
+                } catch (error: any) {
+                    addToast(error.message, 'error');
+                }
+            }
+        });
+    };
+
+    const handleCloudDownload = async () => {
+        showConfirm({
+            title: "Ambil dari Dropbox",
+            content: "PERINGATAN: Semua data di perangkat ini akan DITIMPA dengan data dari Dropbox. Pastikan Anda sudah backup data lokal jika perlu.",
+            confirmVariant: 'danger',
+            confirmLabel: "Download & Timpa",
+            onConfirm: async () => {
+                try {
+                    addToast('Mengunduh dari Dropbox...', 'info');
+                    await downloadFromDropbox();
+                    addToast('Data berhasil dipulihkan. Memuat ulang...', 'success');
+                    setSidebarOpen(false);
+                    setTimeout(() => window.location.reload(), 1500);
+                } catch (error: any) {
+                    addToast(error.message, 'error');
+                }
+            }
+        });
+    };
     
     const handleHelp = () => {
         onNavigate('help');
@@ -141,14 +188,16 @@ const MainLayout: React.FC<{
     const sidebarItems = [
         { id: 'archive', label: 'Arsip Soal', icon: ArchiveIcon, action: () => onNavigate('archive') },
         { id: 'bank', label: 'Bank Soal', icon: BankIcon, action: () => onNavigate('bank') },
-        { id: 'backup', label: 'Backup', icon: BackupIcon, action: handleBackup },
-        { id: 'restore', label: 'Restore', icon: RestoreIcon, action: handleRestoreClick },
+        { id: 'backup', label: 'Backup Lokal', icon: BackupIcon, action: handleBackup },
+        { id: 'restore', label: 'Restore Lokal', icon: RestoreIcon, action: handleRestoreClick },
     ];
+    
     const sidebarBottomItems = [
         { id: 'settings', label: 'Pengaturan', icon: SettingsIcon, action: () => onNavigate('settings') },
         { id: 'help', label: 'Bantuan', icon: HelpIcon, action: handleHelp },
     ];
     
+    // Combine for Desktop header
     const allNavItems = [...sidebarItems, ...sidebarBottomItems];
 
     return (
@@ -175,7 +224,7 @@ const MainLayout: React.FC<{
                             <CloseIcon className="text-xl" />
                         </button>
                     </div>
-                     <nav className="p-4 flex-grow">
+                     <nav className="p-4 flex-grow overflow-y-auto">
                         <ul className="space-y-2">
                             {sidebarItems.map(item => (
                                 <li key={item.id}>
@@ -185,6 +234,29 @@ const MainLayout: React.FC<{
                                 </li>
                             ))}
                         </ul>
+
+                        {/* Dropbox Section */}
+                        {hasDropbox && (
+                            <div className="mt-4 pt-4 border-t border-[var(--border-primary)]">
+                                <div className="px-3 mb-2 text-xs font-bold text-[var(--text-muted)] uppercase flex items-center gap-2">
+                                    <DropboxIcon /> <span>Cloud Sync</span>
+                                </div>
+                                <ul className="space-y-2">
+                                    <li>
+                                        <button onClick={handleCloudUpload} className="w-full flex items-center space-x-3 p-3 rounded-lg text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] text-left">
+                                            <CloudUploadIcon className="text-xl text-blue-600 dark:text-blue-400" />
+                                            <span>Upload ke Cloud</span>
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button onClick={handleCloudDownload} className="w-full flex items-center space-x-3 p-3 rounded-lg text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] text-left">
+                                            <CloudDownloadIcon className="text-xl text-green-600 dark:text-green-400" />
+                                            <span>Ambil dari Cloud</span>
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
+                        )}
                     </nav>
                     <nav className="p-4 border-t border-[var(--border-primary)]">
                         <ul className="space-y-2">

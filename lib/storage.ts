@@ -10,6 +10,14 @@ export const QBANK_STORAGE_KEY = 'soalgenius_qbank';
 // Kunci statis untuk data pengaturan di dalam IndexedDB
 const SETTINGS_DB_KEY = 'app_settings';
 
+// Keys for Sync Tracking
+export const LOCAL_CHANGE_TIMESTAMP_KEY = 'soalgenius_last_local_change';
+
+// Helper to update local change timestamp
+export const touchLocalChange = () => {
+    localStorage.setItem(LOCAL_CHANGE_TIMESTAMP_KEY, new Date().toISOString());
+};
+
 // Data awal ini sekarang diekspor untuk digunakan oleh skrip migrasi
 // jika tidak ada data yang ditemukan di localStorage.
 export const initialExam: Exam = {
@@ -108,7 +116,9 @@ export const getExam = async (id: string): Promise<Exam | undefined> => {
 export const saveExam = async (examToSave: Exam): Promise<string> => {
     try {
         // .put() akan meng-update jika ada, atau menambahkan jika baru.
-        return await db.exams.put(examToSave);
+        const id = await db.exams.put(examToSave);
+        touchLocalChange(); // Update timestamp
+        return id;
     } catch (e) {
         console.error("Gagal menyimpan ujian", e);
         throw e;
@@ -118,6 +128,7 @@ export const saveExam = async (examToSave: Exam): Promise<string> => {
 export const deleteExam = async (id: string): Promise<void> => {
     try {
         await db.exams.delete(id);
+        touchLocalChange(); // Update timestamp
     } catch (e) {
         console.error("Gagal menghapus ujian", e);
         throw e;
@@ -134,7 +145,7 @@ export const duplicateExam = async (id: string): Promise<Exam> => {
         title: `${examToCopy.title} (Salinan)`,
         status: 'draft',
     };
-    await saveExam(newExam);
+    await saveExam(newExam); // saveExam calls touchLocalChange
     return newExam;
 };
 
@@ -149,7 +160,7 @@ export const shuffleExam = async (id: string): Promise<Exam> => {
     let highestVariant = 0;
     allExams.forEach(exam => {
         if (exam.title.startsWith(baseTitle)) {
-            const match = exam.title.match(/ - Varian (\d+)$/);
+            const match = exam.title.match(/ - Varian \d+$/);
             if (match && match[1]) {
                 const variantNumber = parseInt(match[1], 10);
                 if (variantNumber > highestVariant) highestVariant = variantNumber;
@@ -170,7 +181,7 @@ export const shuffleExam = async (id: string): Promise<Exam> => {
         })),
         status: 'draft',
     };
-    await saveExam(newExam);
+    await saveExam(newExam); // saveExam calls touchLocalChange
     return newExam;
 };
 
@@ -196,6 +207,7 @@ export const saveSettings = async (settings: Settings): Promise<void> => {
     try {
         // Menambahkan 'key' yang diperlukan oleh skema database
         await db.settings.put({ ...settings, key: SETTINGS_DB_KEY });
+        touchLocalChange(); // Update timestamp
     } catch (e) {
         console.error("Gagal menyimpan pengaturan", e);
         throw e;
@@ -223,7 +235,9 @@ export const saveQuestionToBank = async (question: Question, metadata: { subject
             class: metadata.class,
             createdAt: new Date().toISOString(),
         };
-        return await db.bankQuestions.add(newBankQuestion);
+        const id = await db.bankQuestions.add(newBankQuestion);
+        touchLocalChange(); // Update timestamp
+        return id;
     } catch (e) {
         console.error("Gagal menyimpan soal ke bank", e);
         throw e;
@@ -233,8 +247,54 @@ export const saveQuestionToBank = async (question: Question, metadata: { subject
 export const deleteQuestionFromBank = async (bankId: string): Promise<void> => {
     try {
         await db.bankQuestions.delete(bankId);
+        touchLocalChange(); // Update timestamp
     } catch (e) {
         console.error("Gagal menghapus soal dari bank", e);
         throw e;
+    }
+};
+
+// --- FUNGSI BACKUP & RESTORE DATA (HELPER) ---
+
+export const createBackupData = async (): Promise<string> => {
+    const exams = await getAllExams();
+    const settings = await getSettings();
+    const bankQuestions = await db.bankQuestions.toArray();
+
+    const backupData = {
+        source: 'SoalGeniusDB',
+        version: 2,
+        createdAt: new Date().toISOString(),
+        data: { exams, settings, bankQuestions }
+    };
+
+    return JSON.stringify(backupData, null, 2);
+};
+
+export const restoreBackupData = async (jsonString: string): Promise<boolean> => {
+    try {
+        const backupData = JSON.parse(jsonString);
+
+        if ((backupData.source !== 'SoalGeniusDB' && backupData.source !== 'SoalGenius') || !backupData.data) {
+            throw new Error('Format backup tidak valid');
+        }
+
+        await db.transaction('rw', db.exams, db.settings, db.bankQuestions, async () => {
+            // Hapus semua data yang ada
+            await db.exams.clear();
+            await db.settings.clear();
+            await db.bankQuestions.clear();
+
+            // Masukkan data baru
+            if (backupData.data.exams) await db.exams.bulkPut(backupData.data.exams);
+            if (backupData.data.settings) await db.settings.put({ ...backupData.data.settings, key: SETTINGS_DB_KEY });
+            if (backupData.data.bankQuestions) await db.bankQuestions.bulkPut(backupData.data.bankQuestions);
+        });
+        
+        touchLocalChange(); // Restore counts as a local change (technically state change)
+        return true;
+    } catch (error) {
+        console.error("Gagal restore:", error);
+        throw error;
     }
 };

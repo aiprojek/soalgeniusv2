@@ -7,12 +7,13 @@ import { getExam, saveExam, getSettings, saveQuestionToBank } from '../lib/stora
 import { toRoman } from '../lib/utils';
 import { generateHtmlContent } from '../lib/htmlGenerator';
 import QuestionBankView from './QuestionBankView';
+import AiGeneratorModal from '../components/AiGeneratorModal';
 import { useHistoryState } from '../hooks/useHistoryState';
 import ReactQuill from 'react-quill';
 import Quill from 'quill';
 import { 
     PlusIcon, TrashIcon, PrinterIcon, EditIcon, ChevronLeftIcon, SaveIcon, CheckIcon, BookmarkPlusIcon, CloseIcon,
-    ZoomInIcon, ZoomOutIcon, BankIcon, UndoIcon, RedoIcon, CardTextIcon, LayoutSplitIcon
+    ZoomInIcon, ZoomOutIcon, BankIcon, UndoIcon, RedoIcon, CardTextIcon, LayoutSplitIcon, StarsIcon
 } from '../components/Icons';
 
 // --- Start Custom Quill Icons ---
@@ -108,6 +109,7 @@ const ltrTranslations = {
   deleteSectionAria: 'Hapus Bagian Soal',
   addQuestion: 'Tambah Soal',
   getFromBank: 'Ambil dari Bank Soal',
+  createWithAi: 'Buat dengan AI',
   questionPlaceholder: 'Tulis pertanyaan di sini...',
   questionNumberAria: 'Nomor soal {number}',
   saveToBank: 'Simpan ke Bank Soal',
@@ -202,6 +204,7 @@ const rtlTranslations: typeof ltrTranslations = {
   deleteSectionAria: 'حذف قسم السؤال',
   addQuestion: 'إضافة سؤال',
   getFromBank: 'جلب من بنك الأسئلة',
+  createWithAi: 'إنشاء باستخدام الذكاء الاصطناعي',
   questionPlaceholder: 'اكتب السؤال هنا...',
   questionNumberAria: 'رقم السؤال {number}',
   saveToBank: 'حفظ في بنك الأسئلة',
@@ -802,7 +805,8 @@ const SectionEditor: React.FC<{
     onQuestionDelete: (sectionId: string, questionId: string) => void;
     onSaveToBank: (question: Question) => void;
     onAddQuestionsFromBank: (sectionId: string) => void;
-}> = ({ section, T, onSectionUpdate, onSectionDelete, onAddQuestionsFromBank, ...questionCallbacks }) => {
+    onOpenAiModal: (sectionId: string) => void;
+}> = ({ section, T, onSectionUpdate, onSectionDelete, onAddQuestionsFromBank, onOpenAiModal, ...questionCallbacks }) => {
     const [isAddQuestionOpen, setAddQuestionOpen] = useState(false);
     const addQuestionRef = useRef<HTMLDivElement>(null);
     
@@ -813,6 +817,11 @@ const SectionEditor: React.FC<{
 
     const addFromBankAndClose = () => {
         onAddQuestionsFromBank(section.id);
+        setAddQuestionOpen(false);
+    };
+
+    const openAiAndClose = () => {
+        onOpenAiModal(section.id);
         setAddQuestionOpen(false);
     };
 
@@ -851,6 +860,7 @@ const SectionEditor: React.FC<{
                     <div className="absolute start-0 mt-2 w-56 bg-[var(--bg-secondary)] rounded-md shadow-lg z-10 border border-[var(--border-secondary)] text-start">
                         <ul className="py-1">
                             <li><a href="#" onClick={(e) => { e.preventDefault(); addFromBankAndClose(); }} className="flex items-center space-x-2 block px-4 py-2 text-sm font-semibold text-blue-600 dark:text-blue-300 hover:bg-[var(--bg-hover)]"><BankIcon /> <span>{T.getFromBank}</span></a></li>
+                            <li><a href="#" onClick={(e) => { e.preventDefault(); openAiAndClose(); }} className="flex items-center space-x-2 block px-4 py-2 text-sm font-semibold text-purple-600 dark:text-purple-300 hover:bg-[var(--bg-hover)]"><StarsIcon /> <span>{T.createWithAi}</span></a></li>
                             <li className="border-t border-[var(--border-primary)] my-1"></li>
                             {Object.entries(T.questionTypes).map(([type, label]) => (<li key={type}><a href="#" onClick={(e) => { e.preventDefault(); addQuestionAndClose(type as QuestionType); }} className="block px-4 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-hover)]">{label}</a></li>))}
                         </ul>
@@ -873,6 +883,7 @@ interface EditorPaneProps {
     onQuestionDelete: (sectionId: string, questionId: string) => void;
     onSaveToBank: (question: Question) => void;
     onAddQuestionsFromBank: (sectionId: string) => void;
+    onOpenAiModal: (sectionId: string) => void;
 }
 
 const EditorPane: React.FC<EditorPaneProps> = ({ exam, T, onExamChange, onSectionAdd, ...sectionCallbacks }) => {
@@ -944,6 +955,7 @@ const EditorView: React.FC<{ examId: string; onBack: () => void }> = ({ examId, 
     const [activeTab, setActiveTab] = useState<'editor' | 'preview' | 'key'>('editor');
     const [isStatusDropdownOpen, setStatusDropdownOpen] = useState(false);
     const [isBankSelectorOpen, setBankSelectorOpen] = useState(false);
+    const [isAiModalOpen, setAiModalOpen] = useState(false);
     const [targetSectionId, setTargetSectionId] = useState<string | null>(null);
     const statusDropdownRef = useRef<HTMLDivElement>(null);
     const bankSubjectRef = useRef<HTMLInputElement>(null);
@@ -1076,6 +1088,11 @@ const EditorView: React.FC<{ examId: string; onBack: () => void }> = ({ examId, 
     const deleteQuestion = useCallback((sectionId: string, qId: string) => setExam(p => p ? { ...p, sections: p.sections.map(s => s.id === sectionId ? { ...s, questions: s.questions.filter(q => q.id !== qId) } : s) } : null), [setExam]);
     const handleAddQuestionsFromBank = useCallback((sectionId: string) => { setTargetSectionId(sectionId); setBankSelectorOpen(true); }, []);
     
+    const handleOpenAiModal = useCallback((sectionId: string) => {
+        setTargetSectionId(sectionId);
+        setAiModalOpen(true);
+    }, []);
+
     const handleSaveToBank = useCallback(async (question: Question) => {
         if (!exam) return;
         showConfirm({
@@ -1095,7 +1112,7 @@ const EditorView: React.FC<{ examId: string; onBack: () => void }> = ({ examId, 
         });
     }, [exam, addToast, showConfirm]);
 
-    const addClonedQuestionsToSection = (questions: Question[]) => {
+    const addClonedQuestionsToSection = useCallback((questions: Question[]) => {
         if (!targetSectionId) return;
         const clonedQuestions = questions.map(q => ({...JSON.parse(JSON.stringify(q)), id: crypto.randomUUID() }));
         setExam(prev => {
@@ -1110,8 +1127,13 @@ const EditorView: React.FC<{ examId: string; onBack: () => void }> = ({ examId, 
         });
         setBankSelectorOpen(false);
         setTargetSectionId(null);
-    };
+    }, [targetSectionId, setExam]);
     
+    const handleQuestionsGenerated = useCallback((questions: Question[]) => {
+        addClonedQuestionsToSection(questions);
+        setAiModalOpen(false);
+    }, [addClonedQuestionsToSection]);
+
     const handleManualSave = async () => {
         if (exam) {
             try {
@@ -1136,7 +1158,7 @@ const EditorView: React.FC<{ examId: string; onBack: () => void }> = ({ examId, 
         return <div className="flex h-screen items-center justify-center">Memuat Editor...</div>;
     }
     
-    const editorCallbacks = { onSectionUpdate: updateSection, onSectionDelete: deleteSection, onQuestionAdd: addQuestion, onQuestionUpdate: updateQuestion, onQuestionDelete: deleteQuestion, onSaveToBank: handleSaveToBank, onAddQuestionsFromBank: handleAddQuestionsFromBank };
+    const editorCallbacks = { onSectionUpdate: updateSection, onSectionDelete: deleteSection, onQuestionAdd: addQuestion, onQuestionUpdate: updateQuestion, onQuestionDelete: deleteQuestion, onSaveToBank: handleSaveToBank, onAddQuestionsFromBank: handleAddQuestionsFromBank, onOpenAiModal: handleOpenAiModal };
 
     return (
     <div>
@@ -1148,6 +1170,9 @@ const EditorView: React.FC<{ examId: string; onBack: () => void }> = ({ examId, 
                 </div>
             </div>
         )}
+
+        <AiGeneratorModal isOpen={isAiModalOpen} onClose={() => setAiModalOpen(false)} onQuestionsGenerated={handleQuestionsGenerated} />
+
         <div className="sticky top-0 z-20 print:hidden">
             <header className="bg-[var(--bg-secondary)] shadow-lg border-b border-[var(--border-primary)]">
                 <div className="container mx-auto px-4 py-3 flex justify-between items-center">
