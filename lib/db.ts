@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie';
-import type { Exam, Settings, BankQuestion } from '../types';
+import type { Exam, Settings, BankQuestion, Folder } from '../types';
 
 /**
  * Mendefinisikan kelas database SoalGeniusDB menggunakan Dexie.
@@ -7,22 +7,25 @@ import type { Exam, Settings, BankQuestion } from '../types';
  * - `exams`: Menyimpan semua objek ujian, diindeks berdasarkan `id` uniknya.
  * - `settings`: Menyimpan objek pengaturan tunggal. Kita akan menggunakan kunci statis untuk mengaksesnya.
  * - `bankQuestions`: Menyimpan semua soal di bank soal, diindeks berdasarkan `bankId`.
+ * - `folders`: Menyimpan struktur folder untuk pengorganisasian.
  */
 class SoalGeniusDB extends Dexie {
   exams!: EntityTable<Exam, 'id'>;
   settings!: EntityTable<Settings & { key: string }, 'key'>;
   bankQuestions!: EntityTable<BankQuestion, 'bankId'>;
+  folders!: EntityTable<Folder, 'id'>;
 
   version!: Dexie['version'];
   transaction!: Dexie['transaction'];
 
   constructor() {
     super('SoalGeniusDB');
-    this.version(2).stores({
+    this.version(3).stores({
       // Menambahkan indeks 'date' untuk memungkinkan pengurutan yang efisien.
-      exams: 'id, date', // Primary key 'id', index 'date'
+      exams: 'id, date, folderId', // Primary key 'id', indexes 'date', 'folderId'
       settings: 'key', // Primary key 'key'
       bankQuestions: 'bankId', // Primary key 'bankId'
+      folders: 'id', // Primary key 'id'
     });
   }
 }

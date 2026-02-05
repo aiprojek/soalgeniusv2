@@ -2,9 +2,12 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import type { Exam, Settings } from '../types';
 import { getExam, getSettings } from '../lib/storage';
 import { generateHtmlContent } from '../lib/htmlGenerator';
+import { generateDocx } from '../lib/docxGenerator';
+import { generateMoodleXML } from '../lib/lmsGenerator';
 import {
-    ChevronLeftIcon, ZoomInIcon, ZoomOutIcon, DownloadIcon, PrinterIcon
+    ChevronLeftIcon, ZoomInIcon, ZoomOutIcon, DownloadIcon, PrinterIcon, WordIcon, ServerIcon
 } from '../components/Icons';
+import { useToast } from '../contexts/ToastContext';
 
 
 const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId, onBack }) => {
@@ -14,9 +17,11 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
     const [zoom, setZoom] = useState(1);
     const [showAnswerKey, setShowAnswerKey] = useState(false);
     const [isActionsMenuOpen, setActionsMenuOpen] = useState(false);
+    const [isExportingWord, setIsExportingWord] = useState(false);
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const actionsMenuRef = useRef<HTMLDivElement>(null);
     const mainContainerRef = useRef<HTMLElement>(null);
+    const { addToast } = useToast();
 
 
     useEffect(() => {
@@ -94,6 +99,56 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
         URL.revokeObjectURL(url);
     }, [exam, settings, showAnswerKey]);
 
+    const handleExportWord = useCallback(async () => {
+        if (!exam || !settings) return;
+        setIsExportingWord(true);
+        addToast('Menyiapkan dokumen Word...', 'info');
+        
+        try {
+            const blob = await generateDocx(exam, settings);
+            const now = new Date();
+            const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+            const sanitize = (str: string) => (str || '').replace(/[^a-z0-9_.-]/gi, '_');
+            const fileName = `${sanitize(exam.title)}_${timestamp}.docx`;
+            
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            addToast('Dokumen Word berhasil diunduh.', 'success');
+        } catch (error) {
+            console.error("Export Word failed", error);
+            addToast('Gagal mengekspor ke Word.', 'error');
+        } finally {
+            setIsExportingWord(false);
+        }
+    }, [exam, settings, addToast]);
+
+    const handleExportMoodle = useCallback(() => {
+        if (!exam) return;
+        try {
+            const xml = generateMoodleXML(exam);
+            const blob = new Blob([xml], { type: 'application/xml' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const sanitize = (str: string) => (str || '').replace(/[^a-z0-9_.-]/gi, '_');
+            a.download = `${sanitize(exam.title)}_moodle.xml`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            addToast('File Moodle XML berhasil diunduh.', 'success');
+        } catch (error) {
+            console.error("Export Moodle failed", error);
+            addToast('Gagal mengekspor ke Moodle XML.', 'error');
+        }
+    }, [exam, addToast]);
+
     const handlePrint = () => {
         iframeRef.current?.contentWindow?.print();
     };
@@ -126,9 +181,14 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
                     </div>
                     
                     <div className="flex-1 flex justify-end">
-                        <div className="hidden md:flex items-center space-x-3">
-                            <button onClick={handleExportHtml} className="text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] font-semibold py-2 px-4 rounded-lg flex items-center space-x-2"><DownloadIcon /><span>Ekspor HTML</span></button>
-                            <button onClick={handlePrint} className="bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] text-[var(--text-on-accent)] font-semibold py-2 px-4 rounded-lg flex items-center space-x-2"><PrinterIcon /><span>Cetak / Simpan PDF</span></button>
+                        <div className="hidden md:flex items-center space-x-2">
+                            <button onClick={handleExportWord} disabled={isExportingWord} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg flex items-center space-x-2 disabled:opacity-50">
+                                {isExportingWord ? <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div> : <WordIcon />}
+                                <span>Word</span>
+                            </button>
+                            <button onClick={handleExportHtml} className="text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] font-semibold py-2 px-4 rounded-lg flex items-center space-x-2"><DownloadIcon /><span>HTML</span></button>
+                            <button onClick={handlePrint} className="bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] text-[var(--text-on-accent)] font-semibold py-2 px-4 rounded-lg flex items-center space-x-2"><PrinterIcon /><span>Cetak</span></button>
+                            <button onClick={handleExportMoodle} className="text-orange-600 hover:bg-orange-100 dark:text-orange-400 dark:hover:bg-orange-900/50 p-2 rounded-lg" title="Ekspor Moodle XML"><ServerIcon className="text-xl" /></button>
                         </div>
                         <div className="md:hidden relative" ref={actionsMenuRef}>
                             <button onClick={() => setActionsMenuOpen(p => !p)} className="flex items-center space-x-2 bg-[var(--bg-muted)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] font-semibold py-2 px-4 rounded-lg" aria-haspopup="true" aria-expanded={isActionsMenuOpen}>
@@ -140,7 +200,9 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
                                     <button onClick={() => { setShowAnswerKey(false); setActionsMenuOpen(false); }} className="w-full text-left flex items-center space-x-2 block px-4 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"><span>Lihat Soal</span></button>
                                     <button onClick={() => { setShowAnswerKey(true); setActionsMenuOpen(false); }} className="w-full text-left flex items-center space-x-2 block px-4 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"><span>Lihat Kunci Jawaban</span></button>
                                     <div className="my-1 border-t border-[var(--border-primary)]"></div>
+                                    <button onClick={() => { handleExportWord(); setActionsMenuOpen(false); }} className="w-full text-left flex items-center space-x-2 block px-4 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-[var(--bg-hover)]"><WordIcon /><span>Ekspor Word (.docx)</span></button>
                                     <button onClick={() => { handleExportHtml(); setActionsMenuOpen(false); }} className="w-full text-left flex items-center space-x-2 block px-4 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"><DownloadIcon /><span>Ekspor HTML</span></button>
+                                    <button onClick={() => { handleExportMoodle(); setActionsMenuOpen(false); }} className="w-full text-left flex items-center space-x-2 block px-4 py-2 text-sm text-orange-600 dark:text-orange-400 hover:bg-[var(--bg-hover)]"><ServerIcon /><span>Ekspor Moodle XML</span></button>
                                     <button onClick={() => { handlePrint(); setActionsMenuOpen(false); }} className="w-full text-left flex items-center space-x-2 block px-4 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"><PrinterIcon /><span>Cetak / Simpan PDF</span></button>
                                 </div>
                             )}

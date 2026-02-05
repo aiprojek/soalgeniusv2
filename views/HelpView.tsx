@@ -110,43 +110,34 @@ const HelpView = () => {
             <div className="bg-[var(--bg-secondary)] p-6 rounded-xl shadow-lg border border-[var(--border-primary)] animate-fade-in">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                 <FeatureCard icon="bi-pencil-square" title="Editor Canggih">
-                    Format teks (bold, italic), sisipkan gambar, atur perataan, dan gunakan superskrip/subskrip dengan mudah.
+                    Format teks, gambar, tabel, dan superskrip/subskrip dengan mudah. Kini dilengkapi navigasi halaman untuk performa lebih cepat.
+                </FeatureCard>
+                <FeatureCard icon="bi-stars" title="Kecerdasan Buatan (AI)">
+                    Bingung membuat soal? Gunakan fitur "Buat dengan AI" untuk menghasilkan draf soal secara otomatis berdasarkan topik.
+                </FeatureCard>
+                <FeatureCard icon="bi-cloud-check-fill" title="Sinkronisasi Cloud">
+                    Hubungkan akun Dropbox Anda untuk menyimpan dan menyinkronkan data ujian antar perangkat dengan aman.
+                </FeatureCard>
+                <FeatureCard icon="bi-folder-fill" title="Organisasi Rapi">
+                    Kelompokkan ujian ke dalam Folder dan gunakan Label (Tags) untuk memudahkan pencarian di arsip.
                 </FeatureCard>
                 <FeatureCard icon="bi-list-ol" title="Berbagai Jenis Soal">
                     Mendukung Pilihan Ganda (termasuk kompleks), Esai, Isian Singkat, Menjodohkan, Benar-Salah, hingga Tabel Isian.
                 </FeatureCard>
-                <FeatureCard icon="bi-eye-fill" title="Pratinjau Langsung">
-                    Lihat tampilan akhir soal atau kunci jawaban secara real-time saat mengedit melalui tab "Pratinjau".
+                <FeatureCard icon="bi-eye-fill" title="Pratinjau & Ekspor">
+                    Lihat hasil akhir secara real-time. Ekspor ke <strong>Word (.docx)</strong>, HTML, PDF, atau format Moodle XML.
                 </FeatureCard>
                 <FeatureCard icon="bi-translate" title="Dukungan Teks Arab (RTL)">
                     Tulis soal berbahasa Arab dengan mudah. Arah teks, penomoran, dan tata letak otomatis menyesuaikan.
                 </FeatureCard>
-                <FeatureCard icon="bi-rulers" title="Format Kertas Fleksibel">
-                    Atur ukuran kertas (A4, F4), margin, jenis dan ukuran font, serta spasi baris sesuai kebutuhan di menu Pengaturan.
-                </FeatureCard>
                 <FeatureCard icon="bi-layout-split" title="Tata Letak Kolom Ganda">
                     Hemat kertas dengan mengatur soal agar tampil dalam format dua kolom secara otomatis pada pratinjau.
-                </FeatureCard>
-                <FeatureCard icon="bi-file-earmark-arrow-down-fill" title="Ekspor & Cetak">
-                    Simpan ujian sebagai file HTML mandiri atau cetak langsung ke printer/PDF dari halaman Pratinjau.
                 </FeatureCard>
                 <FeatureCard icon="bi-journal-richtext" title="Bank Soal Personal">
                     Simpan soal-soal terbaik Anda untuk digunakan kembali di ujian lain, mempercepat proses pembuatan soal.
                 </FeatureCard>
-                <FeatureCard icon="bi-shuffle" title="Acak Soal (Varian)">
-                    Buat varian soal yang berbeda secara otomatis dari satu naskah ujian untuk mencegah kecurangan.
-                </FeatureCard>
-                <FeatureCard icon="bi-cloud-arrow-up-fill" title="Backup & Restore Data">
-                    Amankan semua data ujian dan pengaturan Anda dalam satu file JSON, dan pulihkan kapan saja dengan mudah.
-                </FeatureCard>
                 <FeatureCard icon="bi-wifi-off" title="100% Offline">
-                    Setelah halaman dimuat pertama kali, aplikasi tidak lagi memerlukan koneksi internet untuk bekerja.
-                </FeatureCard>
-                <FeatureCard icon="bi-moon-stars-fill" title="Mode Terang & Gelap">
-                    Pilih tema tampilan yang nyaman untuk mata Anda, baik saat bekerja di siang hari maupun malam hari.
-                </FeatureCard>
-                <FeatureCard icon="bi-app-indicator" title="Aplikasi Instan (PWA)">
-                    Instal SoalGenius di desktop atau ponsel Anda untuk pengalaman seperti aplikasi asli. Akses lebih cepat dan mudah.
+                    Setelah dimuat, aplikasi berjalan tanpa internet. Data tersimpan lokal di browser (IndexedDB) atau Cloud jika diaktifkan.
                 </FeatureCard>
                 </div>
             </div>
@@ -156,31 +147,48 @@ const HelpView = () => {
           {activeTab === 'guide' && (
             <div className="bg-[var(--bg-secondary)] p-6 rounded-xl shadow-lg border border-[var(--border-primary)] animate-fade-in">
                 <div className="space-y-8">
-                <GuideStep number={1} title="Membuat & Mengelola Ujian">
-                    <p>Dari halaman utama <strong className="text-[var(--text-accent)]">Arsip Ujian</strong>, klik tombol <code className="bg-[var(--bg-muted)] px-2 py-1 rounded">Buat Ujian Baru</code> untuk memulai. Gunakan ikon-ikon pada setiap kartu ujian untuk mengedit, mencetak, mengacak, menyalin, atau menghapus ujian.</p>
-                </GuideStep>
-                <GuideStep number={2} title="Menggunakan Editor Soal">
-                    <ul className="list-disc list-inside space-y-2">
-                    <li><strong>Informasi Ujian:</strong> Isi detail seperti Judul, Mapel, dan Kelas. Di sini Anda juga bisa mengubah <strong className="text-[var(--text-accent)]">Arah Tulis</strong> ke RTL untuk soal Arab.</li>
-                    <li><strong>Tata Letak Pratinjau:</strong> Di bagian bawah form Informasi Ujian, pilih tata letak <strong className="text-[var(--text-accent)]">1 Kolom</strong> atau <strong className="text-[var(--text-accent)]">2 Kolom</strong> untuk mengatur tampilan soal di pratinjau dan hasil cetak.</li>
-                    <li><strong>Bagian Soal:</strong> Ujian dapat dibagi menjadi beberapa bagian. Klik <code className="bg-[var(--bg-muted)] px-2 py-1 rounded">Tambah Bagian Soal</code> untuk membuat bagian baru (misal: I. Pilihan Ganda, II. Esai).</li>
-                    <li><strong>Tambah Soal:</strong> Di setiap bagian, klik <code className="bg-[var(--bg-muted)] px-2 py-1 rounded">Tambah Soal</code>, lalu pilih jenis soal yang diinginkan atau <strong className="text-[var(--text-accent)]">Ambil dari Bank Soal</strong>.</li>
-                    <li><strong>Kunci Jawaban:</strong> Isi kunci jawaban di bawah setiap soal untuk digunakan pada pratinjau kunci jawaban.</li>
+                <GuideStep number={1} title="Manajemen Arsip & Folder">
+                    <p>Halaman <strong className="text-[var(--text-accent)]">Arsip</strong> adalah pusat data Anda. Gunakan fitur <strong>Filter Folder</strong> dan <strong>Label</strong> di bagian atas untuk mengelompokkan ujian.</p>
+                    <ul className="list-disc list-inside mt-2 ml-1">
+                        <li>Klik <code className="bg-[var(--bg-muted)] px-2 py-1 rounded">Buat Ujian Baru</code> untuk memulai naskah kosong.</li>
+                        <li>Gunakan ikon-ikon pada kartu ujian untuk <strong>Edit, Cetak, Duplikat,</strong> atau <strong>Pindahkan</strong> ujian ke folder lain.</li>
                     </ul>
                 </GuideStep>
-                <GuideStep number={3} title="Pratinjau, Simpan & Cetak">
-                    <p>Saat mengedit, gunakan tab <strong className="text-[var(--text-accent)]">Pratinjau</strong> dan <strong className="text-[var(--text-accent)]">Kunci Jawaban</strong> untuk melihat tampilan akhir. Perubahan disimpan otomatis.</p>
-                    <p>Untuk mencetak atau ekspor ke HTML, kembali ke halaman <strong className="text-[var(--text-accent)]">Arsip Ujian</strong> dan klik ikon <i className="bi bi-printer-fill text-green-600"></i> pada kartu ujian yang diinginkan.</p>
+                
+                <GuideStep number={2} title="Editor Soal & AI">
+                    <p>Editor kini menggunakan sistem <strong>Halaman (Pagination)</strong>. Jika soal Anda banyak (lebih dari 10), gunakan navigasi di bagian bawah layar untuk pindah halaman.</p>
+                    <ul className="list-disc list-inside space-y-2 mt-2">
+                        <li><strong>Tambah Soal:</strong> Klik tombol <code className="bg-[var(--bg-muted)] px-2 py-1 rounded">+ Tambah Soal</code>. Anda bisa memilih jenis soal manual, mengambil dari <strong>Bank Soal</strong>, atau menggunakan <strong>Buat dengan AI</strong> untuk generate otomatis.</li>
+                        <li><strong>Kunci Jawaban:</strong> Jangan lupa mengisi kunci jawaban di bawah setiap soal agar dapat dicetak terpisah.</li>
+                        <li><strong>Simpan:</strong> Perubahan disimpan otomatis setiap beberapa detik. Anda juga bisa menekan tombol <strong>Simpan</strong> manual di pojok kanan atas.</li>
+                    </ul>
                 </GuideStep>
-                <GuideStep number={4} title="Backup & Restore Data">
-                    <p>Gunakan menu navigasi (ikon di kanan atas pada desktop, atau menu burger di mobile) untuk mengakses fitur <strong className="text-[var(--text-accent)]">Backup</strong> dan <strong className="text-[var(--text-accent)]">Restore</strong>. Lakukan backup secara berkala untuk menjaga keamanan data Anda.</p>
+
+                <GuideStep number={3} title="Pratinjau & Ekspor Dokumen">
+                    <p>Masuk ke menu <strong className="text-[var(--text-accent)]">Pratinjau</strong> untuk melihat hasil akhir naskah.</p>
+                    <ul className="list-disc list-inside space-y-2 mt-2">
+                        <li><strong>Cetak / PDF:</strong> Klik ikon Printer untuk mencetak langsung atau simpan sebagai PDF lewat dialog browser.</li>
+                        <li><strong>Word (.docx):</strong> Unduh file yang bisa diedit di Microsoft Word.</li>
+                        <li><strong>Moodle XML:</strong> Ekspor soal untuk diimpor ke sistem LMS berbasis Moodle/E-Learning.</li>
+                        <li>Gunakan tombol <strong>Soal / Kunci Jawaban</strong> untuk beralih tampilan antara naskah soal dan kunci.</li>
+                    </ul>
                 </GuideStep>
+
+                <GuideStep number={4} title="Sinkronisasi Cloud & Backup">
+                    <p>Amankan data Anda agar tidak hilang saat cache browser dibersihkan.</p>
+                    <ul className="list-disc list-inside space-y-2 mt-2">
+                        <li><strong>Cloud Sync (Dropbox):</strong> Klik ikon Dropbox di header atau menu Pengaturan. Hubungkan akun untuk menyimpan backup otomatis ke cloud.</li>
+                        <li><strong>Backup Lokal:</strong> Di menu Pengaturan > Data, Anda bisa mengunduh file <strong>.json</strong> berisi semua ujian Anda secara manual.</li>
+                        <li><strong>Storage Warning:</strong> Data tersimpan di browser (IndexedDB). Jangan menghapus "Site Data" browser Anda kecuali sudah melakukan backup.</li>
+                    </ul>
+                </GuideStep>
+
                 <GuideStep number={5} title="Instalasi Aplikasi (PWA)">
-                    <p>Dapatkan akses lebih cepat dengan menginstal SoalGenius di perangkat Anda:</p>
-                    <ul className="list-disc list-inside space-y-2">
-                        <li><strong>Desktop (Chrome/Edge):</strong> Cari ikon 'Instal' (layar dengan panah) di bilah alamat browser, lalu klik dan konfirmasi.</li>
-                        <li><strong>Mobile (Android/Chrome):</strong> Buka menu browser (tiga titik) dan pilih 'Instal aplikasi' atau 'Tambahkan ke layar utama'.</li>
-                        <li><strong>Mobile (iOS/Safari):</strong> Ketuk tombol 'Bagikan', gulir ke bawah, lalu pilih 'Tambahkan ke Layar Utama'.</li>
+                    <p>Agar lebih ringan dan cepat, instal SoalGenius sebagai aplikasi:</p>
+                    <ul className="list-disc list-inside space-y-2 mt-1">
+                        <li><strong>Desktop (Chrome/Edge):</strong> Klik ikon 'Instal' (layar dengan panah) di sisi kanan bilah alamat URL.</li>
+                        <li><strong>Android:</strong> Buka menu browser (titik tiga) > "Instal Aplikasi" atau "Tambahkan ke Layar Utama".</li>
+                        <li><strong>iOS (Safari):</strong> Tekan tombol 'Share' > "Add to Home Screen".</li>
                     </ul>
                 </GuideStep>
                 </div>

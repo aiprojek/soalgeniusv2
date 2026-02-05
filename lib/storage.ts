@@ -1,5 +1,5 @@
 import { db } from './db';
-import type { Exam, Settings, BankQuestion, Question } from '../types';
+import type { Exam, Settings, BankQuestion, Question, Folder } from '../types';
 import { QuestionType } from '../types';
 
 // Kunci ini hanya digunakan untuk proses migrasi dari localStorage.
@@ -186,6 +186,90 @@ export const shuffleExam = async (id: string): Promise<Exam> => {
 };
 
 
+// --- FUNGSI FOLDER ---
+
+export const getFolders = async (): Promise<Folder[]> => {
+    try {
+        return await db.folders.toArray();
+    } catch (e) {
+        console.error("Gagal memuat folder", e);
+        return [];
+    }
+};
+
+export const saveFolder = async (folder: Folder): Promise<string> => {
+    try {
+        const id = await db.folders.put(folder);
+        touchLocalChange();
+        return id;
+    } catch (e) {
+        console.error("Gagal menyimpan folder", e);
+        throw e;
+    }
+};
+
+export const deleteFolder = async (folderId: string): Promise<void> => {
+    try {
+        await db.transaction('rw', db.folders, db.exams, async () => {
+            // Delete folder
+            await db.folders.delete(folderId);
+            
+            // Move exams in this folder to 'Uncategorized' (remove folderId)
+            const examsInFolder = await db.exams.where('folderId').equals(folderId).toArray();
+            for (const exam of examsInFolder) {
+                delete exam.folderId;
+                await db.exams.put(exam);
+            }
+        });
+        touchLocalChange();
+    } catch (e) {
+        console.error("Gagal menghapus folder", e);
+        throw e;
+    }
+};
+
+// --- FUNGSI GLOBAL TAG MANAGEMENT ---
+
+export const renameGlobalTag = async (oldTag: string, newTag: string): Promise<void> => {
+    try {
+        await db.transaction('rw', db.exams, async () => {
+            const exams = await db.exams.toArray();
+            for (const exam of exams) {
+                if (exam.tags && exam.tags.includes(oldTag)) {
+                    // Replace oldTag with newTag, ensuring no duplicates if newTag already exists
+                    const newTags = exam.tags.map(t => t === oldTag ? newTag : t);
+                    // Filter duplicates using Set
+                    exam.tags = Array.from(new Set(newTags));
+                    await db.exams.put(exam);
+                }
+            }
+        });
+        touchLocalChange();
+    } catch (e) {
+        console.error("Gagal mengubah nama label", e);
+        throw e;
+    }
+};
+
+export const deleteGlobalTag = async (tagToDelete: string): Promise<void> => {
+    try {
+        await db.transaction('rw', db.exams, async () => {
+            const exams = await db.exams.toArray();
+            for (const exam of exams) {
+                if (exam.tags && exam.tags.includes(tagToDelete)) {
+                    exam.tags = exam.tags.filter(t => t !== tagToDelete);
+                    await db.exams.put(exam);
+                }
+            }
+        });
+        touchLocalChange();
+    } catch (e) {
+        console.error("Gagal menghapus label", e);
+        throw e;
+    }
+};
+
+
 // --- FUNGSI PENGATURAN (SETTINGS) ---
 
 export const getSettings = async (): Promise<Settings> => {
@@ -260,12 +344,13 @@ export const createBackupData = async (): Promise<string> => {
     const exams = await getAllExams();
     const settings = await getSettings();
     const bankQuestions = await db.bankQuestions.toArray();
+    const folders = await getFolders();
 
     const backupData = {
         source: 'SoalGeniusDB',
-        version: 2,
+        version: 3, // Increment version for schema update
         createdAt: new Date().toISOString(),
-        data: { exams, settings, bankQuestions }
+        data: { exams, settings, bankQuestions, folders }
     };
 
     return JSON.stringify(backupData, null, 2);
@@ -279,16 +364,18 @@ export const restoreBackupData = async (jsonString: string): Promise<boolean> =>
             throw new Error('Format backup tidak valid');
         }
 
-        await db.transaction('rw', db.exams, db.settings, db.bankQuestions, async () => {
+        await db.transaction('rw', db.exams, db.settings, db.bankQuestions, db.folders, async () => {
             // Hapus semua data yang ada
             await db.exams.clear();
             await db.settings.clear();
             await db.bankQuestions.clear();
+            await db.folders.clear();
 
             // Masukkan data baru
             if (backupData.data.exams) await db.exams.bulkPut(backupData.data.exams);
             if (backupData.data.settings) await db.settings.put({ ...backupData.data.settings, key: SETTINGS_DB_KEY });
             if (backupData.data.bankQuestions) await db.bankQuestions.bulkPut(backupData.data.bankQuestions);
+            if (backupData.data.folders) await db.folders.bulkPut(backupData.data.folders);
         });
         
         touchLocalChange(); // Restore counts as a local change (technically state change)

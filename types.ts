@@ -8,6 +8,7 @@ export enum QuestionType {
   TABLE = 'Tabel Isian',
   TABLE_MULTIPLE_CHOICE = 'Tabel Pilihan Ganda',
   TABLE_COMPLEX_MULTIPLE_CHOICE = 'Tabel Pilihan Ganda Kompleks',
+  STIMULUS = 'Informasi / Stimulus',
 }
 
 export interface MultipleChoiceOption {
@@ -65,11 +66,12 @@ export interface Question {
 export interface Section {
   id: string;
   instructions: string;
+  stimulus?: string; // Legacy: kept for backward compatibility but hidden in UI
   questions: Question[];
 }
 
 export interface Exam {
-  id:string;
+  id: string;
   title: string;
   subject: string;
   date: string;
@@ -81,6 +83,14 @@ export interface Exam {
   status: 'draft' | 'published';
   direction: 'ltr' | 'rtl';
   layoutColumns: 1 | 2;
+  folderId?: string; // New: Reference to a folder
+  tags?: string[]; // New: Array of tag strings
+}
+
+export interface Folder {
+  id: string;
+  name: string;
+  createdAt: string;
 }
 
 export interface Settings {

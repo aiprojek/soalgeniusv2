@@ -4,7 +4,7 @@ import { ModalProvider, useModal } from './contexts/ModalContext';
 import { ToastProvider, useToast } from './contexts/ToastContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { migrateFromLocalStorage } from './lib/migration';
-import { saveDropboxToken, isDropboxConnected, checkForCloudUpdates, downloadFromDropbox, hasUnsavedLocalChanges } from './lib/dropbox';
+import { isDropboxConnected, checkForCloudUpdates, downloadFromDropbox, hasUnsavedLocalChanges } from './lib/dropbox';
 
 import MainLayout from './components/MainLayout';
 import ArchiveView from './views/ArchiveView';
@@ -22,25 +22,11 @@ function AppContent() {
     const [editingExamId, setEditingExamId] = useState<string | null>(null);
     const [previewingExamId, setPreviewingExamId] = useState<string | null>(null);
     const [isMigrating, setIsMigrating] = useState(true);
+    // State to control which tab is open when Settings is loaded
+    const [initialSettingsTab, setInitialSettingsTab] = useState<'general' | 'header' | 'format' | 'cloud' | 'storage'>('general');
+    
     const { addToast } = useToast();
     const { showConfirm } = useModal();
-
-    // Handle Dropbox OAuth Redirect
-    useEffect(() => {
-        const hash = window.location.hash;
-        if (hash && hash.includes('access_token=')) {
-            const params = new URLSearchParams(hash.substring(1)); // remove #
-            const accessToken = params.get('access_token');
-            if (accessToken) {
-                saveDropboxToken(accessToken);
-                addToast('Berhasil terhubung ke Dropbox!', 'success');
-                // Bersihkan URL tanpa refresh
-                window.history.replaceState(null, '', window.location.pathname);
-                // Arahkan user ke Settings agar mereka sadar sudah terhubung
-                setView('settings'); 
-            }
-        }
-    }, [addToast]);
 
     useEffect(() => {
         // Jalankan migrasi saat aplikasi pertama kali dimuat
@@ -138,9 +124,20 @@ function AppContent() {
         }
     }, [showConfirm]);
 
-    const handleNavigate = useCallback((newView: View) => setView(newView), []);
+    const handleNavigate = useCallback((newView: View) => {
+        setView(newView);
+        // Reset settings tab to default when navigating normally
+        if (newView !== 'settings') setInitialSettingsTab('general');
+    }, []);
+
     const handleEditExam = useCallback((id: string) => { setEditingExamId(id); setView('editor'); }, []);
     const handlePreviewExam = useCallback((id: string) => { setPreviewingExamId(id); setView('preview'); }, []);
+    
+    // Special handler to jump to Cloud Settings
+    const handleOpenCloudSettings = useCallback(() => {
+        setInitialSettingsTab('cloud');
+        setView('settings');
+    }, []);
 
     const handleCreateExam = useCallback(async () => {
         const newExam: Exam = {
@@ -198,9 +195,13 @@ function AppContent() {
     }
     
     return (
-        <MainLayout currentView={view} onNavigate={handleNavigate}>
+        <MainLayout 
+            currentView={view} 
+            onNavigate={handleNavigate}
+            onOpenCloudSettings={handleOpenCloudSettings}
+        >
             {view === 'archive' && <ArchiveView onEditExam={handleEditExam} onCreateExam={handleCreateExam} onPreviewExam={handlePreviewExam} />}
-            {view === 'settings' && <SettingsView />}
+            {view === 'settings' && <SettingsView initialTab={initialSettingsTab} />}
             {view === 'bank' && <QuestionBankView />}
             {view === 'help' && <HelpView />}
         </MainLayout>

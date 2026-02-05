@@ -4,6 +4,7 @@ import { QuestionType } from '../types';
 import { useModal } from '../contexts/ModalContext';
 import { useToast } from '../contexts/ToastContext';
 import { getExam, saveExam, getSettings, saveQuestionToBank } from '../lib/storage';
+import { isDropboxConnected, hasUnsavedLocalChanges, uploadToDropbox } from '../lib/dropbox';
 import { toRoman } from '../lib/utils';
 import { generateHtmlContent } from '../lib/htmlGenerator';
 import QuestionBankView from './QuestionBankView';
@@ -13,7 +14,8 @@ import ReactQuill from 'react-quill';
 import Quill from 'quill';
 import { 
     PlusIcon, TrashIcon, PrinterIcon, EditIcon, ChevronLeftIcon, SaveIcon, CheckIcon, BookmarkPlusIcon, CloseIcon,
-    ZoomInIcon, ZoomOutIcon, BankIcon, UndoIcon, RedoIcon, CardTextIcon, LayoutSplitIcon, StarsIcon
+    ZoomInIcon, ZoomOutIcon, BankIcon, UndoIcon, RedoIcon, CardTextIcon, LayoutSplitIcon, StarsIcon,
+    CloudUploadIcon, CloudCheckIcon, CardTextIcon as StimulusIcon, CloudDownloadIcon
 } from '../components/Icons';
 
 // --- Start Custom Quill Icons ---
@@ -31,6 +33,9 @@ icons['script'] = {
   'super': '<i class="bi bi-superscript" aria-hidden="true"></i>'
 };
 icons['clean'] = '<i class="bi bi-eraser-fill" aria-hidden="true"></i>';
+// Custom AI Image Icon
+icons['aiImage'] = '<i class="bi bi-stars text-purple-600" aria-hidden="true"></i>';
+
 if (icons['align']) {
     icons['align'][''] = '<i class="bi bi-text-left" aria-hidden="true"></i>';
     icons['align']['center'] = '<i class="bi bi-text-center" aria-hidden="true"></i>';
@@ -44,6 +49,7 @@ const compressImage = (base64Str: string, maxWidth = 1280, maxHeight = 1280, qua
     return new Promise((resolve, reject) => {
         const img = new Image();
         img.src = base64Str;
+        img.crossOrigin = "Anonymous"; // Try to handle CORS if external url
         img.onload = () => {
             let { width, height } = img;
             if (width > height) {
@@ -65,12 +71,20 @@ const compressImage = (base64Str: string, maxWidth = 1280, maxHeight = 1280, qua
                 return reject(new Error('Could not get canvas context'));
             }
             ctx.drawImage(img, 0, 0, width, height);
-            const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
-            resolve(compressedBase64);
+            try {
+                const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+                resolve(compressedBase64);
+            } catch (e) {
+                // If canvas tainted (CORS), resolve original or empty
+                console.warn("Canvas tainted, using original source if valid base64");
+                resolve(base64Str);
+            }
         };
         img.onerror = (error) => {
             console.error("Image loading error for compression:", error);
-            reject(new Error("Failed to load image for compression."));
+            // If it fails (e.g. Pollinations URL loading), just return the original URL string
+            // Quill can handle URLs.
+            resolve(base64Str); 
         };
     });
 };
@@ -79,6 +93,8 @@ const compressImage = (base64Str: string, maxWidth = 1280, maxHeight = 1280, qua
 // --- Start Translations ---
 const ltrTranslations = {
   save: 'Simpan',
+  saving: 'Menyimpan...',
+  savedAt: 'Tersimpan',
   backToArchive: 'Arsip',
   editTitle: 'Edit',
   statusDraft: 'Draf',
@@ -111,6 +127,7 @@ const ltrTranslations = {
   getFromBank: 'Ambil dari Bank Soal',
   createWithAi: 'Buat dengan AI',
   questionPlaceholder: 'Tulis pertanyaan di sini...',
+  stimulusTextPlaceholder: 'Tulis wacana, bacaan, atau sisipkan gambar stimulus di sini...',
   questionNumberAria: 'Nomor soal {number}',
   saveToBank: 'Simpan ke Bank Soal',
   deleteQuestion: 'Hapus Soal',
@@ -163,6 +180,7 @@ const ltrTranslations = {
     [QuestionType.TABLE]: 'Tabel Isian',
     [QuestionType.TABLE_MULTIPLE_CHOICE]: 'Tabel Pilihan Ganda',
     [QuestionType.TABLE_COMPLEX_MULTIPLE_CHOICE]: 'Tabel Pilihan Ganda Kompleks',
+    [QuestionType.STIMULUS]: 'Informasi / Stimulus',
   },
   instructionMap: {
     [QuestionType.MULTIPLE_CHOICE]: 'Berilah tanda silang (X) pada pilihan jawaban yang benar!',
@@ -179,6 +197,8 @@ const ltrTranslations = {
 const rtlTranslations: typeof ltrTranslations = {
   ...ltrTranslations,
   save: 'حفظ',
+  saving: 'جار الحفظ...',
+  savedAt: 'تم الحفظ',
   statusDraft: 'مسودة',
   statusPublished: 'منشور',
   examInfo: 'معلومات الاختبار',
@@ -206,6 +226,7 @@ const rtlTranslations: typeof ltrTranslations = {
   getFromBank: 'جلب من بنك الأسئلة',
   createWithAi: 'إنشاء باستخدام الذكاء الاصطناعي',
   questionPlaceholder: 'اكتب السؤال هنا...',
+  stimulusTextPlaceholder: 'اكتب النص أو أضف صورة هنا...',
   questionNumberAria: 'رقم السؤال {number}',
   saveToBank: 'حفظ في بنك الأسئلة',
   deleteQuestion: 'حذف السؤال',
@@ -258,6 +279,7 @@ const rtlTranslations: typeof ltrTranslations = {
     [QuestionType.TABLE]: 'تعبئة الجدول',
     [QuestionType.TABLE_MULTIPLE_CHOICE]: 'جدول الاختيار من متعدد',
     [QuestionType.TABLE_COMPLEX_MULTIPLE_CHOICE]: 'جدول الاختيار من متعدد المركب',
+    [QuestionType.STIMULUS]: 'معلومات / نص',
   },
   instructionMap: {
     [QuestionType.MULTIPLE_CHOICE]: 'اختر الإجابة الصحيحة بوضع علامة (X)!',
@@ -283,6 +305,42 @@ const RichTextEditor: React.FC<{
 }> = ({ value, onChange, placeholder, isOption = false }) => {
     const quillRef = useRef<ReactQuill>(null);
     const { addToast } = useToast();
+
+    // Handler for "AI Image" button
+    const aiImageHandler = useCallback(() => {
+        const prompt = window.prompt("Masukkan deskripsi gambar yang ingin dibuat (Contoh: Kucing membaca buku):");
+        if (prompt) {
+            const editor = quillRef.current?.getEditor();
+            if (editor) {
+                const range = editor.getSelection(true);
+                addToast('Membuat gambar dengan AI...', 'info');
+                
+                // Construct Pollinations URL
+                const encodedPrompt = encodeURIComponent(prompt);
+                const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=800&height=600&nologo=true&seed=${Math.floor(Math.random() * 1000)}`;
+                
+                // For better compatibility (offline saving), try to fetch and convert to base64
+                // Note: Pollinations allows CORS, so we can fetch
+                fetch(imageUrl)
+                    .then(res => res.blob())
+                    .then(blob => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                            const base64data = reader.result;
+                            editor.insertEmbed(range.index, 'image', base64data);
+                            addToast('Gambar berhasil dibuat!', 'success');
+                        };
+                        reader.readAsDataURL(blob);
+                    })
+                    .catch(err => {
+                        console.error("Failed to fetch Pollinations image for base64 conversion", err);
+                        // Fallback: Just insert the URL
+                        editor.insertEmbed(range.index, 'image', imageUrl);
+                        addToast('Gambar disisipkan (URL).', 'success');
+                    });
+            }
+        }
+    }, [addToast]);
 
     const imageHandler = useCallback(() => {
         const input = document.createElement('input');
@@ -321,11 +379,27 @@ const RichTextEditor: React.FC<{
     }, [addToast]);
     
     const modules = useMemo(() => {
-        const mainToolbar = [['bold', 'italic', 'underline', 'strike'], [{ 'script': 'sub'}, { 'script': 'super' }], [{ 'color': [] }, { 'background': [] }], [{ 'direction': 'rtl' }, { 'align': '' }, { 'align': 'center' }, { 'align': 'right' }, { 'align': 'justify' }], ['image'], ['clean']];
+        const mainToolbar = [
+            ['bold', 'italic', 'underline', 'strike'], 
+            [{ 'script': 'sub'}, { 'script': 'super' }], 
+            [{ 'color': [] }, { 'background': [] }], 
+            [{ 'direction': 'rtl' }, { 'align': '' }, { 'align': 'center' }, { 'align': 'right' }, { 'align': 'justify' }], 
+            ['image', 'aiImage'], // Added custom aiImage button here
+            ['clean']
+        ];
         const optionToolbar = [['bold', 'italic', 'underline'], [{ 'script': 'sub'}, { 'script': 'super' }], [{ 'align': '' }, { 'align': 'center' }, { 'align': 'right' }, { 'align': 'justify' }], ['clean']];
         const toolbarContainer = isOption ? optionToolbar : mainToolbar;
-        return { toolbar: { container: toolbarContainer, handlers: { image: imageHandler } }, clipboard: { matchVisual: false } };
-    }, [imageHandler, isOption]);
+        return { 
+            toolbar: { 
+                container: toolbarContainer, 
+                handlers: { 
+                    image: imageHandler,
+                    aiImage: aiImageHandler // Register handler
+                } 
+            }, 
+            clipboard: { matchVisual: false } 
+        };
+    }, [imageHandler, aiImageHandler, isOption]);
 
     const handleChange = (content: string) => {
         const normalizedContent = (content === '<p><br></p>' || content === '<br>') ? '' : content;
@@ -346,6 +420,7 @@ const TableBuilder: React.FC<{
     onTableChange: (newTableData: TableData) => void;
     T: typeof translations.ltr;
 }> = ({ tableData, onTableChange, T }) => {
+    // ... logic same as previous ...
     const [selectedCells, setSelectedCells] = useState<Set<string>>(new Set());
 
     const handleCellChange = (rowIndex: number, cellIndex: number, newContent: string) => {
@@ -602,7 +677,6 @@ const TableBuilder: React.FC<{
     );
 };
 
-
 const QuestionEditor: React.FC<{
     sectionId: string;
     question: Question;
@@ -746,19 +820,44 @@ const QuestionEditor: React.FC<{
         }
     }
     
+    // Determine card background color: lighter for stimulus to differentiate
+    const cardBgClass = question.type === QuestionType.STIMULUS 
+        ? "bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800"
+        : "bg-[var(--bg-tertiary)] border-[var(--border-primary)]";
+
     return (
-        <div className="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)]">
+        <div className={`${cardBgClass} p-4 rounded-lg border`}>
             <div className="flex justify-between items-start mb-3">
                  <div className="flex items-center">
-                    <input type="text" value={question.number} onChange={(e) => updateField('number', e.target.value)} className="bg-slate-700 dark:bg-slate-600 text-white rounded-full h-8 w-12 text-center font-bold me-3 outline-none focus:ring-2 focus:ring-blue-500" aria-label={T.questionNumberAria.replace('{number}', question.number)} />
-                    <span className="font-semibold text-[var(--text-secondary)]">{T.questionTypes[question.type]}</span>
+                    {/* Hide number input for STIMULUS type */}
+                    {question.type !== QuestionType.STIMULUS && (
+                        <input 
+                            type="text" 
+                            value={question.number} 
+                            onChange={(e) => updateField('number', e.target.value)}
+                            className="bg-slate-700 dark:bg-slate-600 text-white rounded-full h-8 w-12 text-center font-bold me-3 outline-none focus:ring-2 focus:ring-blue-500 transition-colors" 
+                            aria-label={T.questionNumberAria.replace('{number}', question.number)} 
+                            title="Nomor soal"
+                        />
+                    )}
+                    <span className={`font-semibold ${question.type === QuestionType.STIMULUS ? 'text-blue-800 dark:text-blue-300' : 'text-[var(--text-secondary)]'}`}>
+                        {question.type === QuestionType.STIMULUS ? <span className="flex items-center gap-2"><StimulusIcon/> {T.questionTypes[QuestionType.STIMULUS]}</span> : T.questionTypes[question.type]}
+                    </span>
                 </div>
                  <div className="flex items-center space-x-1">
-                    <button onClick={() => onSaveToBank(question)} title={T.saveToBank} aria-label={T.saveToBank} className="text-blue-500 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 p-1 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"><BookmarkPlusIcon className="text-xl" /></button>
+                    {question.type !== QuestionType.STIMULUS && (
+                        <button onClick={() => onSaveToBank(question)} title={T.saveToBank} aria-label={T.saveToBank} className="text-blue-500 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 p-1 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"><BookmarkPlusIcon className="text-xl" /></button>
+                    )}
                     <button onClick={() => onQuestionDelete(sectionId, question.id)} title={T.deleteQuestion} aria-label={T.deleteQuestion} className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"><TrashIcon className="text-xl" /></button>
                 </div>
             </div>
-            <RichTextEditor value={question.text} onChange={(newText) => updateField('text', newText)} placeholder={T.questionPlaceholder} />
+            <RichTextEditor 
+                value={question.text} 
+                onChange={(newText) => updateField('text', newText)} 
+                placeholder={question.type === QuestionType.STIMULUS ? T.stimulusTextPlaceholder : T.questionPlaceholder} 
+            />
+            
+            {/* Options Render Block */}
             {(question.type === QuestionType.MULTIPLE_CHOICE || question.type === QuestionType.COMPLEX_MULTIPLE_CHOICE || question.type === QuestionType.TABLE_MULTIPLE_CHOICE || question.type === QuestionType.TABLE_COMPLEX_MULTIPLE_CHOICE) && (
                 <div className="mt-4 space-y-3 ps-4 border-s-2 border-[var(--border-primary)]">
                     {(question.choices || []).map((choice, choiceIndex) => (
@@ -790,7 +889,11 @@ const QuestionEditor: React.FC<{
                 </div>
             )}
             {(question.type === QuestionType.TABLE || question.type === QuestionType.TABLE_MULTIPLE_CHOICE || question.type === QuestionType.TABLE_COMPLEX_MULTIPLE_CHOICE) && question.tableData && (<TableBuilder tableData={question.tableData} onTableChange={(newTable) => updateField('tableData', newTable)} T={T} />)}
-            <div className="mt-4 pt-3 border-t border-[var(--border-primary)]"><h4 className="font-semibold text-[var(--text-secondary)] text-sm mb-2">{T.answerKeyTitle}</h4><div className="space-y-2">{renderAnswerKeyInput()}</div></div>
+            
+            {/* Answer Key Block: Hidden for Stimulus */}
+            {question.type !== QuestionType.STIMULUS && (
+                <div className="mt-4 pt-3 border-t border-[var(--border-primary)]"><h4 className="font-semibold text-[var(--text-secondary)] text-sm mb-2">{T.answerKeyTitle}</h4><div className="space-y-2">{renderAnswerKeyInput()}</div></div>
+            )}
         </div>
     );
 };
@@ -806,8 +909,12 @@ const SectionEditor: React.FC<{
     onSaveToBank: (question: Question) => void;
     onAddQuestionsFromBank: (sectionId: string) => void;
     onOpenAiModal: (sectionId: string) => void;
-}> = ({ section, T, onSectionUpdate, onSectionDelete, onAddQuestionsFromBank, onOpenAiModal, ...questionCallbacks }) => {
+    // New Props for Pagination
+    startIndex: number;
+    visibleRange: { start: number, end: number };
+}> = ({ section, T, onSectionUpdate, onSectionDelete, onAddQuestionsFromBank, onOpenAiModal, startIndex, visibleRange, ...questionCallbacks }) => {
     const [isAddQuestionOpen, setAddQuestionOpen] = useState(false);
+    // Deprecated: old stimulus state removed
     const addQuestionRef = useRef<HTMLDivElement>(null);
     
     const addQuestionAndClose = (type: QuestionType) => {
@@ -844,6 +951,14 @@ const SectionEditor: React.FC<{
         onSectionUpdate(section.id, 'instructions', `${newTitle}. ${newInstruction}`);
     };
 
+    // Filter questions based on pagination
+    const visibleQuestions = section.questions.map((q, idx) => ({ q, idx })).filter(({ idx }) => {
+        const globalIndex = startIndex + idx;
+        return globalIndex >= visibleRange.start && globalIndex < visibleRange.end;
+    });
+
+    const hasVisibleQuestions = visibleQuestions.length > 0;
+
     return (
         <div className="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-md space-y-4">
             <div className="flex justify-between items-center border-b border-[var(--border-primary)] pb-3 gap-4">
@@ -851,13 +966,23 @@ const SectionEditor: React.FC<{
                      <input type="text" value={title} onChange={(e) => handleInstructionChange(e.target.value, instructionText)} aria-label={T.sectionNumberAria} className="text-lg font-bold text-[var(--text-primary)] p-1 rounded-md bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)] focus:bg-[var(--bg-hover)] focus:ring-2 focus:ring-[var(--border-focus)] outline-none w-16 text-center transition-colors" />
                      <input type="text" value={instructionText} onChange={(e) => handleInstructionChange(title, e.target.value)} placeholder={T.instructionPlaceholder} aria-label={T.sectionInstructionAria} className="text-lg font-bold text-[var(--text-primary)] w-full p-1 rounded-md bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)] focus:bg-[var(--bg-hover)] focus:ring-2 focus:ring-[var(--border-focus)] outline-none transition-colors" />
                 </div>
-                <button onClick={() => onSectionDelete(section.id)} aria-label={T.deleteSectionAria} className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors flex-shrink-0"><TrashIcon className="text-xl" /></button>
+                <div className="flex items-center gap-2">
+                    <button onClick={() => onSectionDelete(section.id)} aria-label={T.deleteSectionAria} className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors flex-shrink-0"><TrashIcon className="text-xl" /></button>
+                </div>
             </div>
-            {section.questions.map((q) => <QuestionEditor key={q.id} sectionId={section.id} question={q} T={T} {...questionCallbacks} />)}
+            
+            {visibleQuestions.map(({ q }) => <QuestionEditor key={q.id} sectionId={section.id} question={q} T={T} {...questionCallbacks} />)}
+            
+            {!hasVisibleQuestions && section.questions.length > 0 && (
+                <div className="text-center text-[var(--text-muted)] italic text-sm py-4 border-2 border-dashed border-[var(--border-secondary)] rounded-lg">
+                    Soal di bagian ini ada di halaman lain.
+                </div>
+            )}
+
             <div ref={addQuestionRef} className="relative inline-block text-center pt-4">
                  <button onClick={() => setAddQuestionOpen(p => !p)} aria-haspopup="true" aria-expanded={isAddQuestionOpen} className="flex items-center space-x-2 bg-blue-100 dark:bg-blue-900/50 hover:bg-blue-200 dark:hover:bg-blue-900 text-blue-800 dark:text-blue-300 font-semibold py-2 px-4 rounded-lg transition-all duration-200"><PlusIcon /><span>{T.addQuestion}</span></button>
                 {isAddQuestionOpen && (
-                    <div className="absolute start-0 mt-2 w-56 bg-[var(--bg-secondary)] rounded-md shadow-lg z-10 border border-[var(--border-secondary)] text-start">
+                    <div className="absolute start-0 mt-2 w-56 bg-[var(--bg-secondary)] rounded-md shadow-lg z-10 border border-[var(--border-secondary)] text-start max-h-80 overflow-y-auto">
                         <ul className="py-1">
                             <li><a href="#" onClick={(e) => { e.preventDefault(); addFromBankAndClose(); }} className="flex items-center space-x-2 block px-4 py-2 text-sm font-semibold text-blue-600 dark:text-blue-300 hover:bg-[var(--bg-hover)]"><BankIcon /> <span>{T.getFromBank}</span></a></li>
                             <li><a href="#" onClick={(e) => { e.preventDefault(); openAiAndClose(); }} className="flex items-center space-x-2 block px-4 py-2 text-sm font-semibold text-purple-600 dark:text-purple-300 hover:bg-[var(--bg-hover)]"><StarsIcon /> <span>{T.createWithAi}</span></a></li>
@@ -871,329 +996,502 @@ const SectionEditor: React.FC<{
     );
 };
 
-interface EditorPaneProps {
-    exam: Exam;
-    T: typeof translations.ltr;
-    onExamChange: (field: keyof Exam, value: any) => void;
-    onSectionAdd: () => void;
-    onSectionUpdate: (sectionId: string, field: keyof Section, value: any) => void;
-    onSectionDelete: (sectionId: string) => void;
-    onQuestionAdd: (sectionId: string, type: QuestionType) => void;
-    onQuestionUpdate: (sectionId: string, questionId: string, field: keyof Question, value: any) => void;
-    onQuestionDelete: (sectionId: string, questionId: string) => void;
-    onSaveToBank: (question: Question) => void;
-    onAddQuestionsFromBank: (sectionId: string) => void;
-    onOpenAiModal: (sectionId: string) => void;
-}
-
-const EditorPane: React.FC<EditorPaneProps> = ({ exam, T, onExamChange, onSectionAdd, ...sectionCallbacks }) => {
-    return (
-        <div className="space-y-6 p-4 md:p-8" dir={exam.direction}>
-            <div className="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-md">
-                <div className="mb-4 border-b border-[var(--border-primary)] pb-2"><h2 className="text-xl font-bold text-[var(--text-primary)]">{T.examInfo}</h2></div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div className="lg:col-span-2"><label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">{T.examTitle}</label><input type="text" name="title" value={exam.title} onChange={(e) => onExamChange('title', e.target.value)} placeholder={T.examTitle} className="p-2 border border-[var(--border-secondary)] rounded-md w-full bg-[var(--bg-secondary)]" /></div>
-                    <div><label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">{T.subject}</label><input type="text" name="subject" value={exam.subject} onChange={(e) => onExamChange('subject', e.target.value)} placeholder={T.subject} className="p-2 border border-[var(--border-secondary)] rounded-md w-full bg-[var(--bg-secondary)]" /></div>
-                    <div><label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">{T.class}</label><input type="text" name="class" value={exam.class} onChange={(e) => onExamChange('class', e.target.value)} placeholder={T.class} className="p-2 border border-[var(--border-secondary)] rounded-md w-full bg-[var(--bg-secondary)]" /></div>
-                    <div><label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">{T.date}</label><input type="date" name="date" value={exam.date} onChange={(e) => onExamChange('date', e.target.value)} className="p-2 border border-[var(--border-secondary)] rounded-md w-full bg-[var(--bg-secondary)]" /></div>
-                    <div><label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">{T.examTime}</label><input type="text" name="waktuUjian" value={exam.waktuUjian || ''} onChange={(e) => onExamChange('waktuUjian', e.target.value)} placeholder="e.g., 90 Menit" className="p-2 border border-[var(--border-secondary)] rounded-md w-full bg-[var(--bg-secondary)]" /></div>
-                </div>
-                <div className="mt-4"><label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">{T.description}</label><textarea name="keterangan" value={exam.keterangan || ''} onChange={(e) => onExamChange('keterangan', e.target.value)} placeholder={T.descriptionPlaceholder} rows={2} className="p-2 border border-[var(--border-secondary)] rounded-md w-full bg-[var(--bg-secondary)]" /></div>
-                <div className="mt-4"><label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">{T.generalInstructions}</label><textarea name="instructions" value={exam.instructions} onChange={(e) => onExamChange('instructions', e.target.value)} placeholder={T.generalInstructionsPlaceholder} rows={4} className="p-2 border border-[var(--border-secondary)] rounded-md w-full bg-[var(--bg-secondary)]" /></div>
-                <div className="mt-6 pt-4 border-t border-[var(--border-primary)]">
-                    <div className="hidden md:flex justify-between items-center">
-                        <div><span className="text-sm font-medium text-[var(--text-secondary)] mr-3">{T.directionLabel}</span><div className="inline-flex items-center rounded-lg bg-[var(--bg-muted)] p-0.5"><button onClick={() => onExamChange('direction', 'ltr')} className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${exam.direction === 'ltr' ? 'bg-[var(--bg-secondary)] text-blue-600 dark:text-slate-100 shadow-sm' : 'text-[var(--text-secondary)]'}`}>LTR</button><button onClick={() => onExamChange('direction', 'rtl')} className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${exam.direction === 'rtl' ? 'bg-[var(--bg-secondary)] text-blue-600 dark:text-slate-100 shadow-sm' : 'text-[var(--text-secondary)]'}`}>RTL</button></div></div>
-                        <div><span className="text-sm font-medium text-[var(--text-secondary)] mr-3">{T.previewLayoutLabel}</span><div className="inline-flex items-center rounded-lg bg-[var(--bg-muted)] p-0.5"><button onClick={() => onExamChange('layoutColumns', 1)} title={T.layout1Col} className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${(exam.layoutColumns === 1 || !exam.layoutColumns) ? 'bg-[var(--bg-secondary)] text-blue-600 dark:text-slate-100 shadow-sm' : 'text-[var(--text-secondary)]'}`}><CardTextIcon className="text-lg" /></button><button onClick={() => onExamChange('layoutColumns', 2)} title={T.layout2Col} className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${exam.layoutColumns === 2 ? 'bg-[var(--bg-secondary)] text-blue-600 dark:text-slate-100 shadow-sm' : 'text-[var(--text-secondary)]'}`}><LayoutSplitIcon className="text-lg" /></button></div></div>
-                    </div>
-                    <div className="md:hidden grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div><label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">{T.directionLabel}</label><select value={exam.direction} onChange={(e) => onExamChange('direction', e.target.value)} className="p-2 border border-[var(--border-secondary)] rounded-md w-full bg-[var(--bg-secondary)]"><option value="ltr">{T.directionLtr}</option><option value="rtl">{T.directionRtl}</option></select></div>
-                        <div><label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">{T.previewLayoutLabel}</label><select value={exam.layoutColumns || 1} onChange={(e) => onExamChange('layoutColumns', Number(e.target.value))} className="p-2 border border-[var(--border-secondary)] rounded-md w-full bg-[var(--bg-secondary)]"><option value={1}>{T.layout1Col}</option><option value={2}>{T.layout2Col}</option></select></div>
-                    </div>
-                </div>
-            </div>
-            {exam.sections.map((section) => <SectionEditor key={section.id} section={section} T={T} {...sectionCallbacks} />)}
-            <div className="bg-[var(--bg-secondary)] p-4 rounded-lg shadow-md flex items-center justify-center"><button onClick={onSectionAdd} className="flex items-center space-x-2 bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] text-[var(--text-on-accent)] font-semibold py-2 px-4 rounded-lg transition-all duration-200"><PlusIcon /><span>{T.addSection}</span></button></div>
-        </div>
-    );
-};
-
-interface StatusButtonProps { status: 'draft' | 'published'; isOpen: boolean; setIsOpen: (isOpen: boolean) => void; onStatusChange: (newStatus: 'draft' | 'published') => void; dropdownRef: React.RefObject<HTMLDivElement>; T: typeof translations.ltr; }
-const StatusButton: React.FC<StatusButtonProps> = ({ status, isOpen, setIsOpen, onStatusChange, dropdownRef, T }) => {
-    const isPublished = status === 'published';
-    const bgColor = isPublished ? 'bg-green-100 hover:bg-green-200 dark:bg-green-900/50 dark:hover:bg-green-900' : 'bg-yellow-100 hover:bg-yellow-200 dark:bg-yellow-900/50 dark:hover:bg-yellow-900';
-    const textColor = isPublished ? 'text-green-800 dark:text-green-300' : 'text-yellow-800 dark:text-yellow-300';
-    return (
-        <div className="relative" ref={dropdownRef}>
-            <button onClick={() => setIsOpen(!isOpen)} aria-haspopup="true" aria-expanded={isOpen} className={`flex items-center space-x-2 ${bgColor} ${textColor} font-semibold py-2 px-4 rounded-lg transition-all duration-200 h-full`}>
-                {isPublished ? <CheckIcon /> : <EditIcon />}
-                <span className="hidden sm:inline">{isPublished ? T.statusPublished : T.statusDraft}</span>
-                <i className="bi bi-chevron-down text-xs"></i>
-            </button>
-            {isOpen && (<div className="absolute end-0 mt-2 w-48 bg-[var(--bg-secondary)] rounded-md shadow-lg z-10 border border-[var(--border-secondary)]"><ul className="py-1"><li><a href="#" onClick={(e) => { e.preventDefault(); onStatusChange('draft'); }} className="flex items-center space-x-3 px-4 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"><EditIcon className="text-yellow-600 dark:text-yellow-400" /> <span>{T.statusDraft}</span></a></li><li><a href="#" onClick={(e) => { e.preventDefault(); onStatusChange('published'); }} className="flex items-center space-x-3 px-4 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"><CheckIcon className="text-green-600 dark:text-green-400" /> <span>{T.statusPublished}</span></a></li></ul></div>)}
-        </div>
-    );
-};
-
-interface PreviewContentProps { htmlContent: string; title: string; settings: Settings; zoom: number; iframeRef: React.RefObject<HTMLIFrameElement>; }
-const PreviewContent: React.FC<PreviewContentProps> = ({ htmlContent, title, settings, zoom, iframeRef }) => (
-    <div className="my-8 origin-top transition-transform duration-200 ease-in-out flex-shrink-0" style={{ transform: `scale(${zoom})`, width: settings.paperSize === 'A4' ? '210mm' : settings.paperSize === 'F4' ? '215mm' : '216mm' }}>
-        <iframe ref={iframeRef} srcDoc={htmlContent} title={title} className="w-full shadow-2xl" style={{ height: settings.paperSize === 'A4' ? '297mm' : settings.paperSize === 'F4' ? '330mm' : settings.paperSize === 'Legal' ? '356mm' : '279mm' }} />
-    </div>
-);
-
-const SaveStatusIndicator: React.FC<{ status: 'saved' | 'saving' | 'unsaved' }> = ({ status }) => {
-    if (status === 'unsaved') return <div className="w-8 h-8" />;
-    const statusMap = { saving: { icon: (<div className="flex items-center justify-center w-full h-full"><div className="w-2.5 h-2.5 bg-blue-500 rounded-full animate-pulse" /></div>), message: 'Menyimpan...' }, saved: { icon: <CheckIcon className="text-lg text-green-500" />, message: 'Semua perubahan disimpan' } };
-    const { icon, message } = statusMap[status];
-    return (<div className="relative group flex items-center justify-center w-8 h-8" title={message}>{icon}<div className="absolute bottom-full mb-2 w-max bg-[var(--bg-secondary)] text-[var(--text-primary)] text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-50 shadow-lg border border-[var(--border-primary)]">{message}</div></div>);
-};
+const QUESTIONS_PER_PAGE = 10;
 
 const EditorView: React.FC<{ examId: string; onBack: () => void }> = ({ examId, onBack }) => {
     const [exam, setExam, undo, redo, canUndo, canRedo] = useHistoryState<Exam | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
     const [settings, setSettings] = useState<Settings | null>(null);
-    const [activeTab, setActiveTab] = useState<'editor' | 'preview' | 'key'>('editor');
-    const [isStatusDropdownOpen, setStatusDropdownOpen] = useState(false);
-    const [isBankSelectorOpen, setBankSelectorOpen] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
     const [isAiModalOpen, setAiModalOpen] = useState(false);
-    const [targetSectionId, setTargetSectionId] = useState<string | null>(null);
-    const statusDropdownRef = useRef<HTMLDivElement>(null);
-    const bankSubjectRef = useRef<HTMLInputElement>(null);
-    const bankClassRef = useRef<HTMLInputElement>(null);
-    const [zoom, setZoom] = useState(1);
-    const iframeRef = useRef<HTMLIFrameElement>(null);
-    const previewContainerRef = useRef<HTMLDivElement>(null);
-    const { showConfirm } = useModal();
+    const [isBankModalOpen, setBankModalOpen] = useState(false);
+    const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
+    const [lastSaved, setLastSaved] = useState<Date | null>(null);
+    const [isSaving, setIsSaving] = useState(false); // State for auto-save indicator
+    const [isFirstLoad, setIsFirstLoad] = useState(true); // Prevent auto-save on initial load
+    const [isStatusMenuOpen, setStatusMenuOpen] = useState(false); // Status dropdown state
+    const statusMenuRef = useRef<HTMLDivElement>(null);
+
+    // Pagination State
+    const [currentPage, setCurrentPage] = useState(1);
+
     const { addToast } = useToast();
-    const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
-    const isInitialMount = useRef(true);
-    
-    const T_UI = translations.ltr;
-    const T_Editor = exam ? translations[exam.direction] : translations.ltr;
+    const { showConfirm } = useModal();
 
     useEffect(() => {
-        const loadData = async () => {
+        const load = async () => {
             setIsLoading(true);
             try {
-                const [loadedExam, loadedSettings] = await Promise.all([getExam(examId), getSettings()]);
+                const loadedExam = await getExam(examId);
+                const loadedSettings = await getSettings();
                 if (loadedExam) {
-                    setExam(loadedExam);
-                    setSettings(loadedSettings);
+                    setExam(loadedExam); // Initial state for history
+                    setLastSaved(new Date());
                 } else {
-                    addToast("Ujian tidak ditemukan.", "error");
+                    addToast("Ujian tidak ditemukan", "error");
                     onBack();
                 }
-            } catch (error) {
-                console.error("Gagal memuat data editor:", error);
-                addToast("Gagal memuat data ujian.", "error");
-                onBack();
+                setSettings(loadedSettings);
+            } catch (e) {
+                console.error(e);
+                addToast("Gagal memuat ujian", "error");
             } finally {
                 setIsLoading(false);
             }
         };
-        loadData();
-    }, [examId, onBack, setExam, addToast]);
+        load();
+    }, [examId, onBack, addToast, setExam]);
 
-    useEffect(() => {
-        if (isInitialMount.current || !exam || isLoading) {
-            isInitialMount.current = false;
-            return;
-        }
-        setSaveStatus('unsaved');
-        const handler = setTimeout(async () => {
-            if (exam) {
-                setSaveStatus('saving');
-                try {
-                    await saveExam(exam);
-                    setTimeout(() => setSaveStatus('saved'), 500);
-                } catch (error) {
-                    console.error("Gagal menyimpan otomatis:", error);
-                    addToast("Gagal menyimpan perubahan.", "error");
-                    setSaveStatus('unsaved');
-                }
-            }
-        }, 1500);
-        return () => clearTimeout(handler);
-    }, [exam, isLoading, addToast]);
-
-
-    useEffect(() => {
-        if ((activeTab !== 'preview' && activeTab !== 'key') || !settings || !previewContainerRef.current) return;
-        const calculateZoom = () => {
-            if (!previewContainerRef.current || !settings) return;
-            const paperWidthMap = { 'A4': 210, 'F4': 215, 'Legal': 216, 'Letter': 216 };
-            const containerStyles = window.getComputedStyle(previewContainerRef.current);
-            const paddingX = parseFloat(containerStyles.paddingLeft) + parseFloat(containerStyles.paddingRight);
-            const containerWidth = previewContainerRef.current.clientWidth - paddingX;
-            const paperWidthPx = paperWidthMap[settings.paperSize] * 3.78;
-            setZoom(containerWidth < paperWidthPx ? containerWidth / paperWidthPx : 1);
-        };
-        const timer = setTimeout(calculateZoom, 100);
-        window.addEventListener('resize', calculateZoom);
-        return () => { clearTimeout(timer); window.removeEventListener('resize', calculateZoom); };
-    }, [settings, activeTab]);
-
-    const examHtml = useMemo(() => exam && settings ? generateHtmlContent(exam, settings, 'exam', false) : '', [exam, settings]);
-    const answerKeyHtml = useMemo(() => exam && settings ? generateHtmlContent(exam, settings, 'answer_key', false) : '', [exam, settings]);
-
+    // Handle click outside status menu
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target as Node)) {
-                setStatusDropdownOpen(false);
+            if (statusMenuRef.current && !statusMenuRef.current.contains(event.target as Node)) {
+                setStatusMenuOpen(false);
             }
         };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
+        if (isStatusMenuOpen) {
+            document.addEventListener("mousedown", handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [isStatusMenuOpen]);
 
-    const handleExamChange = useCallback((field: keyof Exam, value: any) => setExam(p => p ? { ...p, [field]: value } : null), [setExam]);
-    const handleStatusChange = useCallback((newStatus: 'draft' | 'published') => { handleExamChange('status', newStatus); setStatusDropdownOpen(false); }, [handleExamChange]);
-    const updateSection = useCallback((sectionId: string, field: keyof Section, value: any) => setExam(p => p ? { ...p, sections: p.sections.map(s => s.id === sectionId ? { ...s, [field]: value } : s) } : null), [setExam]);
-    const addSection = useCallback(() => setExam(p => p ? { ...p, sections: [...p.sections, { id: crypto.randomUUID(), instructions: `${toRoman(p.sections.length + 1)}. (Instruksi...)`, questions: [] }] } : null), [setExam]);
+    // Internal Save Function (Quiet, no toasts)
+    const saveInternal = async (examToSave: Exam) => {
+        try {
+            await saveExam(examToSave);
+            setLastSaved(new Date());
+        } catch (e) {
+            console.error("Auto-save failed", e);
+        }
+    };
 
-    const deleteSection = useCallback((sectionId: string) => {
-        showConfirm({ title: 'Hapus Bagian Soal', content: 'Yakin hapus bagian ini dan semua soal di dalamnya?', confirmVariant: 'danger', confirmLabel: 'Hapus', onConfirm: () => setExam(p => p ? { ...p, sections: p.sections.filter(s => s.id !== sectionId) } : null) });
-    }, [showConfirm, setExam]);
-
-    const addQuestion = useCallback((sectionId: string, type: QuestionType) => {
-        setExam(prev => {
-            if (!prev) return null;
-            const totalQuestionsBefore = prev.sections.slice(0, prev.sections.findIndex(s => s.id === sectionId)).reduce((acc, curr) => acc + curr.questions.length, 0);
-            const sectionQuestionCount = prev.sections.find(s => s.id === sectionId)?.questions.length || 0;
-            const newQuestion: Question = { id: crypto.randomUUID(), number: String(totalQuestionsBefore + sectionQuestionCount + 1), type, text: '' };
-            // Initialize fields based on type
-            if (type === QuestionType.MULTIPLE_CHOICE || type === QuestionType.COMPLEX_MULTIPLE_CHOICE) { newQuestion.choices = [{ id: crypto.randomUUID(), text: '' }]; newQuestion.answerKey = type === QuestionType.MULTIPLE_CHOICE ? '' : []; }
-            else if (type === QuestionType.TRUE_FALSE) { newQuestion.answerKey = 'true'; }
-            else if (type === QuestionType.ESSAY) { newQuestion.hasAnswerSpace = true; }
-            else if (type === QuestionType.MATCHING) { newQuestion.matchingPrompts = [{id: crypto.randomUUID(), text: ''}]; newQuestion.matchingAnswers = [{id: crypto.randomUUID(), text: ''}]; newQuestion.matchingKey = []; }
-            else if (type === QuestionType.TABLE || type === QuestionType.TABLE_MULTIPLE_CHOICE || type === QuestionType.TABLE_COMPLEX_MULTIPLE_CHOICE) {
-                 const rows = [{ id: crypto.randomUUID(), cells: [{ id: crypto.randomUUID(), content: '' }, { id: crypto.randomUUID(), content: '' }] }, { id: crypto.randomUUID(), cells: [{ id: crypto.randomUUID(), content: '' }, { id: crypto.randomUUID(), content: '' }] }];
-                 newQuestion.tableData = { rows, rowHeights: [null, null], columnWidths: [null, null] };
-                 if (type.includes('Pilihan Ganda')) { newQuestion.choices = [{ id: crypto.randomUUID(), text: '' }]; newQuestion.tableChoiceAnswerKey = {}; } else { newQuestion.tableAnswerKey = {}; }
-            }
-            let updatedSections = prev.sections.map(s => s.id === sectionId ? { ...s, questions: [...s.questions, newQuestion] } : s);
-            const targetSection = updatedSections.find(s => s.id === sectionId);
-            if (targetSection?.questions.length === 1) {
-                const autoInstruction = translations[prev.direction].instructionMap[type];
-                if (autoInstruction) {
-                    const romanPart = targetSection.instructions.split('.')[0];
-                    updatedSections = updatedSections.map(s => s.id === sectionId ? {...s, instructions: `${romanPart}. ${autoInstruction}`} : s);
-                }
-            }
-            return { ...prev, sections: updatedSections };
-        });
-    }, [setExam]);
-    
-    const updateQuestion = useCallback((sectionId: string, qId: string, field: keyof Question, val: any) => setExam(p => p ? { ...p, sections: p.sections.map(s => s.id === sectionId ? { ...s, questions: s.questions.map(q => q.id === qId ? { ...q, [field]: val } : q) } : s) } : null), [setExam]);
-    const deleteQuestion = useCallback((sectionId: string, qId: string) => setExam(p => p ? { ...p, sections: p.sections.map(s => s.id === sectionId ? { ...s, questions: s.questions.filter(q => q.id !== qId) } : s) } : null), [setExam]);
-    const handleAddQuestionsFromBank = useCallback((sectionId: string) => { setTargetSectionId(sectionId); setBankSelectorOpen(true); }, []);
-    
-    const handleOpenAiModal = useCallback((sectionId: string) => {
-        setTargetSectionId(sectionId);
-        setAiModalOpen(true);
-    }, []);
-
-    const handleSaveToBank = useCallback(async (question: Question) => {
+    // Auto-Save Effect
+    useEffect(() => {
         if (!exam) return;
-        showConfirm({
-            title: "Simpan ke Bank Soal",
-            content: (<div className="space-y-4 text-left"><p className="text-sm text-[var(--text-secondary)]">Lengkapi info berikut.</p><div><label className="block text-sm font-medium text-[var(--text-primary)] mb-1">Mata Pelajaran</label><input ref={bankSubjectRef} defaultValue={exam.subject} className="p-2 border border-[var(--border-secondary)] rounded-md w-full bg-[var(--bg-secondary)]" /></div><div><label className="block text-sm font-medium text-[var(--text-primary)] mb-1">Kelas</label><input ref={bankClassRef} defaultValue={exam.class} className="p-2 border border-[var(--border-secondary)] rounded-md w-full bg-[var(--bg-secondary)]" /></div></div>),
-            confirmLabel: "Simpan",
-            onConfirm: async () => {
-                const subject = bankSubjectRef.current?.value || exam.subject || '';
-                const classVal = bankClassRef.current?.value || exam.class || '';
-                try {
-                    await saveQuestionToBank(question, { subject, class: classVal });
-                    addToast('Soal berhasil disimpan ke Bank Soal.', 'success');
-                } catch (error) {
-                    addToast('Gagal menyimpan soal ke bank.', 'error');
-                }
-            }
-        });
-    }, [exam, addToast, showConfirm]);
+        if (isFirstLoad) {
+            setIsFirstLoad(false);
+            return;
+        }
 
-    const addClonedQuestionsToSection = useCallback((questions: Question[]) => {
-        if (!targetSectionId) return;
-        const clonedQuestions = questions.map(q => ({...JSON.parse(JSON.stringify(q)), id: crypto.randomUUID() }));
-        setExam(prev => {
-            if (!prev) return null;
-            let questionCounter = 0;
-            const newSections = prev.sections.map(s => {
-                let sectionWithNewQuestions = s.id === targetSectionId ? { ...s, questions: [...s.questions, ...clonedQuestions] } : { ...s };
-                sectionWithNewQuestions.questions = sectionWithNewQuestions.questions.map(q => ({ ...q, number: String(++questionCounter) }));
-                return sectionWithNewQuestions;
-            });
-            return { ...prev, sections: newSections };
-        });
-        setBankSelectorOpen(false);
-        setTargetSectionId(null);
-    }, [targetSectionId, setExam]);
-    
-    const handleQuestionsGenerated = useCallback((questions: Question[]) => {
-        addClonedQuestionsToSection(questions);
-        setAiModalOpen(false);
-    }, [addClonedQuestionsToSection]);
+        const timer = setTimeout(async () => {
+            setIsSaving(true);
+            await saveInternal(exam);
+            setIsSaving(false);
+        }, 1500); // Debounce for 1.5 seconds
+
+        return () => clearTimeout(timer);
+    }, [exam]);
 
     const handleManualSave = async () => {
-        if (exam) {
-            try {
-                await saveExam(exam);
-                setSaveStatus('saved');
-                addToast('Ujian berhasil disimpan.', 'success');
-            } catch (error) {
-                addToast('Gagal menyimpan ujian.', 'error');
-            }
+        if (!exam) return;
+        setIsSaving(true);
+        try {
+            await saveInternal(exam);
+            addToast("Ujian berhasil disimpan", "success");
+        } catch (e) {
+            addToast("Gagal menyimpan ujian", "error");
+        } finally {
+            setIsSaving(false);
         }
     };
     
-    const handleBack = () => {
-        if (saveStatus !== 'saved' && exam) {
-            saveExam(exam); // Fire and forget
-            addToast('Perubahan terakhir disimpan.', 'info');
-        }
-        onBack();
+    // Fix: use exam.direction instead of settings.direction as direction is a property of Exam, not Settings.
+    // Also using optional chaining for exam as it might be null during initial load, defaulting to LTR.
+    const T = exam?.direction === 'rtl' ? translations.rtl : translations.ltr;
+
+    const handleUpdateExam = (field: keyof Exam, value: any) => {
+        setExam((prev) => prev ? ({ ...prev, [field]: value }) : null);
     };
 
-    if (isLoading || !exam || !settings) {
-        return <div className="flex h-screen items-center justify-center">Memuat Editor...</div>;
-    }
-    
-    const editorCallbacks = { onSectionUpdate: updateSection, onSectionDelete: deleteSection, onQuestionAdd: addQuestion, onQuestionUpdate: updateQuestion, onQuestionDelete: deleteQuestion, onSaveToBank: handleSaveToBank, onAddQuestionsFromBank: handleAddQuestionsFromBank, onOpenAiModal: handleOpenAiModal };
+    const handleAddSection = () => {
+        setExam((prev) => {
+            if (!prev) return null;
+            const nextIndex = prev.sections.length + 1;
+            const roman = toRoman(nextIndex);
+            const newSection: Section = {
+                id: crypto.randomUUID(),
+                instructions: `${roman}. Instruksi bagian baru...`,
+                questions: []
+            };
+            return { ...prev, sections: [...prev.sections, newSection] };
+        });
+    };
+
+    const handleDeleteSection = (sectionId: string) => {
+        showConfirm({
+            title: "Hapus Bagian",
+            content: "Apakah Anda yakin ingin menghapus bagian ini beserta seluruh soal di dalamnya?",
+            confirmVariant: "danger",
+            onConfirm: () => {
+                 setExam((prev) => {
+                    if (!prev) return null;
+                    return { ...prev, sections: prev.sections.filter(s => s.id !== sectionId) };
+                });
+            }
+        });
+    };
+
+    const handleUpdateSection = (sectionId: string, field: keyof Section, value: any) => {
+         setExam((prev) => {
+            if (!prev) return null;
+            return {
+                ...prev,
+                sections: prev.sections.map(s => s.id === sectionId ? { ...s, [field]: value } : s)
+            };
+        });
+    };
+
+    const handleAddQuestion = (sectionId: string, type: QuestionType) => {
+        setExam((prev) => {
+            if (!prev) return null;
+            
+            // Calculate next sequential number
+            let totalQuestions = 0;
+            prev.sections.forEach(s => s.questions.forEach(q => { if(q.type !== QuestionType.STIMULUS) totalQuestions++; }));
+            const nextNumber = String(totalQuestions + 1);
+
+            const newQuestion: Question = {
+                id: crypto.randomUUID(),
+                number: type === QuestionType.STIMULUS ? '' : nextNumber,
+                type,
+                text: '',
+                choices: (type === QuestionType.MULTIPLE_CHOICE || type === QuestionType.COMPLEX_MULTIPLE_CHOICE || type === QuestionType.TABLE_MULTIPLE_CHOICE || type === QuestionType.TABLE_COMPLEX_MULTIPLE_CHOICE) 
+                    ? [{ id: crypto.randomUUID(), text: '' }, { id: crypto.randomUUID(), text: '' }, { id: crypto.randomUUID(), text: '' }, { id: crypto.randomUUID(), text: '' }]
+                    : undefined,
+                tableData: (type === QuestionType.TABLE || type === QuestionType.TABLE_MULTIPLE_CHOICE || type === QuestionType.TABLE_COMPLEX_MULTIPLE_CHOICE) 
+                    ? { rows: [{ id: crypto.randomUUID(), cells: [{ id: crypto.randomUUID(), content: '' }, { id: crypto.randomUUID(), content: '' }] }] }
+                    : undefined
+            };
+            
+            return {
+                ...prev,
+                sections: prev.sections.map(s => {
+                    if (s.id === sectionId) {
+                        let newInstructions = s.instructions;
+                        // Automatically update section instructions if it's the first question and instruction text is available
+                        if (s.questions.length === 0 && T.instructionMap[type]) {
+                             const parts = s.instructions.split('.');
+                             // If we have a dot (e.g. "I."), keep the prefix
+                             if (parts.length > 1) {
+                                 const prefix = parts[0].trim();
+                                 newInstructions = `${prefix}. ${T.instructionMap[type]}`;
+                             } else {
+                                 // Fallback: append if no clear prefix structure
+                                 newInstructions = `${s.instructions}. ${T.instructionMap[type]}`;
+                             }
+                        }
+                        
+                        return { ...s, instructions: newInstructions, questions: [...s.questions, newQuestion] };
+                    }
+                    return s;
+                })
+            };
+        });
+    };
+
+    const handleUpdateQuestion = (sectionId: string, questionId: string, field: keyof Question, value: any) => {
+        setExam((prev) => {
+            if (!prev) return null;
+            return {
+                ...prev,
+                sections: prev.sections.map(s => s.id === sectionId ? {
+                    ...s,
+                    questions: s.questions.map(q => q.id === questionId ? { ...q, [field]: value } : q)
+                } : s)
+            };
+        });
+    };
+
+    const handleDeleteQuestion = (sectionId: string, questionId: string) => {
+         setExam((prev) => {
+            if (!prev) return null;
+            return {
+                ...prev,
+                sections: prev.sections.map(s => s.id === sectionId ? {
+                    ...s,
+                    questions: s.questions.filter(q => q.id !== questionId)
+                } : s)
+            };
+        });
+    };
+
+    const handleSaveToBank = async (question: Question) => {
+        if (!exam) return;
+        try {
+            await saveQuestionToBank(question, { subject: exam.subject, class: exam.class });
+            addToast("Soal berhasil disimpan ke Bank Soal", "success");
+        } catch (e) {
+            addToast("Gagal menyimpan ke Bank Soal", "error");
+        }
+    };
+
+    const handleOpenBank = (sectionId: string) => {
+        setActiveSectionId(sectionId);
+        setBankModalOpen(true);
+    };
+
+    const handleOpenAi = (sectionId: string) => {
+        setActiveSectionId(sectionId);
+        setAiModalOpen(true);
+    };
+
+    const handleAddFromBank = (questions: Question[]) => {
+        if (!activeSectionId) return;
+        setExam((prev) => {
+            if (!prev) return null;
+            
+            // Calculate starting number
+            let totalQuestions = 0;
+            prev.sections.forEach(s => s.questions.forEach(q => { if(q.type !== QuestionType.STIMULUS) totalQuestions++; }));
+            
+            const newQuestions = questions.map((q, idx) => ({
+                ...q,
+                id: crypto.randomUUID(),
+                number: q.type === QuestionType.STIMULUS ? '' : String(totalQuestions + idx + 1)
+            }));
+            
+            return {
+                ...prev,
+                sections: prev.sections.map(s => s.id === activeSectionId ? {
+                    ...s,
+                    questions: [...s.questions, ...newQuestions]
+                } : s)
+            };
+        });
+        setBankModalOpen(false);
+        setActiveSectionId(null);
+        addToast(`${questions.length} soal ditambahkan`, "success");
+    };
+
+    const handleAiQuestions = (questions: Question[]) => {
+        if (!activeSectionId) return;
+         setExam((prev) => {
+            if (!prev) return null;
+            return {
+                ...prev,
+                sections: prev.sections.map(s => s.id === activeSectionId ? {
+                    ...s,
+                    questions: [...s.questions, ...questions]
+                } : s)
+            };
+        });
+    };
+
+    // Calculate pagination data
+    const { totalQuestions, sectionStartIndices } = useMemo(() => {
+        if (!exam) return { totalQuestions: 0, sectionStartIndices: [] };
+        
+        let total = 0;
+        const indices = exam.sections.map(s => {
+            const currentStart = total;
+            total += s.questions.length;
+            return currentStart;
+        });
+        
+        return { totalQuestions: total, sectionStartIndices: indices };
+    }, [exam]);
+
+    const totalPages = Math.max(1, Math.ceil(totalQuestions / QUESTIONS_PER_PAGE));
+    const visibleRange = {
+        start: (currentPage - 1) * QUESTIONS_PER_PAGE,
+        end: currentPage * QUESTIONS_PER_PAGE
+    };
+
+    if (isLoading || !exam || !settings) return <div className="flex justify-center items-center h-screen">Memuat...</div>;
 
     return (
-    <div>
-        {isBankSelectorOpen && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center p-4">
-                <div className="bg-[var(--bg-secondary)] rounded-lg shadow-2xl w-full h-full max-w-4xl max-h-[90vh] flex flex-col">
-                    <div className="flex justify-between items-center p-4 border-b border-[var(--border-primary)]"><h2 className="text-xl font-bold text-[var(--text-primary)]">Pilih Soal dari Bank</h2><button onClick={() => setBankSelectorOpen(false)} aria-label="Tutup pemilih bank soal" className="p-2 text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] rounded-full"><CloseIcon /></button></div>
-                    <div className="flex-grow overflow-y-auto"><QuestionBankView isModalMode={true} onAddQuestions={addClonedQuestionsToSection} onClose={() => setBankSelectorOpen(false)} /></div>
+        <div className="flex flex-col h-screen bg-[var(--bg-primary)]">
+             <div className="bg-[var(--bg-secondary)] border-b border-[var(--border-primary)] p-2 sm:p-4 flex items-center justify-between sticky top-0 z-20 shadow-sm gap-2">
+                <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                    <button onClick={onBack} className="p-2 rounded-full hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] flex-shrink-0"><ChevronLeftIcon /></button>
+                    <h1 className="text-lg sm:text-xl font-bold text-[var(--text-primary)] truncate" title={exam.title}>{exam.title}</h1>
+                </div>
+                
+                <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                    <div className="hidden md:flex items-center bg-[var(--bg-tertiary)] rounded-lg p-1 mr-2">
+                        <button onClick={undo} disabled={!canUndo} className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-30"><UndoIcon /></button>
+                        <button onClick={redo} disabled={!canRedo} className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-30"><RedoIcon /></button>
+                    </div>
+                    
+                    {/* Auto-save Indicator */}
+                    <div className="flex flex-col items-end mr-2 hidden sm:flex">
+                         <span className="text-[10px] text-[var(--text-muted)] font-mono transition-opacity duration-300">
+                            {isSaving ? T.saving : lastSaved ? `${T.savedAt} ${lastSaved.toLocaleTimeString()}` : ''}
+                         </span>
+                    </div>
+
+                    {/* Status Dropdown Button */}
+                    <div className="relative" ref={statusMenuRef}>
+                        <button
+                            onClick={() => setStatusMenuOpen(!isStatusMenuOpen)}
+                            className={`flex items-center gap-2 px-3 py-2 rounded-lg font-bold text-xs uppercase transition-colors border ${
+                                exam.status === 'published'
+                                    ? 'bg-green-100 text-green-800 border-green-200 hover:bg-green-200 dark:bg-green-900/50 dark:text-green-300 dark:border-green-800'
+                                    : 'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200 dark:bg-yellow-900/50 dark:text-yellow-300 dark:border-yellow-800'
+                            }`}
+                            aria-haspopup="true"
+                            aria-expanded={isStatusMenuOpen}
+                        >
+                            {exam.status === 'published' ? <CheckIcon className="text-lg" /> : <EditIcon className="text-lg" />}
+                            <span className="hidden sm:inline">
+                                {exam.status === 'published' ? T.statusPublished : T.statusDraft}
+                            </span>
+                            <i className={`bi bi-chevron-down ml-1 text-[10px] transition-transform ${isStatusMenuOpen ? 'rotate-180' : ''}`}></i>
+                        </button>
+
+                        {isStatusMenuOpen && (
+                            <div className="absolute top-full right-0 mt-2 w-48 bg-[var(--bg-secondary)] rounded-lg shadow-xl border border-[var(--border-primary)] z-50 overflow-hidden animate-scale-in origin-top-right">
+                                <button
+                                    onClick={() => { handleUpdateExam('status', 'draft'); setStatusMenuOpen(false); }}
+                                    className={`w-full text-left px-4 py-3 hover:bg-[var(--bg-hover)] flex items-center gap-3 transition-colors ${exam.status === 'draft' ? 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400' : 'text-[var(--text-secondary)]'}`}
+                                >
+                                    <div className="p-1 rounded bg-yellow-100 dark:bg-yellow-900/50 text-yellow-600 dark:text-yellow-400"><EditIcon className="text-sm" /></div>
+                                    <span className="font-medium text-sm">{T.statusDraft}</span>
+                                </button>
+                                <button
+                                    onClick={() => { handleUpdateExam('status', 'published'); setStatusMenuOpen(false); }}
+                                    className={`w-full text-left px-4 py-3 hover:bg-[var(--bg-hover)] flex items-center gap-3 transition-colors ${exam.status === 'published' ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400' : 'text-[var(--text-secondary)]'}`}
+                                >
+                                    <div className="p-1 rounded bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400"><CheckIcon className="text-sm" /></div>
+                                    <span className="font-medium text-sm">{T.statusPublished}</span>
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    <button onClick={handleManualSave} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-lg font-semibold transition-colors shadow-sm">
+                        <SaveIcon />
+                        <span className="hidden sm:inline">{T.save}</span>
+                    </button>
                 </div>
             </div>
-        )}
 
-        <AiGeneratorModal isOpen={isAiModalOpen} onClose={() => setAiModalOpen(false)} onQuestionsGenerated={handleQuestionsGenerated} />
-
-        <div className="sticky top-0 z-20 print:hidden">
-            <header className="bg-[var(--bg-secondary)] shadow-lg border-b border-[var(--border-primary)]">
-                <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-                    <div className="flex-1 flex justify-start items-center gap-1"><button onClick={handleBack} className="flex items-center space-x-2 text-[var(--text-secondary)] hover:text-[var(--text-accent)] font-semibold py-2 px-3 rounded-lg transition-all duration-200"><ChevronLeftIcon className="text-xl" /><span className="hidden sm:inline">{T_UI.backToArchive}</span></button><div className="sm:hidden flex items-center"><button onClick={undo} disabled={!canUndo} aria-label="Undo" title="Undo" className="p-2 text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] rounded-full disabled:opacity-30 disabled:cursor-not-allowed"><UndoIcon className="text-xl"/></button><button onClick={redo} disabled={!canRedo} aria-label="Redo" title="Redo" className="p-2 text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] rounded-full disabled:opacity-30 disabled:cursor-not-allowed"><RedoIcon className="text-xl"/></button></div></div>
-                    <div className="flex-shrink-0"><div className="sm:hidden"><SaveStatusIndicator status={saveStatus} /></div><div className="hidden sm:flex items-center gap-2"><button onClick={undo} disabled={!canUndo} aria-label="Undo" title="Undo" className="p-2 text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] rounded-full disabled:opacity-30 disabled:cursor-not-allowed"><UndoIcon className="text-xl"/></button><button onClick={redo} disabled={!canRedo} aria-label="Redo" title="Redo" className="p-2 text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] rounded-full disabled:opacity-30 disabled:cursor-not-allowed"><RedoIcon className="text-xl"/></button></div></div>
-                    <div className="flex-1 flex justify-end"><div className="flex items-center space-x-2"><div className="hidden sm:block"><SaveStatusIndicator status={saveStatus} /></div><StatusButton status={exam.status} isOpen={isStatusDropdownOpen} setIsOpen={setStatusDropdownOpen} onStatusChange={handleStatusChange} dropdownRef={statusDropdownRef} T={T_UI} /><button onClick={handleManualSave} className="flex items-center space-x-2 bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] text-[var(--text-on-accent)] font-semibold py-2 px-4 rounded-lg transition-all duration-200 h-full"><SaveIcon className="text-lg" /><span className="hidden sm:inline">{T_UI.save}</span></button></div></div>
+            <div className="flex-grow overflow-y-auto p-4 md:p-8 space-y-6 max-w-5xl mx-auto w-full pb-20">
+                {/* Exam Info Card */}
+                <div className="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-md space-y-4">
+                     <h3 className="text-lg font-bold text-[var(--text-primary)] border-b border-[var(--border-primary)] pb-2">{T.examInfo}</h3>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                         <div>
+                             <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">{T.examTitle}</label>
+                             <input type="text" value={exam.title} onChange={e => handleUpdateExam('title', e.target.value)} className="w-full p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]" />
+                         </div>
+                         <div>
+                             <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">{T.subject}</label>
+                             <input type="text" value={exam.subject} onChange={e => handleUpdateExam('subject', e.target.value)} className="w-full p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]" />
+                         </div>
+                         <div>
+                             <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">{T.class}</label>
+                             <input type="text" value={exam.class} onChange={e => handleUpdateExam('class', e.target.value)} className="w-full p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]" />
+                         </div>
+                         <div>
+                             <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">{T.date}</label>
+                             <input type="date" value={exam.date} onChange={e => handleUpdateExam('date', e.target.value)} className="w-full p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]" />
+                         </div>
+                         <div>
+                             <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">{T.examTime}</label>
+                             <input type="text" value={exam.waktuUjian} onChange={e => handleUpdateExam('waktuUjian', e.target.value)} className="w-full p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]" />
+                         </div>
+                         <div>
+                            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">{T.directionLabel}</label>
+                            <select value={exam.direction} onChange={e => handleUpdateExam('direction', e.target.value)} className="w-full p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]">
+                                <option value="ltr">{T.directionLtr}</option>
+                                <option value="rtl">{T.directionRtl}</option>
+                            </select>
+                        </div>
+                     </div>
+                     <div>
+                        <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">{T.previewLayoutLabel}</label>
+                        <div className="flex gap-4">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="layoutColumns" checked={exam.layoutColumns !== 2} onChange={() => handleUpdateExam('layoutColumns', 1)} className="form-radio" />
+                                <span className="flex items-center gap-1"><CardTextIcon /> {T.layout1Col}</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="layoutColumns" checked={exam.layoutColumns === 2} onChange={() => handleUpdateExam('layoutColumns', 2)} className="form-radio" />
+                                <span className="flex items-center gap-1"><LayoutSplitIcon /> {T.layout2Col}</span>
+                            </label>
+                        </div>
+                     </div>
+                     <div>
+                         <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">{T.description}</label>
+                         <textarea value={exam.keterangan} onChange={e => handleUpdateExam('keterangan', e.target.value)} placeholder={T.descriptionPlaceholder} className="w-full p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)] h-20" />
+                     </div>
+                     <div>
+                         <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">{T.generalInstructions}</label>
+                         <textarea value={exam.instructions} onChange={e => handleUpdateExam('instructions', e.target.value)} placeholder={T.generalInstructionsPlaceholder} className="w-full p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)] h-24 font-mono text-sm" />
+                     </div>
                 </div>
-            </header>
-            <div className="bg-[var(--bg-tertiary)] border-b border-[var(--border-primary)] shadow-sm">
-                <div className="container mx-auto"><ul className="flex justify-center -mb-px text-sm font-medium text-center">{[{ id: 'editor', label: T_UI.tabEditor, icon: EditIcon }, { id: 'preview', label: T_UI.tabPreview, icon: PrinterIcon }, { id: 'key', label: T_UI.tabAnswerKey, icon: CheckIcon }].map(tab => (<li className="mx-2" key={tab.id}><button onClick={() => setActiveTab(tab.id as any)} className={`inline-flex items-center justify-center p-4 border-b-2 rounded-t-lg group ${activeTab === tab.id ? 'text-blue-600 border-blue-600 dark:text-blue-400 dark:border-blue-400' : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-gray-300 dark:hover:border-gray-600'}`}><tab.icon className={`me-2 ${activeTab === tab.id ? 'text-blue-600 dark:text-blue-400' : 'text-[var(--text-muted)] group-hover:text-[var(--text-secondary)]'}`} /><span className="hidden md:inline">{tab.label}</span></button></li>))}</ul></div>
+
+                {/* Sections with Pagination Injection */}
+                {exam.sections.map((section, index) => (
+                    <SectionEditor
+                        key={section.id}
+                        section={section}
+                        T={T}
+                        startIndex={sectionStartIndices[index]}
+                        visibleRange={visibleRange}
+                        onSectionUpdate={handleUpdateSection}
+                        onSectionDelete={handleDeleteSection}
+                        onQuestionAdd={handleAddQuestion}
+                        onQuestionUpdate={handleUpdateQuestion}
+                        onQuestionDelete={handleDeleteQuestion}
+                        onSaveToBank={handleSaveToBank}
+                        onAddQuestionsFromBank={handleOpenBank}
+                        onOpenAiModal={handleOpenAi}
+                    />
+                ))}
+
+                <button onClick={handleAddSection} className="w-full py-4 border-2 border-dashed border-[var(--border-secondary)] rounded-lg text-[var(--text-secondary)] hover:border-blue-500 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all font-bold flex items-center justify-center gap-2">
+                    <PlusIcon className="text-xl" />
+                    <span>{T.addSection}</span>
+                </button>
             </div>
+
+            {/* Pagination Sticky Footer */}
+            {totalPages > 1 && (
+                <div className="fixed bottom-0 left-0 right-0 bg-[var(--bg-secondary)] border-t border-[var(--border-primary)] p-3 flex justify-center items-center gap-4 shadow-lg z-30">
+                    <button 
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                        className="p-2 rounded-full bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] disabled:opacity-50 hover:bg-[var(--bg-hover)]"
+                    >
+                        <ChevronLeftIcon className="text-xl" />
+                    </button>
+                    <span className="text-sm font-medium text-[var(--text-primary)]">
+                        Halaman {currentPage} dari {totalPages}
+                    </span>
+                    <button 
+                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                        disabled={currentPage === totalPages}
+                        className="p-2 rounded-full bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] disabled:opacity-50 hover:bg-[var(--bg-hover)]"
+                    >
+                        <i className="bi bi-chevron-right text-xl"></i>
+                    </button>
+                </div>
+            )}
+
+            {/* Modals */}
+            {isBankModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-[var(--bg-secondary)] w-full max-w-4xl h-[80vh] rounded-xl shadow-2xl flex flex-col overflow-hidden">
+                         <div className="p-4 border-b border-[var(--border-primary)] flex justify-between items-center">
+                            <h3 className="text-lg font-bold text-[var(--text-primary)]">{T.getFromBank}</h3>
+                            <button onClick={() => setBankModalOpen(false)} className="text-[var(--text-secondary)]"><CloseIcon /></button>
+                        </div>
+                        <div className="flex-grow overflow-hidden p-4">
+                            <QuestionBankView isModalMode={true} onAddQuestions={handleAddFromBank} onClose={() => setBankModalOpen(false)} />
+                        </div>
+                    </div>
+                </div>
+            )}
+            
+            <AiGeneratorModal 
+                isOpen={isAiModalOpen} 
+                onClose={() => setAiModalOpen(false)} 
+                onQuestionsGenerated={handleAiQuestions}
+            />
         </div>
-        <main>
-            <div className={activeTab === 'editor' ? 'block' : 'hidden'}><div className="container mx-auto"><EditorPane exam={exam} T={T_Editor} onExamChange={handleExamChange} onSectionAdd={addSection} {...editorCallbacks} /></div></div>
-            <div ref={previewContainerRef} className={`bg-slate-200 dark:bg-slate-950 overflow-auto p-4 sm:p-8 flex justify-center ${(activeTab === 'preview' || activeTab === 'key') ? 'block' : 'hidden'}`}>
-                {activeTab === 'preview' && <PreviewContent htmlContent={examHtml} title="Pratinjau Soal" settings={settings} zoom={zoom} iframeRef={iframeRef} />}
-                {activeTab === 'key' && <PreviewContent htmlContent={answerKeyHtml} title="Pratinjau Kunci Jawaban" settings={settings} zoom={zoom} iframeRef={iframeRef} />}
-            </div>
-        </main>
-        {(activeTab === 'preview' || activeTab === 'key') && (<div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm shadow-lg rounded-full p-1 space-x-2"><button onClick={() => setZoom(z => Math.max(0.25, z - 0.1))} aria-label="Perkecil" className="p-2 text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] rounded-full"><ZoomOutIcon className="text-xl" /></button><span className="text-[var(--text-primary)] font-semibold w-12 text-center text-sm">{(zoom * 100).toFixed(0)}%</span><button onClick={() => setZoom(z => Math.min(2, z + 0.1))} aria-label="Perbesar" className="p-2 text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] rounded-full"><ZoomInIcon className="text-xl" /></button></div>)}
-    </div>
     );
 };
 

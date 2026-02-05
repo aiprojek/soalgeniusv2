@@ -50,6 +50,12 @@ export const BookmarkPlusIcon = ({ className }: IconProps) => <i className={`bi 
 export const FunnelIcon = ({ className }: IconProps) => <i className={`bi bi-funnel-fill ${className || ''}`}></i>;
 export const SearchIcon = ({ className }: IconProps) => <i className={`bi bi-search ${className || ''}`}></i>;
 
+// Icons for Folder & Tag
+export const FolderIcon = ({ className }: IconProps) => <i className={`bi bi-folder-fill ${className || ''}`}></i>;
+export const FolderOpenIcon = ({ className }: IconProps) => <i className={`bi bi-folder2-open ${className || ''}`}></i>;
+export const TagIcon = ({ className }: IconProps) => <i className={`bi bi-tags-fill ${className || ''}`}></i>;
+export const MoveIcon = ({ className }: IconProps) => <i className={`bi bi-arrow-right-square-fill ${className || ''}`}></i>;
+
 // Icons for Help View
 export const CoffeeIcon = ({ className }: IconProps) => <i className={`bi bi-cup-hot-fill ${className || ''}`}></i>;
 export const GithubIcon = ({ className }: IconProps) => <i className={`bi bi-github ${className || ''}`}></i>;
@@ -68,3 +74,12 @@ export const CloudCheckIcon = ({ className }: IconProps) => <i className={`bi bi
 // Icons for AI Features
 export const StarsIcon = ({ className }: IconProps) => <i className={`bi bi-stars ${className || ''}`}></i>;
 export const RobotIcon = ({ className }: IconProps) => <i className={`bi bi-robot ${className || ''}`}></i>;
+
+// Icons for Export
+export const WordIcon = ({ className }: IconProps) => <i className={`bi bi-file-earmark-word-fill ${className || ''}`}></i>;
+export const FileCodeIcon = ({ className }: IconProps) => <i className={`bi bi-file-earmark-code-fill ${className || ''}`}></i>;
+export const FilePdfIcon = ({ className }: IconProps) => <i className={`bi bi-file-earmark-pdf-fill ${className || ''}`}></i>;
+export const ServerIcon = ({ className }: IconProps) => <i className={`bi bi-hdd-network-fill ${className || ''}`}></i>;
+
+// Icons for Storage Settings
+export const HddIcon = ({ className }: IconProps) => <i className={`bi bi-hdd-fill ${className || ''}`}></i>;

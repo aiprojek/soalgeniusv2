@@ -1,3 +1,4 @@
+
 import type { Exam, Settings } from '../types';
 import { QuestionType } from '../types';
 import { escapeHtml } from './utils';
@@ -100,6 +101,11 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
 
         const sectionsHtml = exam.sections.map((section, sectionIndex) => {
             const questionsHtml = section.questions.map(q => {
+                // If it is a stimulus type, render distinct block without numbering
+                if (q.type === QuestionType.STIMULUS) {
+                    return `<li class="question-item stimulus-block"><div class="question-body">${q.text}</div></li>`;
+                }
+
                 const questionNumber = isRTL ? toArabicNumeral(q.number) : q.number;
                 const questionText = q.text;
                 let choicesHtml = '';
@@ -133,7 +139,15 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
                         break;
                     case QuestionType.ESSAY:
                         if(q.hasAnswerSpace) {
-                            choicesHtml = '<div class="essay-space"></div><div class="essay-space"></div><div class="essay-space"></div>';
+                            choicesHtml = `
+                                <table class="essay-answer-table">
+                                    <tbody>
+                                        <tr><td>&nbsp;</td></tr>
+                                        <tr><td>&nbsp;</td></tr>
+                                        <tr><td>&nbsp;</td></tr>
+                                    </tbody>
+                                </table>
+                            `;
                         }
                         break;
                     case QuestionType.MATCHING: {
@@ -243,9 +257,13 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
                 instructionContent = `<span>${escapeHtml(section.instructions)}</span>`;
             }
 
+            // Legacy stimulus support (if old exams still have it)
+            const stimulusContent = section.stimulus ? `<div class="section-stimulus">${section.stimulus}</div>` : '';
+
             return `
                 <section class="exam-section">
                     <h3 class="exam-section-instruction">${instructionContent}</h3>
+                    ${stimulusContent}
                     <ol class="questions-list">
                         ${questionsHtml}
                     </ol>
@@ -314,6 +332,9 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
     } else { // Answer Key Mode
         const sectionsHtml = exam.sections.map((section, sectionIndex) => {
             const questionsHtml = section.questions.map(q => {
+                 // Skip rendering Stimulus in Answer Key mode completely
+                 if (q.type === QuestionType.STIMULUS) return '';
+
                  let answerText = `<span class="no-answer">${T.noAnswer}</span>`;
                  switch(q.type) {
                     case QuestionType.MULTIPLE_CHOICE: {
@@ -619,6 +640,28 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
         [dir="rtl"] .instruction-text {
             flex: none;
         }
+        
+        /* Stimulus Styles */
+        .section-stimulus {
+            margin-bottom: 1rem;
+            text-align: justify;
+        }
+        .section-stimulus img {
+            max-width: 100%;
+            height: auto;
+            margin: 0.5rem auto;
+            display: block;
+        }
+        
+        /* New Question Type: Stimulus Block */
+        .question-item.stimulus-block {
+            display: block; /* Overrides default flex */
+            margin-bottom: 1rem;
+            width: 100%;
+        }
+        .question-item.stimulus-block .question-body {
+            text-align: justify;
+        }
 
         .questions-list { list-style: none; padding-inline-start: 0; }
         .question-item { display: flex; align-items: flex-start; gap: 0.5em; break-inside: avoid; margin-bottom: 1rem; }
@@ -642,7 +685,8 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
         .true-false-container { display: flex; align-items: center; gap: 0.75rem; margin-top: 0.75rem; padding-inline-start: 1.5rem; font-size: 0.95em; }
         .true-false-option { display: inline-block; padding: 0.15rem 0.75rem; border: 1px solid black; border-radius: 0.25rem; font-weight: bold; }
 
-        .essay-space { margin-top: 2rem; border-bottom: 1px solid #9ca3af; }
+        .essay-answer-table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+        .essay-answer-table td { border-bottom: 1px solid black; height: 0.6cm; }
         
         .matching-table { margin-top: 1rem; text-align: start; font-size: 1em; }
         .matching-table th { font-weight: bold; text-align: center; border: 1px solid black; padding: 0.5rem; }
