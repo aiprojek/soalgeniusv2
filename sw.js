@@ -1,47 +1,65 @@
 // Nama cache baru untuk memicu pembaruan
-const CACHE_NAME = 'soalgenius-cache-v5-jsdelivr';
-const urlsToCache = [
+const CACHE_NAME = 'soalgenius-cache-v6-offline-ready';
+
+// Daftar URL statis aplikasi
+const appShellFiles = [
   '/',
   './index.html',
   './manifest.json',
-  // TS/TSX Files (pastikan semua file terdaftar)
+  './icon.svg',
   './index.tsx',
   './types.ts',
   './App.tsx',
   './components/Icons.tsx',
   './components/MainLayout.tsx',
+  './components/AiGeneratorModal.tsx',
   './contexts/ModalContext.tsx',
   './contexts/ToastContext.tsx',
   './contexts/ThemeContext.tsx',
   './hooks/useHistoryState.ts',
+  './hooks/useDebounce.ts',
   './lib/db.ts',
   './lib/migration.ts',
   './lib/htmlGenerator.ts',
+  './lib/docxGenerator.ts',
+  './lib/lmsGenerator.ts',
   './lib/storage.ts',
   './lib/utils.ts',
+  './lib/gemini.ts',
+  './lib/dropbox.ts',
   './views/ArchiveView.tsx',
   './views/EditorView.tsx',
   './views/PreviewView.tsx',
   './views/QuestionBankView.tsx',
   './views/SettingsView.tsx',
   './views/HelpView.tsx',
-  // External CDN Assets
+  './views/help/AboutTab.tsx',
+  './views/help/FeaturesTab.tsx',
+  './views/help/GuideTab.tsx',
+];
+
+// Daftar CDN Eksternal yang harus di-cache agar aplikasi jalan offline
+// NOTE: Untuk produksi skala besar, disarankan menggunakan Bundler (Vite/Webpack)
+// agar tidak bergantung pada URL eksternal ini.
+const externalCdnFiles = [
   'https://cdn.tailwindcss.com',
   'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css',
   'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/fonts/bootstrap-icons.woff2?8d200488724b4831353fea889319d65c',
   'https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Areef+Ruqaa:wght@400;700&family=Liberation+Sans:ital,wght@0,400;0,700;1,400;1,700&family=Liberation+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap',
   'https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css',
-  // Import-map Assets (React)
+  // React Imports (Redirects will be handled by SW caching the result)
   'https://aistudiocdn.com/react@^18.2.0',
   'https://aistudiocdn.com/react-dom@^18.2.0/client',
   'https://aistudiocdn.com/react@^18.2.0/jsx-runtime',
-  // Import-map Assets (JSDelivr for stability)
+  // Libraries
   'https://cdn.jsdelivr.net/npm/react-quill@2.0.0/+esm',
   'https://cdn.jsdelivr.net/npm/quill@2.0.2/+esm',
   'https://cdn.jsdelivr.net/npm/dexie@4.0.7/+esm',
-  // PWA Icons
-  './icon.svg',
+  'https://esm.sh/@google/genai@^1.35.0',
+  'https://jspm.dev/docx'
 ];
+
+const urlsToCache = [...appShellFiles, ...externalCdnFiles];
 
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
@@ -49,22 +67,26 @@ self.addEventListener('message', (event) => {
   }
 });
 
-// --- Logika instalasi yang diperbarui dan lebih tangguh ---
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('Membuka cache dan memulai caching aset...');
-      const cachePromises = urlsToCache.map((urlToCache) => {
-        // Menggunakan cache.add untuk setiap URL secara individual
-        // dan menangkap error agar tidak menghentikan seluruh proses
-        return cache.add(urlToCache).catch((err) => {
-          console.warn(`Gagal menyimpan ke cache: ${urlToCache}`, err);
-        });
+      console.log('SW: Membuka cache dan memulai caching aset...');
+      
+      // Kita menggunakan Promise.allSettled (atau map dengan catch) agar jika satu CDN gagal,
+      // instalasi SW tidak gagal total.
+      const cachePromises = urlsToCache.map(async (url) => {
+        try {
+          const response = await fetch(url, { mode: 'no-cors' }); // no-cors penting untuk CDN opaque
+          if (!response.ok && response.type !== 'opaque') {
+            throw new Error(`Status ${response.status}`);
+          }
+          return await cache.put(url, response);
+        } catch (err) {
+          console.warn(`SW: Gagal cache ${url}:`, err);
+        }
       });
-      // Menunggu semua proses penambahan cache selesai
-      return Promise.all(cachePromises).then(() => {
-        console.log('Semua aset yang tersedia berhasil disimpan ke cache.');
-      });
+
+      return Promise.all(cachePromises);
     })
   );
 });
@@ -76,7 +98,7 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheWhitelist.indexOf(cacheName) === -1) {
-            console.log('Menghapus cache lama:', cacheName);
+            console.log('SW: Menghapus cache lama:', cacheName);
             return caches.delete(cacheName);
           }
         })
@@ -86,35 +108,31 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') {
-    return;
-  }
-  
-  event.respondWith(
-    // 1. Coba cari di cache terlebih dahulu (Cache-First Strategy)
-    caches.match(event.request)
-      .then((response) => {
-        if (response) {
-          return response; // Jika ada di cache, langsung kembalikan
-        }
-        
-        // 2. Jika tidak ada di cache, ambil dari jaringan
-        const fetchRequest = event.request.clone();
-        return fetch(fetchRequest).then((response) => {
-          // Jika gagal mengambil dari jaringan, kembalikan response error
-          if (!response || response.status !== 200) {
-            return response;
-          }
+  // Hanya tangani GET request
+  if (event.request.method !== 'GET') return;
 
-          // 3. Jika berhasil, simpan salinannya ke cache untuk penggunaan offline berikutnya
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME)
-            .then((cache) => {
-              cache.put(event.request, responseToCache);
-            });
-          
-          return response;
-        });
-      })
+  // Strategi: Stale-While-Revalidate
+  // 1. Ambil dari Cache dulu (cepat)
+  // 2. Jika tidak ada, ambil dari Network
+  // 3. Update Cache dengan data terbaru dari Network (untuk kunjungan berikutnya)
+  event.respondWith(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.match(event.request).then((cachedResponse) => {
+        const fetchPromise = fetch(event.request)
+          .then((networkResponse) => {
+            // Validasi response sebelum disimpan
+            if (networkResponse && (networkResponse.status === 200 || networkResponse.type === 'opaque')) {
+              cache.put(event.request, networkResponse.clone());
+            }
+            return networkResponse;
+          })
+          .catch(() => {
+            // Jika offline dan fetch gagal, tidak apa-apa jika sudah ada cachedResponse
+            // Jika tidak ada cachedResponse, kita bisa return fallback page (opsional)
+          });
+
+        return cachedResponse || fetchPromise;
+      });
+    })
   );
 });

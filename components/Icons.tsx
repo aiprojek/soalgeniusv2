@@ -71,6 +71,10 @@ export const CloudUploadIcon = ({ className }: IconProps) => <i className={`bi b
 export const CloudDownloadIcon = ({ className }: IconProps) => <i className={`bi bi-cloud-download-fill ${className || ''}`}></i>;
 export const CloudCheckIcon = ({ className }: IconProps) => <i className={`bi bi-cloud-check-fill ${className || ''}`}></i>;
 
+// Icons for Pairing
+export const QrCodeIcon = ({ className }: IconProps) => <i className={`bi bi-qr-code ${className || ''}`}></i>;
+export const ScanIcon = ({ className }: IconProps) => <i className={`bi bi-upc-scan ${className || ''}`}></i>;
+
 // Icons for AI Features
 export const StarsIcon = ({ className }: IconProps) => <i className={`bi bi-stars ${className || ''}`}></i>;
 export const RobotIcon = ({ className }: IconProps) => <i className={`bi bi-robot ${className || ''}`}></i>;

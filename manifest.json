@@ -11,7 +11,7 @@
     {
       "src": "./icon.svg",
       "type": "image/svg+xml",
-      "sizes": "any",
+      "sizes": "144x144 192x192 512x512 1024x1024 4096x4096",
       "purpose": "any maskable"
     }
   ]
