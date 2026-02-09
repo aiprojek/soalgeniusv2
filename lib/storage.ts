@@ -185,6 +185,52 @@ export const shuffleExam = async (id: string): Promise<Exam> => {
     return newExam;
 };
 
+/**
+ * Membuat paket soal berbeda (Paket A, Paket B, dst) dari satu master.
+ * Mengacak urutan soal DAN urutan opsi jawaban.
+ */
+export const createExamPackets = async (masterId: string, count: number): Promise<void> => {
+    const masterExam = await getExam(masterId);
+    if (!masterExam) throw new Error("Ujian master tidak ditemukan");
+
+    // Loop to create packets
+    for (let i = 0; i < count; i++) {
+        const packetLetter = String.fromCharCode(65 + i); // A, B, C...
+        const newExam: Exam = JSON.parse(JSON.stringify(masterExam)); // Deep copy
+        
+        newExam.id = crypto.randomUUID();
+        newExam.title = `${masterExam.title} [Paket ${packetLetter}]`;
+        newExam.status = 'draft';
+
+        // Process sections
+        newExam.sections = newExam.sections.map(section => {
+            // 1. Shuffle Questions order
+            const shuffledQuestions = shuffleArray(section.questions);
+
+            // 2. Shuffle Choices within questions (if applicable)
+            const fullyShuffledQuestions = shuffledQuestions.map(q => {
+                if (
+                    (q.type === QuestionType.MULTIPLE_CHOICE || q.type === QuestionType.COMPLEX_MULTIPLE_CHOICE) && 
+                    q.choices && q.choices.length > 0
+                ) {
+                    return {
+                        ...q,
+                        choices: shuffleArray(q.choices)
+                    };
+                }
+                return q;
+            });
+
+            return {
+                ...section,
+                questions: fullyShuffledQuestions
+            };
+        });
+
+        await saveExam(newExam);
+    }
+};
+
 
 // --- FUNGSI FOLDER ---
 

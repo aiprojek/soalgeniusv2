@@ -54,7 +54,7 @@ const AboutTab: React.FC = () => {
                     Aplikasi modern untuk membantu pendidik membuat, mengelola, dan mencetak soal ujian tanpa kerumitan format dokumen.
                 </p>
                 <div className="flex justify-center gap-2">
-                    <span className="px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-bold uppercase tracking-wider">Versi 2.0</span>
+                    <span className="px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-bold uppercase tracking-wider">Versi 2.1</span>
                     <span className="px-3 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs font-bold uppercase tracking-wider">100% Offline</span>
                     <span className="px-3 py-1 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs font-bold uppercase tracking-wider">Open Source</span>
                 </div>

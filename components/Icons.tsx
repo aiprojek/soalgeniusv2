@@ -78,6 +78,10 @@ export const ScanIcon = ({ className }: IconProps) => <i className={`bi bi-upc-s
 // Icons for AI Features
 export const StarsIcon = ({ className }: IconProps) => <i className={`bi bi-stars ${className || ''}`}></i>;
 export const RobotIcon = ({ className }: IconProps) => <i className={`bi bi-robot ${className || ''}`}></i>;
+export const LightningIcon = ({ className }: IconProps) => <i className={`bi bi-lightning-charge-fill ${className || ''}`}></i>;
+
+// Icons for Packet Generator
+export const StackIcon = ({ className }: IconProps) => <i className={`bi bi-collection-fill ${className || ''}`}></i>;
 
 // Icons for Export
 export const WordIcon = ({ className }: IconProps) => <i className={`bi bi-file-earmark-word-fill ${className || ''}`}></i>;

@@ -13,6 +13,18 @@ const FeatureItem: React.FC<{ icon: string, title: string, description: string, 
 const FeaturesTab: React.FC = () => {
     const features = [
         {
+            icon: "bi-collection-fill",
+            title: "Generator Paket (Anti Nyontek)",
+            description: "Buat hingga 5 varian paket soal (Paket A, B, C...) secara otomatis. Urutan soal dan opsi jawaban diacak untuk meminimalisir kecurangan.",
+            color: "bg-purple-600"
+        },
+        {
+            icon: "bi-lightning-charge-fill",
+            title: "Smart Import",
+            description: "Migrasi kilat! Salin teks soal mentah dari Word/PDF, dan aplikasi akan memformatnya menjadi soal siap edit secara otomatis.",
+            color: "bg-amber-500"
+        },
+        {
             icon: "bi-pencil-square",
             title: "Editor Canggih",
             description: "Format teks, gambar, tabel, dan rumus matematika dengan mudah. Mendukung navigasi halaman untuk performa optimal.",

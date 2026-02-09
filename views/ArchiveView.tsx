@@ -4,9 +4,10 @@ import { useModal } from '../contexts/ModalContext';
 import { useToast } from '../contexts/ToastContext';
 import { getAllExams, deleteExam, duplicateExam, shuffleExam, getFolders, saveFolder, deleteFolder, saveExam, renameGlobalTag, deleteGlobalTag } from '../lib/storage';
 import { useDebounce } from '../hooks/useDebounce';
+import PacketGeneratorModal from '../components/PacketGeneratorModal';
 import { 
     PlusIcon, EditIcon, PrinterIcon, ShuffleIcon, CopyIcon, TrashIcon, SearchIcon, CloseIcon,
-    FolderIcon, FolderOpenIcon, TagIcon, MoveIcon, CheckIcon, ChevronLeftIcon
+    FolderIcon, FolderOpenIcon, TagIcon, MoveIcon, CheckIcon, ChevronLeftIcon, StackIcon
 } from '../components/Icons';
 
 // --- Sub-components ---
@@ -18,10 +19,11 @@ const ExamCard: React.FC<{
     onDelete: (id: string) => void;
     onCopy: (id: string) => void;
     onShuffle: (id: string) => void;
+    onGeneratePackets: (id: string, title: string) => void;
     onPreview: (id: string) => void;
     onManageTags: (id: string) => void;
     onMove: (id: string) => void;
-}> = ({ exam, totalQuestions, onEdit, onDelete, onCopy, onShuffle, onPreview, onManageTags, onMove }) => {
+}> = ({ exam, totalQuestions, onEdit, onDelete, onCopy, onShuffle, onGeneratePackets, onPreview, onManageTags, onMove }) => {
     return (
         <div className="bg-[var(--bg-secondary)] rounded-xl shadow-sm border border-[var(--border-primary)] hover:shadow-md transition-all duration-200 flex flex-col group relative overflow-hidden animate-fade-in">
             <div className="p-5 flex-grow cursor-pointer" onClick={() => onEdit(exam.id)}>
@@ -58,10 +60,11 @@ const ExamCard: React.FC<{
             </div>
             
             {/* Quick Actions Bar - Always visible on mobile, hover on desktop */}
-            <div className="bg-[var(--bg-tertiary)] p-2 grid grid-cols-7 gap-1 border-t border-[var(--border-primary)]">
+            <div className="bg-[var(--bg-tertiary)] p-2 grid grid-cols-8 gap-1 border-t border-[var(--border-primary)]">
                 <button onClick={() => onEdit(exam.id)} title="Edit" className="p-2 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-blue-600 flex justify-center items-center transition-colors"><EditIcon/></button>
                 <button onClick={() => onPreview(exam.id)} title="Cetak/Preview" className="p-2 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-green-600 flex justify-center items-center transition-colors"><PrinterIcon/></button>
-                <button onClick={() => onShuffle(exam.id)} title="Acak Soal" className="p-2 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-purple-600 flex justify-center items-center transition-colors"><ShuffleIcon/></button>
+                <button onClick={() => onGeneratePackets(exam.id, exam.title)} title="Generator Paket" className="p-2 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-purple-600 flex justify-center items-center transition-colors"><StackIcon/></button>
+                <button onClick={() => onShuffle(exam.id)} title="Acak Sederhana" className="p-2 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-purple-400 flex justify-center items-center transition-colors"><ShuffleIcon/></button>
                 <button onClick={() => onCopy(exam.id)} title="Duplikat" className="p-2 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-yellow-600 flex justify-center items-center transition-colors"><CopyIcon/></button>
                 <button onClick={() => onMove(exam.id)} title="Pindah Folder" className="p-2 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-orange-600 flex justify-center items-center transition-colors"><MoveIcon/></button>
                 <button onClick={() => onManageTags(exam.id)} title="Label" className="p-2 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-pink-600 flex justify-center items-center transition-colors"><TagIcon/></button>
@@ -123,7 +126,12 @@ const ArchiveView: React.FC<{
     // Modals State
     const [isFolderSelectorOpen, setIsFolderSelectorOpen] = useState(false);
     const [isTagSelectorOpen, setIsTagSelectorOpen] = useState(false);
+    const [isPacketGeneratorOpen, setIsPacketGeneratorOpen] = useState(false);
     
+    // Packet Generator State
+    const [packetGeneratorExamId, setPacketGeneratorExamId] = useState<string | null>(null);
+    const [packetGeneratorExamTitle, setPacketGeneratorExamTitle] = useState('');
+
     // Create/Edit Folder State (Inside Selector)
     const [isEditingFolder, setIsEditingFolder] = useState(false);
     const [folderNameInput, setFolderNameInput] = useState('');
@@ -218,6 +226,13 @@ const ArchiveView: React.FC<{
 
     const handleCopyExam = async (id: string) => { await duplicateExam(id); loadData(); addToast('Ujian disalin.', 'success'); };
     const handleShuffleExam = async (id: string) => { await shuffleExam(id); loadData(); addToast('Varian acak dibuat.', 'success'); };
+    
+    // Packet Generator Handler
+    const handleOpenPacketGenerator = (id: string, title: string) => {
+        setPacketGeneratorExamId(id);
+        setPacketGeneratorExamTitle(title);
+        setIsPacketGeneratorOpen(true);
+    };
 
     // --- Tag Logic ---
     const openTagModal = (examId: string) => {
@@ -366,7 +381,7 @@ const ArchiveView: React.FC<{
                                     exam={exam}
                                     totalQuestions={exam.sections.reduce((acc, s) => acc + s.questions.length, 0)}
                                     onEdit={onEditExam} onDelete={handleDeleteExam} onCopy={handleCopyExam}
-                                    onShuffle={handleShuffleExam} onPreview={onPreviewExam}
+                                    onShuffle={handleShuffleExam} onGeneratePackets={handleOpenPacketGenerator} onPreview={onPreviewExam}
                                     onManageTags={openTagModal} onMove={openMoveModal}
                                 />
                             ))}
@@ -561,6 +576,15 @@ const ArchiveView: React.FC<{
                     </div>
                 </div>
             )}
+
+            {/* 5. Packet Generator Modal */}
+            <PacketGeneratorModal 
+                isOpen={isPacketGeneratorOpen}
+                onClose={() => setIsPacketGeneratorOpen(false)}
+                examId={packetGeneratorExamId}
+                examTitle={packetGeneratorExamTitle}
+                onSuccess={loadData}
+            />
         </div>
     );
 };

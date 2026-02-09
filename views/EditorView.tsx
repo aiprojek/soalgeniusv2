@@ -9,13 +9,14 @@ import { toRoman } from '../lib/utils';
 import { generateHtmlContent } from '../lib/htmlGenerator';
 import QuestionBankView from './QuestionBankView';
 import AiGeneratorModal from '../components/AiGeneratorModal';
+import SmartImportModal from '../components/SmartImportModal';
 import { useHistoryState } from '../hooks/useHistoryState';
 import ReactQuill from 'react-quill';
 import Quill from 'quill';
 import { 
     PlusIcon, TrashIcon, PrinterIcon, EditIcon, ChevronLeftIcon, SaveIcon, CheckIcon, BookmarkPlusIcon, CloseIcon,
     ZoomInIcon, ZoomOutIcon, BankIcon, UndoIcon, RedoIcon, CardTextIcon, LayoutSplitIcon, StarsIcon,
-    CloudUploadIcon, CloudCheckIcon, CardTextIcon as StimulusIcon, CloudDownloadIcon
+    CloudUploadIcon, CloudCheckIcon, CardTextIcon as StimulusIcon, CloudDownloadIcon, LightningIcon
 } from '../components/Icons';
 
 // --- Start Custom Quill Icons ---
@@ -126,6 +127,7 @@ const ltrTranslations = {
   addQuestion: 'Tambah Soal',
   getFromBank: 'Ambil dari Bank Soal',
   createWithAi: 'Buat dengan AI',
+  smartImport: 'Import Teks (Smart)',
   questionPlaceholder: 'Tulis pertanyaan di sini...',
   stimulusTextPlaceholder: 'Tulis wacana, bacaan, atau sisipkan gambar stimulus di sini...',
   questionNumberAria: 'Nomor soal {number}',
@@ -225,6 +227,7 @@ const rtlTranslations: typeof ltrTranslations = {
   addQuestion: 'إضافة سؤال',
   getFromBank: 'جلب من بنك الأسئلة',
   createWithAi: 'إنشاء باستخدام الذكاء الاصطناعي',
+  smartImport: 'استيراد النص (ذكي)',
   questionPlaceholder: 'اكتب السؤال هنا...',
   stimulusTextPlaceholder: 'اكتب النص أو أضف صورة هنا...',
   questionNumberAria: 'رقم السؤال {number}',
@@ -909,10 +912,11 @@ const SectionEditor: React.FC<{
     onSaveToBank: (question: Question) => void;
     onAddQuestionsFromBank: (sectionId: string) => void;
     onOpenAiModal: (sectionId: string) => void;
+    onOpenSmartImport: (sectionId: string) => void;
     // New Props for Pagination
     startIndex: number;
     visibleRange: { start: number, end: number };
-}> = ({ section, T, onSectionUpdate, onSectionDelete, onAddQuestionsFromBank, onOpenAiModal, startIndex, visibleRange, ...questionCallbacks }) => {
+}> = ({ section, T, onSectionUpdate, onSectionDelete, onAddQuestionsFromBank, onOpenAiModal, onOpenSmartImport, startIndex, visibleRange, ...questionCallbacks }) => {
     const [isAddQuestionOpen, setAddQuestionOpen] = useState(false);
     // Deprecated: old stimulus state removed
     const addQuestionRef = useRef<HTMLDivElement>(null);
@@ -929,6 +933,11 @@ const SectionEditor: React.FC<{
 
     const openAiAndClose = () => {
         onOpenAiModal(section.id);
+        setAddQuestionOpen(false);
+    };
+
+    const openSmartImportAndClose = () => {
+        onOpenSmartImport(section.id);
         setAddQuestionOpen(false);
     };
 
@@ -985,6 +994,7 @@ const SectionEditor: React.FC<{
                     <div className="absolute start-0 mt-2 w-56 bg-[var(--bg-secondary)] rounded-md shadow-lg z-10 border border-[var(--border-secondary)] text-start max-h-80 overflow-y-auto">
                         <ul className="py-1">
                             <li><a href="#" onClick={(e) => { e.preventDefault(); addFromBankAndClose(); }} className="flex items-center space-x-2 block px-4 py-2 text-sm font-semibold text-blue-600 dark:text-blue-300 hover:bg-[var(--bg-hover)]"><BankIcon /> <span>{T.getFromBank}</span></a></li>
+                            <li><a href="#" onClick={(e) => { e.preventDefault(); openSmartImportAndClose(); }} className="flex items-center space-x-2 block px-4 py-2 text-sm font-semibold text-yellow-600 dark:text-yellow-400 hover:bg-[var(--bg-hover)]"><LightningIcon /> <span>{T.smartImport}</span></a></li>
                             <li><a href="#" onClick={(e) => { e.preventDefault(); openAiAndClose(); }} className="flex items-center space-x-2 block px-4 py-2 text-sm font-semibold text-purple-600 dark:text-purple-300 hover:bg-[var(--bg-hover)]"><StarsIcon /> <span>{T.createWithAi}</span></a></li>
                             <li className="border-t border-[var(--border-primary)] my-1"></li>
                             {Object.entries(T.questionTypes).map(([type, label]) => (<li key={type}><a href="#" onClick={(e) => { e.preventDefault(); addQuestionAndClose(type as QuestionType); }} className="block px-4 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-hover)]">{label}</a></li>))}
@@ -1004,6 +1014,7 @@ const EditorView: React.FC<{ examId: string; onBack: () => void }> = ({ examId, 
     const [isLoading, setIsLoading] = useState(true);
     const [isAiModalOpen, setAiModalOpen] = useState(false);
     const [isBankModalOpen, setBankModalOpen] = useState(false);
+    const [isSmartImportOpen, setSmartImportOpen] = useState(false);
     const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
     const [lastSaved, setLastSaved] = useState<Date | null>(null);
     const [isSaving, setIsSaving] = useState(false); // State for auto-save indicator
@@ -1236,6 +1247,11 @@ const EditorView: React.FC<{ examId: string; onBack: () => void }> = ({ examId, 
         setAiModalOpen(true);
     };
 
+    const handleOpenSmartImport = (sectionId: string) => {
+        setActiveSectionId(sectionId);
+        setSmartImportOpen(true);
+    };
+
     const handleAddFromBank = (questions: Question[]) => {
         if (!activeSectionId) return;
         setExam((prev) => {
@@ -1276,6 +1292,32 @@ const EditorView: React.FC<{ examId: string; onBack: () => void }> = ({ examId, 
                 } : s)
             };
         });
+    };
+
+    const handleImportQuestions = (questions: Question[]) => {
+        if (!activeSectionId) return;
+        setExam((prev) => {
+            if (!prev) return null;
+            
+            // Calculate starting number
+            let totalQuestions = 0;
+            prev.sections.forEach(s => s.questions.forEach(q => { if(q.type !== QuestionType.STIMULUS) totalQuestions++; }));
+            
+            const newQuestions = questions.map((q, idx) => ({
+                ...q,
+                id: crypto.randomUUID(),
+                number: q.type === QuestionType.STIMULUS ? '' : String(totalQuestions + idx + 1)
+            }));
+            
+            return {
+                ...prev,
+                sections: prev.sections.map(s => s.id === activeSectionId ? {
+                    ...s,
+                    questions: [...s.questions, ...newQuestions]
+                } : s)
+            };
+        });
+        setActiveSectionId(null);
     };
 
     // Calculate pagination data
@@ -1439,6 +1481,7 @@ const EditorView: React.FC<{ examId: string; onBack: () => void }> = ({ examId, 
                         onSaveToBank={handleSaveToBank}
                         onAddQuestionsFromBank={handleOpenBank}
                         onOpenAiModal={handleOpenAi}
+                        onOpenSmartImport={handleOpenSmartImport}
                     />
                 ))}
 
@@ -1490,6 +1533,12 @@ const EditorView: React.FC<{ examId: string; onBack: () => void }> = ({ examId, 
                 isOpen={isAiModalOpen} 
                 onClose={() => setAiModalOpen(false)} 
                 onQuestionsGenerated={handleAiQuestions}
+            />
+
+            <SmartImportModal 
+                isOpen={isSmartImportOpen} 
+                onClose={() => setSmartImportOpen(false)} 
+                onImport={handleImportQuestions}
             />
         </div>
     );

@@ -4,7 +4,7 @@ import {
     MoveIcon, TagIcon, TrashIcon, FolderIcon, FolderOpenIcon, SaveIcon,
     ZoomInIcon, WordIcon, FileCodeIcon, ServerIcon, DropboxIcon, HddIcon,
     CardTextIcon, BankIcon, StarsIcon, CloudDownloadIcon, CheckIcon,
-    CloudUploadIcon, SettingsIcon, RobotIcon, QrCodeIcon, ScanIcon, CloudCheckIcon
+    CloudUploadIcon, SettingsIcon, RobotIcon, QrCodeIcon, ScanIcon, CloudCheckIcon, LightningIcon, StackIcon
 } from '../../components/Icons';
 
 const InlineIcon = ({ icon: Icon, className }: { icon: React.ElementType, className?: string }) => (
@@ -69,7 +69,8 @@ const GuideTab: React.FC = () => {
                         <div className="grid grid-cols-2 gap-2 text-xs">
                             <div className="flex items-center gap-2"><InlineIcon icon={EditIcon}/> Edit Soal</div>
                             <div className="flex items-center gap-2"><InlineIcon icon={PrinterIcon}/> Pratinjau</div>
-                            <div className="flex items-center gap-2"><InlineIcon icon={ShuffleIcon}/> Acak Soal</div>
+                            <div className="flex items-center gap-2"><InlineIcon icon={StackIcon}/> Generator Paket</div>
+                            <div className="flex items-center gap-2"><InlineIcon icon={ShuffleIcon}/> Acak Sederhana</div>
                             <div className="flex items-center gap-2"><InlineIcon icon={CopyIcon}/> Duplikat</div>
                             <div className="flex items-center gap-2"><InlineIcon icon={MoveIcon}/> Pindah Folder</div>
                             <div className="flex items-center gap-2 text-red-500"><InlineIcon icon={TrashIcon}/> Hapus</div>
@@ -87,15 +88,38 @@ const GuideTab: React.FC = () => {
                             <strong>Bagian (Section):</strong> Pisahkan jenis soal (misal: PG, Esai) dengan tombol <span className="border border-dashed px-1 rounded text-xs border-[var(--border-secondary)]">+ Tambah Bagian</span>.
                         </li>
                         <li>
-                            <strong>Tambah Soal:</strong> Gunakan menu <strong>+ Tambah Soal</strong>. Pilih manual atau <InlineIcon icon={StarsIcon}/> <strong>Buat dengan AI</strong>.
+                            <strong>Tambah Soal:</strong> Gunakan menu <strong>+ Tambah Soal</strong>.
+                            <ul className="list-disc list-inside ml-4 mt-1 text-[var(--text-muted)]">
+                                <li>Pilih jenis manual (PG, Esai, dll).</li>
+                                <li><strong>Smart Import <InlineIcon icon={LightningIcon}/>:</strong> Salin teks dari Word/PDF (format: "1. Soal... A. Opsi...") lalu tempel untuk dikonversi otomatis.</li>
+                                <li><strong>AI Generator <InlineIcon icon={StarsIcon}/>:</strong> Buat soal otomatis berdasarkan topik.</li>
+                            </ul>
                         </li>
                         <li>
-                            <strong>Navigasi:</strong> Gunakan tombol halaman di bawah untuk berpindah antar halaman soal (per 10 soal) agar editor tetap ringan.
+                            <strong>Navigasi:</strong> Gunakan tombol halaman di bawah untuk berpindah antar halaman soal (per 10 soal).
                         </li>
                     </ul>
                 </TimelineItem>
 
-                <TimelineItem number={3} title="Format Dokumen & Kop">
+                <TimelineItem number={3} title="Generator Paket Soal (Anti Nyontek)">
+                    <p>Membuat beberapa variasi soal dari satu naskah master.</p>
+                    <ul className="list-disc list-inside space-y-1 ml-1 marker:text-blue-500">
+                        <li>
+                            Di halaman <strong>Arsip</strong>, klik ikon tumpukan kertas <InlineIcon icon={StackIcon}/> pada kartu ujian.
+                        </li>
+                        <li>
+                            Pilih jumlah paket yang diinginkan (misal: 2 Paket untuk A & B).
+                        </li>
+                        <li>
+                            Aplikasi akan membuat salinan baru (misal: "Ujian IPA [Paket A]") dengan urutan soal dan opsi jawaban yang diacak secara otomatis.
+                        </li>
+                        <li>
+                            Anda kemudian bisa mencetak Paket A dan Paket B secara terpisah beserta kunci jawabannya masing-masing.
+                        </li>
+                    </ul>
+                </TimelineItem>
+
+                <TimelineItem number={4} title="Format Dokumen & Kop">
                     <p>Sesuaikan tampilan dokumen di menu <strong>Pengaturan <InlineIcon icon={SettingsIcon}/></strong>.</p>
                     <ul className="list-disc list-inside space-y-1 ml-1 marker:text-blue-500">
                         <li>
@@ -107,7 +131,7 @@ const GuideTab: React.FC = () => {
                     </ul>
                 </TimelineItem>
 
-                <TimelineItem number={4} title="Asisten AI (Kecerdasan Buatan)">
+                <TimelineItem number={5} title="Asisten AI (Kecerdasan Buatan)">
                     <p>Gunakan AI untuk membuat soal secara otomatis.</p>
                     <ul className="list-disc list-inside space-y-1 ml-1 marker:text-blue-500">
                         <li>
@@ -119,7 +143,7 @@ const GuideTab: React.FC = () => {
                     </ul>
                 </TimelineItem>
 
-                <TimelineItem number={5} title="Manajemen Data & Offline">
+                <TimelineItem number={6} title="Manajemen Data & Offline">
                     <p>Kelola penyimpanan data lokal Anda di menu <strong>Pengaturan <InlineIcon icon={HddIcon}/></strong>.</p>
                     <ul className="list-disc list-inside space-y-1 ml-1 marker:text-blue-500">
                         <li>
@@ -134,7 +158,7 @@ const GuideTab: React.FC = () => {
                     </ul>
                 </TimelineItem>
 
-                <TimelineItem number={6} title="Sinkronisasi & Pairing Perangkat" isLast={true}>
+                <TimelineItem number={7} title="Sinkronisasi & Pairing Perangkat" isLast={true}>
                     <p>Hubungkan Dropbox agar data aman dan bisa diakses dari berbagai perangkat.</p>
                     
                     {/* Status Indicator Info */}
