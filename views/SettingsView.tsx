@@ -480,7 +480,7 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
     const onScanSuccess = (decodedText: any) => {
         stopScanner();
         // Explicitly convert to string to avoid type errors if library returns unknown/any
-        processPairingCode(`${decodedText}`);
+        processPairingCode(String(decodedText));
     };
 
     const onScanFailure = (error: any) => {

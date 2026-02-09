@@ -17,6 +17,13 @@ import { saveExam } from './lib/storage';
 
 export type View = 'archive' | 'editor' | 'bank' | 'settings' | 'preview' | 'help';
 
+// Interface untuk state history browser
+interface HistoryState {
+    view: View;
+    examId?: string | null;
+    settingsTab?: 'general' | 'header' | 'format' | 'cloud' | 'storage';
+}
+
 function AppContent() {
     const [view, setView] = useState<View>('archive');
     const [editingExamId, setEditingExamId] = useState<string | null>(null);
@@ -42,6 +49,62 @@ function AppContent() {
         };
         runMigration();
     }, [addToast]);
+
+    // --- History API Integration (Native Back Button Support) ---
+    useEffect(() => {
+        // 1. Set initial state saat load pertama kali agar tidak null
+        if (!window.history.state) {
+            window.history.replaceState({ view: 'archive' }, '', '');
+        }
+
+        // 2. Handler saat tombol back ditekan
+        const handlePopState = (event: PopStateEvent) => {
+            const state = event.state as HistoryState;
+            
+            if (state && state.view) {
+                // Restore state dari history
+                setView(state.view);
+                
+                if (state.view === 'editor' && state.examId) {
+                    setEditingExamId(state.examId);
+                } else if (state.view === 'preview' && state.examId) {
+                    setPreviewingExamId(state.examId);
+                } else if (state.view === 'settings' && state.settingsTab) {
+                    setInitialSettingsTab(state.settingsTab);
+                } else {
+                    // Reset ID jika kembali ke root/archive
+                    setEditingExamId(null);
+                    setPreviewingExamId(null);
+                }
+            } else {
+                // Fallback jika state hilang (misal refresh keras), kembali ke archive
+                setView('archive');
+                setEditingExamId(null);
+                setPreviewingExamId(null);
+            }
+        };
+
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, []);
+
+    // Helper untuk push history
+    const pushViewHistory = (targetView: View, extraState: Partial<HistoryState> = {}) => {
+        const newState: HistoryState = { view: targetView, ...extraState };
+        window.history.pushState(newState, '', '');
+        
+        // Update React State sync
+        setView(targetView);
+        if (targetView === 'editor' && extraState.examId) setEditingExamId(extraState.examId);
+        if (targetView === 'preview' && extraState.examId) setPreviewingExamId(extraState.examId);
+        if (targetView === 'settings' && extraState.settingsTab) setInitialSettingsTab(extraState.settingsTab);
+        
+        // Reset jika masuk ke menu utama
+        if (['archive', 'bank', 'help'].includes(targetView)) {
+            setEditingExamId(null);
+            setPreviewingExamId(null);
+        }
+    };
 
     // --- Automatic Cloud Sync Check ---
     useEffect(() => {
@@ -125,18 +188,22 @@ function AppContent() {
     }, [showConfirm]);
 
     const handleNavigate = useCallback((newView: View) => {
-        setView(newView);
-        // Reset settings tab to default when navigating normally
-        if (newView !== 'settings') setInitialSettingsTab('general');
+        // Reset settings tab to default when navigating normally via menu
+        const settingsTab = newView === 'settings' ? 'general' : undefined;
+        pushViewHistory(newView, { settingsTab });
     }, []);
 
-    const handleEditExam = useCallback((id: string) => { setEditingExamId(id); setView('editor'); }, []);
-    const handlePreviewExam = useCallback((id: string) => { setPreviewingExamId(id); setView('preview'); }, []);
+    const handleEditExam = useCallback((id: string) => { 
+        pushViewHistory('editor', { examId: id });
+    }, []);
+
+    const handlePreviewExam = useCallback((id: string) => { 
+        pushViewHistory('preview', { examId: id });
+    }, []);
     
     // Special handler to jump to Cloud Settings
     const handleOpenCloudSettings = useCallback(() => {
-        setInitialSettingsTab('cloud');
-        setView('settings');
+        pushViewHistory('settings', { settingsTab: 'cloud' });
     }, []);
 
     const handleCreateExam = useCallback(async () => {
@@ -161,8 +228,8 @@ function AppContent() {
         try {
             await saveExam(newExam);
             addToast('Ujian baru berhasil dibuat.', 'success');
-            setEditingExamId(newExam.id);
-            setView('editor');
+            // Navigasi ke editor dengan push history
+            pushViewHistory('editor', { examId: newExam.id });
         } catch (error) {
             console.error("Gagal membuat ujian baru:", error);
             addToast('Gagal membuat ujian baru.', 'error');
@@ -170,9 +237,10 @@ function AppContent() {
     }, [addToast]);
 
     const handleBackToArchive = useCallback(() => {
-        setEditingExamId(null);
-        setPreviewingExamId(null);
-        setView('archive');
+        // Saat tombol "Kembali" di UI ditekan, kita panggil history.back()
+        // Ini akan memicu event 'popstate' yang sudah kita handle di useEffect
+        // sehingga state aplikasi akan mundur secara alami.
+        window.history.back();
     }, []);
 
     if (isMigrating) {
