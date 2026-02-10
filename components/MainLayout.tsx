@@ -171,7 +171,8 @@ const MainLayout: React.FC<{
 
             {/* Main Page Content */}
             <div aria-hidden={isSidebarOpen} className="flex flex-col flex-grow">
-                <header className="bg-[var(--bg-secondary)] shadow-md sticky top-0 z-10 border-b border-[var(--border-primary)]">
+                {/* Changed z-10 to z-20 to stack above page content sticky headers */}
+                <header className="bg-[var(--bg-secondary)] shadow-md sticky top-0 z-20 border-b border-[var(--border-primary)]">
                     <div className="container mx-auto px-4 py-3 flex justify-between items-center">
                         <h1 className="text-2xl font-bold text-[var(--text-primary)]">
                             Soal<span className="text-[var(--text-accent)]">Genius</span>
