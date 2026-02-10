@@ -479,8 +479,8 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
 
     const onScanSuccess = (decodedText: any) => {
         stopScanner();
-        // Explicitly convert to string to avoid type errors if library returns unknown/any
-        processPairingCode(String(decodedText));
+        // Fix for: Argument of type 'unknown' is not assignable to parameter of type 'string'
+        processPairingCode(`${decodedText}`);
     };
 
     const onScanFailure = (error: any) => {

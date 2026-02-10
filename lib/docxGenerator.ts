@@ -1,4 +1,4 @@
-import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, ImageRun, AlignmentType, BorderStyle, VerticalAlign, VerticalMergeType, HeightRule } from "docx";
+import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, ImageRun, AlignmentType, BorderStyle, VerticalAlign, VerticalMergeType, HeightRule, Footer } from "docx";
 import { Exam, Settings, QuestionType } from "../types";
 
 // Helper to convert base64 string to Uint8Array for images
@@ -372,6 +372,23 @@ export const generateDocx = async (exam: Exam, settings: Settings): Promise<Blob
                 }
             },
             children: docChildren,
+            footers: {
+                default: new Footer({
+                    children: [
+                        new Paragraph({
+                            alignment: AlignmentType.CENTER,
+                            children: [
+                                new TextRun({
+                                    text: "Dibuat dengan SoalGenius by AI Projek | aiprojek01.my.id",
+                                    color: "94A3B8", // Slate-400 equivalent hex for reduced opacity look
+                                    italics: true,
+                                    size: 16, // 8pt
+                                }),
+                            ],
+                        }),
+                    ],
+                }),
+            },
         }],
     });
 

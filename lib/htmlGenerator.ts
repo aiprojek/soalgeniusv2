@@ -534,6 +534,7 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
             padding: ${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm;
             transform-origin: top;
             transition: transform 0.2s ease-in-out;
+            position: relative; /* For footer positioning context if needed */
         }
 
         /* Print-specific Styles */
@@ -546,6 +547,35 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
             .no-print { display: none !important; }
             .exam-sheet-container { padding: 0 !important; }
             .exam-sheet { box-shadow: none !important; border: none !important; margin: 0 !important; padding: 0 !important; width: 100%; min-height: auto; transform: none !important; }
+            
+            /* Watermark Footer for Print */
+            .watermark-footer {
+                display: block !important;
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                text-align: center;
+                font-size: 8pt;
+                color: #94a3b8; /* Slate-400 */
+                opacity: 0.5;
+                font-style: italic;
+                padding-bottom: 5mm;
+                pointer-events: none;
+            }
+        }
+        
+        /* Screen View Styles for Watermark */
+        .watermark-footer {
+            display: block;
+            margin-top: 2rem;
+            text-align: center;
+            font-size: 8pt;
+            color: #94a3b8;
+            opacity: 0.5;
+            font-style: italic;
+            border-top: 1px dashed #e2e8f0;
+            padding-top: 0.5rem;
         }
 
         /* --- Semantic Component Styles: HEADER --- */
@@ -886,6 +916,7 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
     <div class="exam-sheet-container">
         <main class="exam-sheet" style="box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);">
             ${mainContentHtml}
+            <div class="watermark-footer">Dibuat dengan SoalGenius by AI Projek | aiprojek01.my.id</div>
         </main>
     </div>
     ${dynamicHeaderScript}
