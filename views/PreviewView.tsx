@@ -8,6 +8,7 @@ import {
     ChevronLeftIcon, ZoomInIcon, ZoomOutIcon, DownloadIcon, PrinterIcon, WordIcon, ServerIcon
 } from '../components/Icons';
 import { useToast } from '../contexts/ToastContext';
+import { useModal } from '../contexts/ModalContext';
 
 
 const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId, onBack }) => {
@@ -22,6 +23,7 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
     const actionsMenuRef = useRef<HTMLDivElement>(null);
     const mainContainerRef = useRef<HTMLElement>(null);
     const { addToast } = useToast();
+    const { showConfirm } = useModal();
 
 
     useEffect(() => {
@@ -79,6 +81,27 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
         return generateHtmlContent(exam, settings, 'answer_key', false);
     }, [exam, settings]);
 
+    // --- Donation Prompt Helper ---
+    const showDonationPrompt = useCallback(() => {
+        // Small delay to make it feel natural after the download starts
+        setTimeout(() => {
+            showConfirm({
+                title: "Dukungan Pengembangan ☕",
+                content: (
+                    <div className="text-sm text-[var(--text-secondary)] space-y-3">
+                        <p>Dokumen berhasil diproses! Semoga bermanfaat untuk kegiatan mengajar Bapak/Ibu.</p>
+                        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
+                            <p><strong>SoalGenius</strong> dikembangkan secara mandiri dan gratis (Open Source). Jika aplikasi ini membantu pekerjaan Anda, pertimbangkan untuk mentraktir kami kopi agar kami semangat mengembangkan fitur baru.</p>
+                        </div>
+                    </div>
+                ),
+                confirmLabel: "Traktir Kopi",
+                confirmVariant: "primary",
+                onConfirm: () => window.open("https://lynk.id/aiprojek/s/bvBJvdA", "_blank")
+            });
+        }, 1500);
+    }, [showConfirm]);
+
     const handleExportHtml = useCallback(() => {
         if (!exam || !settings) return;
         
@@ -97,7 +120,9 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-    }, [exam, settings, showAnswerKey]);
+        
+        showDonationPrompt();
+    }, [exam, settings, showAnswerKey, showDonationPrompt]);
 
     const handleExportWord = useCallback(async () => {
         if (!exam || !settings) return;
@@ -120,13 +145,15 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
             addToast('Dokumen Word berhasil diunduh.', 'success');
+            
+            showDonationPrompt();
         } catch (error) {
             console.error("Export Word failed", error);
             addToast('Gagal mengekspor ke Word.', 'error');
         } finally {
             setIsExportingWord(false);
         }
-    }, [exam, settings, addToast]);
+    }, [exam, settings, addToast, showDonationPrompt]);
 
     const handleExportMoodle = useCallback(() => {
         if (!exam) return;
@@ -143,14 +170,19 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
             addToast('File Moodle XML berhasil diunduh.', 'success');
+            
+            showDonationPrompt();
         } catch (error) {
             console.error("Export Moodle failed", error);
             addToast('Gagal mengekspor ke Moodle XML.', 'error');
         }
-    }, [exam, addToast]);
+    }, [exam, addToast, showDonationPrompt]);
 
     const handlePrint = () => {
         iframeRef.current?.contentWindow?.print();
+        // In many browsers, code execution pauses at print(), then resumes.
+        // We add a delay to ensure the dialog is likely closed or the user is done interacting.
+        showDonationPrompt();
     };
     
     if (isLoading || !exam || !settings) {

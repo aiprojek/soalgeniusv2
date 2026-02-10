@@ -60,6 +60,9 @@ export const MoveIcon = ({ className }: IconProps) => <i className={`bi bi-arrow
 export const CoffeeIcon = ({ className }: IconProps) => <i className={`bi bi-cup-hot-fill ${className || ''}`}></i>;
 export const GithubIcon = ({ className }: IconProps) => <i className={`bi bi-github ${className || ''}`}></i>;
 export const DiscussionIcon = ({ className }: IconProps) => <i className={`bi bi-telegram ${className || ''}`}></i>;
+export const BuildingIcon = ({ className }: IconProps) => <i className={`bi bi-buildings-fill ${className || ''}`}></i>;
+export const BriefcaseIcon = ({ className }: IconProps) => <i className={`bi bi-briefcase-fill ${className || ''}`}></i>;
+export const WhatsappIcon = ({ className }: IconProps) => <i className={`bi bi-whatsapp ${className || ''}`}></i>;
 
 // Icons for Column Layout
 export const CardTextIcon = ({ className }: IconProps) => <i className={`bi bi-card-text ${className || ''}`}></i>;

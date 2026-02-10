@@ -1,5 +1,5 @@
 // Nama cache baru untuk memicu pembaruan
-const CACHE_NAME = 'soalgenius-cache-v6-offline-ready';
+const CACHE_NAME = 'soalgenius-cache-v7-services-added';
 
 // Daftar URL statis aplikasi
 const appShellFiles = [
@@ -13,6 +13,8 @@ const appShellFiles = [
   './components/Icons.tsx',
   './components/MainLayout.tsx',
   './components/AiGeneratorModal.tsx',
+  './components/PacketGeneratorModal.tsx',
+  './components/SmartImportModal.tsx',
   './contexts/ModalContext.tsx',
   './contexts/ToastContext.tsx',
   './contexts/ThemeContext.tsx',
@@ -27,6 +29,7 @@ const appShellFiles = [
   './lib/utils.ts',
   './lib/gemini.ts',
   './lib/dropbox.ts',
+  './lib/smartImport.ts',
   './views/ArchiveView.tsx',
   './views/EditorView.tsx',
   './views/PreviewView.tsx',
@@ -36,6 +39,7 @@ const appShellFiles = [
   './views/help/AboutTab.tsx',
   './views/help/FeaturesTab.tsx',
   './views/help/GuideTab.tsx',
+  './views/help/ServicesTab.tsx',
 ];
 
 // Daftar CDN Eksternal yang harus di-cache agar aplikasi jalan offline

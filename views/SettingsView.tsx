@@ -287,6 +287,26 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
         event.target.value = ''; // Reset input
     }, [addToast]);
 
+    // --- Donation Prompt ---
+    const showDonationPrompt = useCallback(() => {
+        setTimeout(() => {
+            showConfirm({
+                title: "Dukungan Pengembangan ☕",
+                content: (
+                    <div className="text-sm text-[var(--text-secondary)] space-y-3">
+                        <p>Dokumen berhasil diproses! Semoga bermanfaat untuk kegiatan mengajar Bapak/Ibu.</p>
+                        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
+                            <p><strong>SoalGenius</strong> dikembangkan secara mandiri dan gratis (Open Source). Jika aplikasi ini membantu pekerjaan Anda, pertimbangkan untuk mentraktir kami kopi agar kami semangat mengembangkan fitur baru.</p>
+                        </div>
+                    </div>
+                ),
+                confirmLabel: "Traktir Kopi",
+                confirmVariant: "primary",
+                onConfirm: () => window.open("https://lynk.id/aiprojek/s/bvBJvdA", "_blank")
+            });
+        }, 1500);
+    }, [showConfirm]);
+
     // --- Single Export Handler ---
     const handleExportExam = useCallback(async (exam: Exam, format: 'json' | 'docx' | 'html', silent = false) => {
         if (!settings) return;
@@ -321,12 +341,16 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            if (!silent) addToast(`Berhasil mengekspor ${format.toUpperCase()}`, 'success');
+            if (!silent) {
+                addToast(`Berhasil mengekspor ${format.toUpperCase()}`, 'success');
+                // Prompt donation for single exports in settings too, as user requested "export lainnya juga"
+                showDonationPrompt();
+            }
         } catch (e: any) {
             console.error(e);
             if (!silent) addToast(`Gagal mengekspor ${format.toUpperCase()}`, 'error');
         }
-    }, [settings, addToast]);
+    }, [settings, addToast, showDonationPrompt]);
 
     // --- Dropbox Handlers ---
     const handleGetAuthCode = () => {
@@ -471,15 +495,15 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
     const stopScanner = () => {
         if (scannerRef.current) {
             // Using error: any to match library catch signature, but handle safely
-            scannerRef.current.clear().catch((error: any) => console.error("Failed to clear scanner", error));
+            scannerRef.current.clear().catch((error: any) => console.error("Failed to clear scanner", String(error)));
             scannerRef.current = null;
         }
         setIsScanning(false);
     };
 
-    const onScanSuccess = (decodedText: any) => {
+    const onScanSuccess = (decodedText: string) => {
         stopScanner();
-        processPairingCode(String(decodedText));
+        processPairingCode(decodedText);
     };
 
     const onScanFailure = (error: any) => {
@@ -505,7 +529,7 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
                     addToast('Pustaka Scanner belum dimuat. Periksa koneksi internet.', 'error');
                     setIsScanning(false);
                 }
-            } catch (e) {
+            } catch (e: any) {
                 console.error("Scanner init error", e);
                 addToast('Gagal inisialisasi kamera.', 'error');
                 setIsScanning(false);
@@ -600,7 +624,8 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
         
         addToast(`Selesai mengunduh ${selectedExams.length} dokumen.`, 'success');
         setSelectedExamIds(new Set());
-    }, [examList, selectedExamIds, addToast, handleExportExam]);
+        showDonationPrompt(); // Show for bulk export as well
+    }, [examList, selectedExamIds, addToast, handleExportExam, showDonationPrompt]);
 
     const toggleSelection = (id: string) => {
         setSelectedExamIds(prev => {
