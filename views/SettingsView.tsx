@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import type { Exam, Settings } from '../types';
 import { getSettings, saveSettings, getAllExams, deleteExam, createBackupData, restoreBackupData } from '../lib/storage';
-import { getDropboxConfig, isDropboxConnected as checkDbxStatus, getDropboxAuthCodeUrl, exchangeAuthCodeForToken, clearDropboxToken, uploadToDropbox, downloadFromDropbox, getDropboxSpaceUsage, DropboxSpaceUsage, saveDropboxConfig } from '../lib/dropbox';
+import { getDropboxConfig, isDropboxConnected as checkDbxStatus, getDropboxAuthCodeUrl, exchangeAuthCodeForToken, clearDropboxToken, uploadToDropbox, downloadFromDropbox, getDropboxSpaceUsage, DropboxSpaceUsage, saveDropboxConfig, getDropboxToken, saveDropboxToken } from '../lib/dropbox';
 import { saveGeminiKey, getGeminiKey } from '../lib/gemini';
 import { generateDocx } from '../lib/docxGenerator';
 import { generateHtmlContent } from '../lib/htmlGenerator';
@@ -449,8 +449,17 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
             addToast('Konfigurasi App Key dan Secret belum lengkap.', 'error');
             return;
         }
+        
+        // Include Access Token in QR Code for Instant Auth
+        const token = getDropboxToken();
+        
         try {
-            const json = JSON.stringify({ k: dropboxAppKey, s: dropboxAppSecret });
+            const payload = { 
+                k: dropboxAppKey, 
+                s: dropboxAppSecret,
+                t: token || '' // Add token (if available)
+            };
+            const json = JSON.stringify(payload);
             const code = btoa(json);
             setGeneratedPairingCode(code);
             setShowPairingHost(true);
@@ -464,20 +473,50 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
         addToast('Kode Pairing disalin!', 'success');
     };
 
-    const processPairingCode = (code: string) => {
+    const processPairingCode = async (code: string) => {
         try {
             const json = atob(code.trim());
             const data = JSON.parse(json);
+            
             if (data.k && data.s) {
+                // 1. Save Config
                 setDropboxAppKey(data.k);
                 setDropboxAppSecret(data.s);
-                saveDropboxConfig(data.k, data.s); // Save to storage immediately
-                // Set flag for auto-restore after Auth
-                sessionStorage.setItem('soalgenius_auto_restore', '1');
-                addToast('Konfigurasi diterapkan! Silakan klik "Dapatkan Kode" untuk melanjutkan.', 'success');
+                saveDropboxConfig(data.k, data.s);
+
+                // 2. Check for Token (Instant Auth)
+                if (data.t) {
+                    saveDropboxToken(data.t);
+                    setIsDropboxConnected(true);
+                    
+                    addToast('Berhasil terhubung ke Dropbox (Instant Auth).', 'success');
+                    
+                    // Auto Restore Trigger
+                    showConfirm({
+                        title: "Sinkronisasi Data",
+                        content: "Perangkat terhubung! Apakah Anda ingin mengunduh data dari Cloud sekarang?",
+                        confirmVariant: 'primary',
+                        confirmLabel: 'Unduh Data',
+                        onConfirm: async () => {
+                            setIsSyncing(true);
+                            try {
+                                await downloadFromDropbox();
+                                addToast('Data berhasil dipulihkan. Memuat ulang...', 'success');
+                                setTimeout(() => window.location.reload(), 1500);
+                            } catch (e: any) {
+                                addToast('Gagal mengunduh data.', 'error');
+                                setIsSyncing(false);
+                            }
+                        }
+                    });
+                } else {
+                    // Fallback to manual flow if token not in QR
+                    sessionStorage.setItem('soalgenius_auto_restore', '1');
+                    addToast('Konfigurasi diterapkan! Silakan klik "Dapatkan Kode" untuk melanjutkan.', 'success');
+                    document.getElementById('auth-section')?.scrollIntoView({ behavior: 'smooth' });
+                }
+                
                 setIsScanning(false);
-                // Optional: Scroll to auth section
-                document.getElementById('auth-section')?.scrollIntoView({ behavior: 'smooth' });
             } else {
                 throw new Error('Format kode salah');
             }
@@ -494,8 +533,11 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
     // --- QR Scanner Logic ---
     const stopScanner = () => {
         if (scannerRef.current) {
-            // Using error: any to match library catch signature, but handle safely
-            scannerRef.current.clear().catch((error: any) => console.error("Failed to clear scanner", String(error)));
+            // Fix: Use unknown for catch variable and safe string conversion to handle type errors
+            scannerRef.current.clear().catch((error: unknown) => {
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                console.error("Failed to clear scanner", errorMessage);
+            });
             scannerRef.current = null;
         }
         setIsScanning(false);
