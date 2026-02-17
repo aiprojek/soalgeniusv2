@@ -533,19 +533,20 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
     // --- QR Scanner Logic ---
     const stopScanner = () => {
         if (scannerRef.current) {
-            // Fix: Use unknown for catch variable and safe string conversion to handle type errors
-            scannerRef.current.clear().catch((error: unknown) => {
-                const errorMessage = error instanceof Error ? error.message : String(error);
-                console.error("Failed to clear scanner", errorMessage);
+            // Fix: Use unknown for catch variable and handle logging safely
+            scannerRef.current.clear().catch((error: any) => {
+                console.error("Failed to clear scanner", error);
             });
             scannerRef.current = null;
         }
         setIsScanning(false);
     };
 
-    const onScanSuccess = (decodedText: string) => {
+    const onScanSuccess = (decodedText: any) => {
         stopScanner();
-        processPairingCode(decodedText);
+        // decodedText passed from library might be unknown type, safely cast to string
+        const text = typeof decodedText === 'string' ? decodedText : String(decodedText);
+        processPairingCode(text);
     };
 
     const onScanFailure = (error: any) => {
@@ -1085,8 +1086,8 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
                                         </div>
                                     </button>
                                 </div>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
                 )}
 

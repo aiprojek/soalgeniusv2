@@ -65,6 +65,14 @@ const SmartImportModal: React.FC<SmartImportModalProps> = ({ isOpen, onClose, on
                 <div className="flex-grow flex flex-col md:flex-row overflow-hidden">
                     {/* Left: Input */}
                     <div className="w-full md:w-1/2 p-4 flex flex-col border-b md:border-b-0 md:border-r border-[var(--border-primary)]">
+                        <div className="mb-3 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 text-xs p-3 rounded-lg border border-blue-200 dark:border-blue-800 flex gap-2 items-start">
+                            <InfoIcon className="text-sm mt-0.5 shrink-0" />
+                            <p>
+                                <strong>Catatan:</strong> Fitur ini saat ini dioptimalkan untuk <strong>Huruf Latin</strong>. 
+                                Pengenalan karakter non-Latin (seperti Arab/Jawi) mungkin belum akurat karena keterbatasan deteksi format otomatis.
+                            </p>
+                        </div>
+
                         <label className="text-sm font-semibold text-[var(--text-secondary)] mb-2 flex justify-between">
                             <span>Area Tempel (Paste)</span>
                             <span className="text-xs font-normal text-[var(--text-muted)]">Format: 1. Soal... A. Opsi...</span>
