@@ -155,7 +155,7 @@ function AppContent() {
         if ('serviceWorker' in navigator && window.self === window.top) {
             const registerServiceWorker = async () => {
                 try {
-                    const registration = await navigator.serviceWorker.register('/sw.js');
+                    const registration = await navigator.serviceWorker.register('./sw.js');
                     registration.onupdatefound = () => {
                         const installingWorker = registration.installing;
                         if (installingWorker) {
