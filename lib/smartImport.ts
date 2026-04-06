@@ -1,4 +1,5 @@
 import { Question, QuestionType, MultipleChoiceOption } from "../types";
+import { sanitizeRichHtml } from "./utils";
 
 interface ParsedRawQuestion {
     text: string;
@@ -140,7 +141,7 @@ export const parseRawText = (text: string): Question[] => {
         const questionId = crypto.randomUUID();
         const choices: MultipleChoiceOption[] = raw.options.map(opt => ({
             id: crypto.randomUUID(),
-            text: opt.text
+            text: sanitizeRichHtml(opt.text)
         }));
 
         // Map answer key letter (A, B, C...) to UUID
@@ -159,7 +160,7 @@ export const parseRawText = (text: string): Question[] => {
             id: questionId,
             number: '', // Nanti diatur ulang oleh parent
             type: type,
-            text: raw.text,
+            text: sanitizeRichHtml(raw.text),
             choices: type === QuestionType.MULTIPLE_CHOICE ? choices : undefined,
             answerKey: answerKey,
             hasAnswerSpace: type === QuestionType.ESSAY ? true : undefined

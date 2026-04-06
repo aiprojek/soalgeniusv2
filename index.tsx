@@ -1,6 +1,11 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import '@fontsource/amiri';
+import '@fontsource/aref-ruqaa';
+import 'bootstrap-icons/font/bootstrap-icons.css';
+import 'quill/dist/quill.snow.css';
+import './styles.css';
 
 const initializeApp = () => {
   const rootElement = document.getElementById('root');

@@ -1,7 +1,7 @@
 
 import type { Exam, Settings } from '../types';
 import { QuestionType } from '../types';
-import { escapeHtml } from './utils';
+import { escapeHtml, sanitizeRichHtml } from './utils';
 
 // Helper functions for RTL
 const toArabicNumeral = (n: string | number): string => {
@@ -103,16 +103,16 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
             const questionsHtml = section.questions.map(q => {
                 // If it is a stimulus type, render distinct block without numbering
                 if (q.type === QuestionType.STIMULUS) {
-                    return `<li class="question-item stimulus-block"><div class="question-body">${q.text}</div></li>`;
+                    return `<li class="question-item stimulus-block"><div class="question-body">${sanitizeRichHtml(q.text)}</div></li>`;
                 }
 
                 const questionNumber = isRTL ? toArabicNumeral(q.number) : q.number;
-                const questionText = q.text;
+                const questionText = sanitizeRichHtml(q.text);
                 let choicesHtml = '';
                 switch(q.type) {
                     case QuestionType.MULTIPLE_CHOICE:
                         const mcListClass = q.isTwoColumns ? 'choices-list choices-list-2-col' : 'choices-list';
-                        choicesHtml = `<ol class="${mcListClass}">${(q.choices || []).map((c, idx) => `<li><span class="choice-marker"><bdi>${isRTL ? toArabicLetter(idx) : String.fromCharCode(97 + idx)}.</bdi></span><div class="choice-text">${c.text}</div></li>`).join('')}</ol>`;
+                        choicesHtml = `<ol class="${mcListClass}">${(q.choices || []).map((c, idx) => `<li><span class="choice-marker"><bdi>${isRTL ? toArabicLetter(idx) : String.fromCharCode(97 + idx)}.</bdi></span><div class="choice-text">${sanitizeRichHtml(c.text)}</div></li>`).join('')}</ol>`;
                         break;
                     case QuestionType.COMPLEX_MULTIPLE_CHOICE:
                          const cmcGridClass = q.isTwoColumns ? 'choices-grid-complex choices-grid-complex-2-col' : 'choices-grid-complex';
@@ -122,7 +122,7 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
                                     <div class="choice-item-complex">
                                         <span class="checkbox-box"></span>
                                         <span class="choice-letter">${isRTL ? toArabicLetter(index) : String.fromCharCode(97 + index)}.</span>
-                                        <div class="choice-text">${choice.text}</div>
+                                        <div class="choice-text">${sanitizeRichHtml(choice.text)}</div>
                                     </div>
                                 `).join('')}
                             </div>
@@ -161,9 +161,9 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
                             tableRows += `
                                 <tr>
                                     <td class="prompt-number">${prompt ? `<bdi>${isRTL ? `&rlm;${toArabicNumeral(i + 1)}.` : `${i + 1}.`}</bdi>` : ''}</td>
-                                    <td class="prompt-text">${prompt?.text || ''}</td>
+                                    <td class="prompt-text">${sanitizeRichHtml(prompt?.text || '')}</td>
                                     <td class="answer-letter">${answer ? `<bdi>${isRTL ? toArabicLetter(i) : String.fromCharCode(65 + i)}.</bdi>` : ''}</td>
-                                    <td class="answer-text">${answer?.text || ''}</td>
+                                    <td class="answer-text">${sanitizeRichHtml(answer?.text || '')}</td>
                                 </tr>
                             `;
                         }
@@ -204,7 +204,7 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
                                     const cellStyle = vaStyle ? `style="${vaStyle}"` : '';
                                     const colspan = cell.colspan ? `colspan="${cell.colspan}"` : '';
                                     const rowspan = cell.rowspan ? `rowspan="${cell.rowspan}"` : '';
-                                    tableRender += `<td ${colspan} ${rowspan} ${cellStyle}>${cell.content}</td>`;
+                                    tableRender += `<td ${colspan} ${rowspan} ${cellStyle}>${sanitizeRichHtml(cell.content)}</td>`;
                                 });
                                 tableRender += '</tr>';
                             });
@@ -224,13 +224,13 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
                                             <div class="choice-item-complex">
                                                 <span class="checkbox-box"></span>
                                                 <span class="choice-letter">${isRTL ? toArabicLetter(index) : String.fromCharCode(97 + index)}.</span>
-                                                <div class="choice-text">${choice.text}</div>
+                                                <div class="choice-text">${sanitizeRichHtml(choice.text)}</div>
                                             </div>
                                         `).join('')}
                                     </div>
                                 `;
                              } else {
-                                choiceRender = `<ol class="${listClass} choices-list-2-col">${(q.choices || []).map((c, idx) => `<li><span class="choice-marker"><bdi>${isRTL ? toArabicLetter(idx) : String.fromCharCode(97 + idx)}.</bdi></span><div class="choice-text">${c.text}</div></li>`).join('')}</ol>`;
+                                choiceRender = `<ol class="${listClass} choices-list-2-col">${(q.choices || []).map((c, idx) => `<li><span class="choice-marker"><bdi>${isRTL ? toArabicLetter(idx) : String.fromCharCode(97 + idx)}.</bdi></span><div class="choice-text">${sanitizeRichHtml(c.text)}</div></li>`).join('')}</ol>`;
                              }
                              choicesHtml += choiceRender;
                         }
@@ -258,7 +258,7 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
             }
 
             // Legacy stimulus support (if old exams still have it)
-            const stimulusContent = section.stimulus ? `<div class="section-stimulus">${section.stimulus}</div>` : '';
+            const stimulusContent = section.stimulus ? `<div class="section-stimulus">${sanitizeRichHtml(section.stimulus)}</div>` : '';
 
             return `
                 <section class="exam-section">
@@ -275,7 +275,7 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
             ? `
             <section class="general-instructions">
                 <h4>${T.instructions}</h4>
-                <div class="instructions-text">${exam.instructions.replace(/\n/g, '<br/>')}</div>
+                <div class="instructions-text">${escapeHtml(exam.instructions).replace(/\n/g, '<br/>')}</div>
             </section>
             `
             : '';
@@ -341,7 +341,7 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
                         const choice = (q.choices || []).find(c => c.id === q.answerKey);
                         if(choice) {
                             const choiceIndex = (q.choices || []).indexOf(choice);
-                            answerText = `<span><bdi>${isRTL ? toArabicLetter(choiceIndex) : String.fromCharCode(65 + choiceIndex)}.</bdi> ${choice.text}</span>`;
+                            answerText = `<span><bdi>${isRTL ? toArabicLetter(choiceIndex) : String.fromCharCode(65 + choiceIndex)}.</bdi> ${sanitizeRichHtml(choice.text)}</span>`;
                         }
                         break;
                     }
@@ -390,7 +390,7 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
                                 row.cells.forEach(cell => {
                                     if (cell.isMerged) return;
                                     const answer = (q.tableAnswerKey || {})[cell.id];
-                                    const content = cell.content; // Content is now HTML
+                                    const content = sanitizeRichHtml(cell.content);
                                     const vaStyle = cell.verticalAlign ? `vertical-align: ${cell.verticalAlign};` : '';
                                     const cellStyle = vaStyle ? `style="${vaStyle}"` : '';
                                     const colspan = cell.colspan ? `colspan="${cell.colspan}"` : '';

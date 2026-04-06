@@ -154,13 +154,13 @@ export const shuffleExam = async (id: string): Promise<Exam> => {
     const examToShuffle = allExams.find(exam => exam.id === id);
     if (!examToShuffle) throw new Error("Ujian tidak ditemukan untuk diacak");
 
-    const variantRegex = / - Varian \d+$/;
+    const variantRegex = / - Varian (\d+)$/;
     const baseTitle = examToShuffle.title.replace(variantRegex, '').trim();
 
     let highestVariant = 0;
     allExams.forEach(exam => {
         if (exam.title.startsWith(baseTitle)) {
-            const match = exam.title.match(/ - Varian \d+$/);
+            const match = exam.title.match(variantRegex);
             if (match && match[1]) {
                 const variantNumber = parseInt(match[1], 10);
                 if (variantNumber > highestVariant) highestVariant = variantNumber;
@@ -256,12 +256,12 @@ export const saveFolder = async (folder: Folder): Promise<string> => {
 
 export const deleteFolder = async (folderId: string): Promise<void> => {
     try {
-        await db.transaction('rw', db.folders, db.exams, async () => {
+        await (db as any).transaction('rw', db.folders, db.exams, async () => {
             // Delete folder
             await db.folders.delete(folderId);
             
             // Move exams in this folder to 'Uncategorized' (remove folderId)
-            const examsInFolder = await db.exams.where('folderId').equals(folderId).toArray();
+            const examsInFolder = (await db.exams.toArray()).filter(exam => exam.folderId === folderId);
             for (const exam of examsInFolder) {
                 delete exam.folderId;
                 await db.exams.put(exam);
@@ -278,7 +278,7 @@ export const deleteFolder = async (folderId: string): Promise<void> => {
 
 export const renameGlobalTag = async (oldTag: string, newTag: string): Promise<void> => {
     try {
-        await db.transaction('rw', db.exams, async () => {
+        await (db as any).transaction('rw', db.exams, async () => {
             const exams = await db.exams.toArray();
             for (const exam of exams) {
                 if (exam.tags && exam.tags.includes(oldTag)) {
@@ -299,7 +299,7 @@ export const renameGlobalTag = async (oldTag: string, newTag: string): Promise<v
 
 export const deleteGlobalTag = async (tagToDelete: string): Promise<void> => {
     try {
-        await db.transaction('rw', db.exams, async () => {
+        await (db as any).transaction('rw', db.exams, async () => {
             const exams = await db.exams.toArray();
             for (const exam of exams) {
                 if (exam.tags && exam.tags.includes(tagToDelete)) {
@@ -410,7 +410,7 @@ export const restoreBackupData = async (jsonString: string): Promise<boolean> =>
             throw new Error('Format backup tidak valid');
         }
 
-        await db.transaction('rw', db.exams, db.settings, db.bankQuestions, db.folders, async () => {
+        await (db as any).transaction('rw', db.exams, db.settings, db.bankQuestions, db.folders, async () => {
             // Hapus semua data yang ada
             await db.exams.clear();
             await db.settings.clear();

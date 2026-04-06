@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Question, QuestionType } from '../types';
 import { parseRawText } from '../lib/smartImport.ts';
+import { sanitizeRichHtml } from '../lib/utils';
 import { LightningIcon, CloseIcon, CheckIcon, InfoIcon } from './Icons';
 import { useToast } from '../contexts/ToastContext';
 
@@ -44,11 +45,11 @@ const SmartImportModal: React.FC<SmartImportModalProps> = ({ isOpen, onClose, on
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <div className="bg-[var(--bg-secondary)] w-full max-w-5xl h-[85vh] rounded-xl shadow-2xl flex flex-col border border-[var(--border-primary)] overflow-hidden animate-scale-in">
+            <div className="app-modal-panel w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden animate-scale-in">
                 {/* Header */}
-                <div className="flex justify-between items-center p-4 border-b border-[var(--border-primary)] bg-[var(--bg-tertiary)]">
+                <div className="app-modal-header flex justify-between items-center p-4 sm:p-5">
                     <div className="flex items-center gap-2">
-                        <div className="p-1.5 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg text-yellow-600">
+                        <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-xl text-yellow-600">
                             <LightningIcon className="text-xl" />
                         </div>
                         <div>
@@ -64,7 +65,7 @@ const SmartImportModal: React.FC<SmartImportModalProps> = ({ isOpen, onClose, on
                 {/* Content - Split View */}
                 <div className="flex-grow flex flex-col md:flex-row overflow-hidden">
                     {/* Left: Input */}
-                    <div className="w-full md:w-1/2 p-4 flex flex-col border-b md:border-b-0 md:border-r border-[var(--border-primary)]">
+                    <div className="w-full md:w-1/2 p-4 sm:p-5 flex flex-col border-b md:border-b-0 md:border-r border-[var(--border-primary)]">
                         <div className="mb-3 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 text-xs p-3 rounded-lg border border-blue-200 dark:border-blue-800 flex gap-2 items-start">
                             <InfoIcon className="text-sm mt-0.5 shrink-0" />
                             <p>
@@ -78,7 +79,7 @@ const SmartImportModal: React.FC<SmartImportModalProps> = ({ isOpen, onClose, on
                             <span className="text-xs font-normal text-[var(--text-muted)]">Format: 1. Soal... A. Opsi...</span>
                         </label>
                         <textarea
-                            className="flex-grow w-full p-4 border border-[var(--border-secondary)] rounded-lg bg-[var(--bg-primary)] font-mono text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                            className="flex-grow w-full p-4 border border-[var(--border-secondary)] rounded-[var(--radius-control)] bg-[var(--bg-primary)] font-mono text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none"
                             placeholder={`Contoh Format:\n\n1. Siapa presiden pertama Indonesia?\nA. Soeharto\nB. Soekarno\nC. Habibie\nD. Gus Dur\nKunci: B\n\n2. Jelaskan pengertian demokrasi!\n(Otomatis terdeteksi sebagai Esai)`}
                             value={rawText}
                             onChange={(e) => setRawText(e.target.value)}
@@ -86,7 +87,7 @@ const SmartImportModal: React.FC<SmartImportModalProps> = ({ isOpen, onClose, on
                     </div>
 
                     {/* Right: Preview */}
-                    <div className="w-full md:w-1/2 p-4 flex flex-col bg-[var(--bg-muted)]">
+                    <div className="w-full md:w-1/2 p-4 sm:p-5 flex flex-col bg-[var(--bg-muted)]">
                         <div className="flex justify-between items-center mb-2">
                             <label className="text-sm font-semibold text-[var(--text-secondary)]">Pratinjau Hasil ({parsedQuestions.length})</label>
                             {parsedQuestions.length > 0 && <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded-full">Siap Impor</span>}
@@ -100,11 +101,11 @@ const SmartImportModal: React.FC<SmartImportModalProps> = ({ isOpen, onClose, on
                                 </div>
                             ) : (
                                 parsedQuestions.map((q, idx) => (
-                                    <div key={idx} className="bg-[var(--bg-secondary)] p-3 rounded-lg border border-[var(--border-secondary)] text-sm shadow-sm">
+                                    <div key={idx} className="app-surface p-3 rounded-[var(--radius-control)] text-sm shadow-sm">
                                         <div className="flex gap-2">
                                             <span className="font-bold text-blue-600">{idx + 1}.</span>
                                             <div className="flex-grow">
-                                                <div dangerouslySetInnerHTML={{ __html: q.text }} className="font-medium text-[var(--text-primary)] mb-2" />
+                                                <div dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(q.text) }} className="font-medium text-[var(--text-primary)] mb-2" />
                                                 
                                                 {q.type === QuestionType.MULTIPLE_CHOICE ? (
                                                     <div className="space-y-1 ml-1">
@@ -131,14 +132,14 @@ const SmartImportModal: React.FC<SmartImportModalProps> = ({ isOpen, onClose, on
                 </div>
 
                 {/* Footer */}
-                <div className="p-4 border-t border-[var(--border-primary)] bg-[var(--bg-secondary)] flex justify-end gap-3">
-                    <button onClick={onClose} className="px-5 py-2.5 rounded-lg text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors">
+                <div className="app-modal-footer p-4 sm:p-5 flex justify-end gap-3">
+                    <button onClick={onClose} className="px-5 py-2.5 rounded-[var(--radius-control)] text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors">
                         Batal
                     </button>
                     <button 
                         onClick={handleImport}
                         disabled={parsedQuestions.length === 0}
-                        className="px-5 py-2.5 rounded-lg text-sm font-semibold bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] text-white shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all hover:-translate-y-0.5"
+                        className="px-5 py-2.5 rounded-[var(--radius-control)] text-sm font-semibold bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] text-white shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all hover:-translate-y-0.5"
                     >
                         <LightningIcon />
                         Impor {parsedQuestions.length > 0 ? `${parsedQuestions.length} Soal` : ''}

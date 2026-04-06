@@ -42,16 +42,6 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
         loadData();
     }, [examId, onBack]);
 
-     useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (actionsMenuRef.current && !actionsMenuRef.current.contains(event.target as Node)) {
-                setActionsMenuOpen(false);
-            }
-        };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, [actionsMenuRef]);
-
     useEffect(() => {
         if (!settings || !mainContainerRef.current || isLoading) return;
 
@@ -186,27 +176,32 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
     };
     
     if (isLoading || !exam || !settings) {
-        return <div className="fixed inset-0 bg-slate-200 flex items-center justify-center text-slate-700">Memuat Pratinjau...</div>;
+        return <div className="fixed inset-0 app-shell-page flex items-center justify-center text-[var(--text-secondary)]">Memuat Pratinjau...</div>;
     }
 
     return (
-        <div className="fixed inset-0 bg-slate-200 dark:bg-slate-950 z-50 flex flex-col print:bg-white">
-            <header className="bg-[var(--bg-secondary)] shadow-md flex-shrink-0 print:hidden border-b border-[var(--border-primary)]">
-                <div className="container mx-auto px-2 sm:px-4 py-2 flex items-center justify-between gap-2">
-                    <div className="flex-1 flex justify-start">
-                        <button onClick={onBack} className="flex items-center space-x-2 text-[var(--text-secondary)] hover:text-[var(--text-accent)] font-semibold py-2 px-3 rounded-lg">
+        <div className="fixed inset-0 app-shell-page z-50 flex flex-col print:bg-white">
+            <header className="flex-shrink-0 print:hidden border-b border-[var(--border-primary)] bg-[color:color-mix(in_srgb,var(--bg-secondary)_90%,transparent)] backdrop-blur-md">
+                <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-2 px-3 py-2.5 sm:px-4">
+                    <div className="flex min-w-0 flex-1 justify-start">
+                        <button onClick={onBack} className="flex items-center space-x-2 text-[var(--text-secondary)] hover:text-[var(--text-accent)] font-semibold py-2 px-3 rounded-xl hover:bg-[var(--bg-hover)]">
                             <ChevronLeftIcon className="text-xl" />
                             <span className="hidden sm:inline">Kembali</span>
                         </button>
                     </div>
 
-                    <div className="flex-shrink-0 flex items-center gap-2 sm:gap-4">
+                    <div className="min-w-0 hidden md:flex flex-col items-center px-3">
+                        <h1 className="max-w-[24rem] truncate text-base font-bold text-[var(--text-primary)]">{exam.title}</h1>
+                        <p className="text-xs text-[var(--text-secondary)]">{showAnswerKey ? 'Mode Kunci Jawaban' : 'Mode Lembar Soal'}</p>
+                    </div>
+
+                    <div className="hidden md:flex flex-shrink-0 items-center gap-2 sm:gap-4">
                         <div className="flex items-center space-x-1 sm:space-x-2">
                             <button onClick={() => setZoom(z => Math.max(0.5, z - 0.1))} aria-label="Perkecil" className="p-2 text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] rounded-lg"><ZoomOutIcon className="text-xl" /></button>
                             <span className="text-[var(--text-primary)] font-semibold w-12 text-center">{(zoom * 100).toFixed(0)}%</span>
                             <button onClick={() => setZoom(z => Math.min(2, z + 0.1))} aria-label="Perbesar" className="p-2 text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] rounded-lg"><ZoomInIcon className="text-xl" /></button>
                         </div>
-                        <div className="hidden sm:flex items-center rounded-lg bg-[var(--bg-muted)] p-0.5">
+                        <div className="flex items-center rounded-xl bg-[var(--bg-muted)] p-0.5">
                             <button onClick={() => setShowAnswerKey(false)} className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${!showAnswerKey ? 'bg-[var(--bg-secondary)] text-blue-600 dark:text-slate-100 shadow-sm' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'}`}>Soal</button>
                             <button onClick={() => setShowAnswerKey(true)} className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${showAnswerKey ? 'bg-[var(--bg-secondary)] text-blue-600 dark:text-slate-100 shadow-sm' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'}`}>Kunci Jawaban</button>
                         </div>
@@ -222,31 +217,73 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
                             <button onClick={handlePrint} className="bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] text-[var(--text-on-accent)] font-semibold py-2 px-4 rounded-lg flex items-center space-x-2"><PrinterIcon /><span>Cetak</span></button>
                             <button onClick={handleExportMoodle} className="text-orange-600 hover:bg-orange-100 dark:text-orange-400 dark:hover:bg-orange-900/50 p-2 rounded-lg" title="Ekspor Moodle XML"><ServerIcon className="text-xl" /></button>
                         </div>
-                        <div className="md:hidden relative" ref={actionsMenuRef}>
-                            <button onClick={() => setActionsMenuOpen(p => !p)} className="flex items-center space-x-2 bg-[var(--bg-muted)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] font-semibold py-2 px-4 rounded-lg" aria-haspopup="true" aria-expanded={isActionsMenuOpen}>
-                                <span>Opsi</span><i className="bi bi-chevron-down text-xs"></i>
+                        <div className="md:hidden">
+                            <button onClick={() => setActionsMenuOpen(true)} className="flex items-center space-x-2 bg-[var(--bg-muted)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] font-semibold py-2 px-4 rounded-xl" aria-haspopup="dialog" aria-expanded={isActionsMenuOpen}>
+                                <span>Opsi</span><i className="bi bi-chevron-up text-xs"></i>
                             </button>
-                            {isActionsMenuOpen && (
-                                <div className="absolute right-0 mt-2 w-56 bg-[var(--bg-secondary)] rounded-md shadow-lg z-20 border border-[var(--border-primary)] py-1">
-                                    <div className="px-4 py-2 text-xs text-[var(--text-muted)] uppercase">Tampilan</div>
-                                    <button onClick={() => { setShowAnswerKey(false); setActionsMenuOpen(false); }} className="w-full text-left flex items-center space-x-2 block px-4 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"><span>Lihat Soal</span></button>
-                                    <button onClick={() => { setShowAnswerKey(true); setActionsMenuOpen(false); }} className="w-full text-left flex items-center space-x-2 block px-4 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"><span>Lihat Kunci Jawaban</span></button>
-                                    <div className="my-1 border-t border-[var(--border-primary)]"></div>
-                                    <button onClick={() => { handleExportWord(); setActionsMenuOpen(false); }} className="w-full text-left flex items-center space-x-2 block px-4 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-[var(--bg-hover)]"><WordIcon /><span>Ekspor Word (.docx)</span></button>
-                                    <button onClick={() => { handleExportHtml(); setActionsMenuOpen(false); }} className="w-full text-left flex items-center space-x-2 block px-4 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"><DownloadIcon /><span>Ekspor HTML</span></button>
-                                    <button onClick={() => { handleExportMoodle(); setActionsMenuOpen(false); }} className="w-full text-left flex items-center space-x-2 block px-4 py-2 text-sm text-orange-600 dark:text-orange-400 hover:bg-[var(--bg-hover)]"><ServerIcon /><span>Ekspor Moodle XML</span></button>
-                                    <button onClick={() => { handlePrint(); setActionsMenuOpen(false); }} className="w-full text-left flex items-center space-x-2 block px-4 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"><PrinterIcon /><span>Cetak / Simpan PDF</span></button>
-                                </div>
-                            )}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="mx-auto w-full max-w-6xl px-3 pb-3 md:hidden">
+                    <div className="app-surface-muted rounded-[var(--radius-card)] px-3 py-3">
+                        <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                                <h1 className="truncate text-sm font-bold text-[var(--text-primary)]">{exam.title}</h1>
+                                <p className="text-xs text-[var(--text-secondary)]">
+                                    {showAnswerKey ? 'Kunci Jawaban' : 'Lembar Soal'} • {(zoom * 100).toFixed(0)}%
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-1">
+                                <button onClick={() => setZoom(z => Math.max(0.5, z - 0.1))} aria-label="Perkecil" className="app-control p-2 text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"><ZoomOutIcon className="text-lg" /></button>
+                                <button onClick={() => setZoom(z => Math.min(2, z + 0.1))} aria-label="Perbesar" className="app-control p-2 text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"><ZoomInIcon className="text-lg" /></button>
+                            </div>
+                        </div>
+
+                        <div className="mt-3 flex items-center rounded-xl bg-[var(--bg-muted)] p-0.5">
+                            <button onClick={() => setShowAnswerKey(false)} className={`flex-1 px-3 py-2 text-sm font-semibold rounded-lg transition-colors ${!showAnswerKey ? 'bg-[var(--bg-secondary)] text-blue-600 shadow-sm' : 'text-[var(--text-secondary)]'}`}>Soal</button>
+                            <button onClick={() => setShowAnswerKey(true)} className={`flex-1 px-3 py-2 text-sm font-semibold rounded-lg transition-colors ${showAnswerKey ? 'bg-[var(--bg-secondary)] text-blue-600 shadow-sm' : 'text-[var(--text-secondary)]'}`}>Kunci</button>
                         </div>
                     </div>
                 </div>
             </header>
-            <main ref={mainContainerRef} className="flex-grow overflow-auto p-4 sm:p-8 flex justify-center" style={{ scrollbarWidth: 'thin', scrollbarColor: '#94a3b8 #e2e8f0' }}>
-                 <div className="my-8 origin-top transition-transform duration-200 ease-in-out flex-shrink-0" style={{ transform: `scale(${zoom})`, width: settings.paperSize === 'A4' ? '210mm' : settings.paperSize === 'F4' ? '215mm' : '216mm' }}>
-                    <iframe ref={iframeRef} srcDoc={showAnswerKey ? answerKeyHtml : examHtml} title="Pratinjau Ujian" className="w-full shadow-2xl" style={{ height: settings.paperSize === 'A4' ? '297mm' : settings.paperSize === 'F4' ? '330mm' : settings.paperSize === 'Legal' ? '356mm' : '279mm' }} />
+            <main ref={mainContainerRef} className="flex-grow overflow-auto px-3 py-4 sm:p-8 flex justify-center app-bottom-safe" style={{ scrollbarWidth: 'thin', scrollbarColor: '#94a3b8 #e2e8f0' }}>
+                 <div className="my-2 sm:my-8 origin-top transition-transform duration-200 ease-in-out flex-shrink-0 rounded-[24px] border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-2 shadow-[var(--shadow-soft)] sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none" style={{ transform: `scale(${zoom})`, width: settings.paperSize === 'A4' ? '210mm' : settings.paperSize === 'F4' ? '215mm' : '216mm' }}>
+                    <iframe ref={iframeRef} sandbox="allow-modals allow-same-origin" srcDoc={showAnswerKey ? answerKeyHtml : examHtml} title="Pratinjau Ujian" className="w-full rounded-[18px] sm:rounded-none shadow-2xl" style={{ height: settings.paperSize === 'A4' ? '297mm' : settings.paperSize === 'F4' ? '330mm' : settings.paperSize === 'Legal' ? '356mm' : '279mm' }} />
                 </div>
             </main>
+
+            {isActionsMenuOpen && (
+                <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/55 backdrop-blur-sm p-0 md:hidden" onClick={() => setActionsMenuOpen(false)}>
+                    <div className="w-full rounded-t-[28px] bg-[var(--bg-secondary)] border-t border-[var(--border-primary)] shadow-2xl animate-scale-in" onClick={(e) => e.stopPropagation()} ref={actionsMenuRef}>
+                        <div className="flex justify-center py-3">
+                            <div className="h-1.5 w-14 rounded-full bg-[var(--border-secondary)]"></div>
+                        </div>
+                        <div className="px-5 pb-2">
+                            <h4 className="text-base font-bold text-[var(--text-primary)] line-clamp-1">{exam.title}</h4>
+                            <p className="text-sm text-[var(--text-secondary)]">Ekspor dan aksi pratinjau</p>
+                        </div>
+                        <div className="px-3 pb-5 space-y-1">
+                            <button onClick={() => { handleExportWord(); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--bg-hover)] text-blue-600 dark:text-blue-400">
+                                {isExportingWord ? <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></div> : <WordIcon />}
+                                <span className="font-medium">Ekspor Word (.docx)</span>
+                            </button>
+                            <button onClick={() => { handleExportHtml(); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--bg-hover)] text-[var(--text-primary)]">
+                                <DownloadIcon />
+                                <span className="font-medium">Ekspor HTML</span>
+                            </button>
+                            <button onClick={() => { handleExportMoodle(); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--bg-hover)] text-orange-600 dark:text-orange-400">
+                                <ServerIcon />
+                                <span className="font-medium">Ekspor Moodle XML</span>
+                            </button>
+                            <button onClick={() => { handlePrint(); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--bg-hover)] text-[var(--text-primary)]">
+                                <PrinterIcon />
+                                <span className="font-medium">Cetak / Simpan PDF</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

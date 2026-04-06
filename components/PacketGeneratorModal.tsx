@@ -36,16 +36,21 @@ const PacketGeneratorModal: React.FC<PacketGeneratorModalProps> = ({ isOpen, onC
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-            <div className="bg-[var(--bg-secondary)] w-full max-w-md rounded-xl shadow-2xl border border-[var(--border-primary)] overflow-hidden animate-scale-in">
-                <div className="flex justify-between items-center p-4 border-b border-[var(--border-primary)] bg-[var(--bg-tertiary)]">
+            <div className="app-modal-panel w-full max-w-md overflow-hidden animate-scale-in">
+                <div className="app-modal-header flex justify-between items-center p-4 sm:p-5">
                     <div className="flex items-center gap-2">
-                        <StackIcon className="text-xl text-purple-600" />
-                        <h3 className="font-bold text-lg text-[var(--text-primary)]">Generator Paket Soal</h3>
+                        <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 text-purple-600 flex items-center justify-center">
+                            <StackIcon className="text-xl" />
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-lg text-[var(--text-primary)]">Generator Paket Soal</h3>
+                            <p className="text-xs text-[var(--text-secondary)]">Buat beberapa varian ujian dengan sekali proses.</p>
+                        </div>
                     </div>
                     <button onClick={onClose} className="p-1 hover:bg-[var(--bg-hover)] rounded-full"><CloseIcon/></button>
                 </div>
 
-                <div className="p-6 space-y-4">
+                <div className="p-5 sm:p-6 space-y-4">
                     <div className="bg-purple-50 dark:bg-purple-900/20 p-3 rounded-lg text-sm text-[var(--text-secondary)] border border-purple-100 dark:border-purple-800">
                         Fitur ini akan membuat salinan ujian <strong>"{examTitle}"</strong> menjadi beberapa paket berbeda.
                         <ul className="list-disc list-inside mt-2 space-y-1 ml-1 text-xs">
@@ -60,7 +65,7 @@ const PacketGeneratorModal: React.FC<PacketGeneratorModalProps> = ({ isOpen, onC
                         <select 
                             value={packetCount} 
                             onChange={(e) => setPacketCount(Number(e.target.value))}
-                            className="w-full p-2 border border-[var(--border-secondary)] rounded-lg bg-[var(--bg-primary)] focus:ring-2 focus:ring-purple-500 outline-none transition-all"
+                            className="w-full p-3 border border-[var(--border-secondary)] rounded-[var(--radius-control)] bg-[var(--bg-primary)] focus:ring-2 focus:ring-purple-500 outline-none transition-all"
                         >
                             <option value={2}>2 Paket (A & B)</option>
                             <option value={3}>3 Paket (A, B, C)</option>
@@ -70,12 +75,12 @@ const PacketGeneratorModal: React.FC<PacketGeneratorModalProps> = ({ isOpen, onC
                     </div>
                 </div>
 
-                <div className="p-4 border-t border-[var(--border-primary)] flex justify-end gap-3 bg-[var(--bg-tertiary)]">
-                    <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]">Batal</button>
+                <div className="app-modal-footer p-4 sm:p-5 flex justify-end gap-3">
+                    <button onClick={onClose} className="px-4 py-2 rounded-[var(--radius-control)] text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]">Batal</button>
                     <button 
                         onClick={handleGenerate} 
                         disabled={isGenerating}
-                        className="px-4 py-2 rounded-lg text-sm font-semibold bg-purple-600 hover:bg-purple-700 text-white shadow-md flex items-center gap-2 disabled:opacity-50"
+                        className="px-4 py-2 rounded-[var(--radius-control)] text-sm font-semibold bg-purple-600 hover:bg-purple-700 text-white shadow-md flex items-center gap-2 disabled:opacity-50"
                     >
                         {isGenerating ? (
                             <>

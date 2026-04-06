@@ -7,7 +7,7 @@ import { useDebounce } from '../hooks/useDebounce';
 import PacketGeneratorModal from '../components/PacketGeneratorModal';
 import { 
     PlusIcon, EditIcon, PrinterIcon, ShuffleIcon, CopyIcon, TrashIcon, SearchIcon, CloseIcon,
-    FolderIcon, FolderOpenIcon, TagIcon, MoveIcon, CheckIcon, ChevronLeftIcon, StackIcon
+    FolderIcon, FolderOpenIcon, TagIcon, MoveIcon, CheckIcon, ChevronLeftIcon, StackIcon, MoreIcon
 } from '../components/Icons';
 
 // --- Sub-components ---
@@ -24,53 +24,113 @@ const ExamCard: React.FC<{
     onManageTags: (id: string) => void;
     onMove: (id: string) => void;
 }> = ({ exam, totalQuestions, onEdit, onDelete, onCopy, onShuffle, onGeneratePackets, onPreview, onManageTags, onMove }) => {
-    return (
-        <div className="bg-[var(--bg-secondary)] rounded-xl shadow-sm border border-[var(--border-primary)] hover:shadow-md transition-all duration-200 flex flex-col group relative overflow-hidden animate-fade-in">
-            <div className="p-5 flex-grow cursor-pointer" onClick={() => onEdit(exam.id)}>
-                <div className="flex justify-between items-start gap-3 mb-2">
-                    <h3 className="text-lg font-bold text-[var(--text-primary)] leading-tight line-clamp-2" title={exam.title}>{exam.title}</h3>
-                    <span className={`flex-shrink-0 px-2 py-0.5 text-[10px] uppercase tracking-wider font-bold rounded-full ${
-                        exam.status === 'published' 
-                        ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' 
-                        : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300'
-                    }`}>
-                        {exam.status === 'published' ? 'Selesai' : 'Draf'}
-                    </span>
-                </div>
-                
-                <p className="text-sm text-[var(--text-secondary)] mb-3">{exam.subject} • {exam.class}</p>
-                
-                {/* Tags Display */}
-                {exam.tags && exam.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mb-3">
-                        {exam.tags.slice(0, 3).map((tag, idx) => (
-                            <span key={idx} className="text-[10px] bg-[var(--bg-muted)] text-[var(--text-secondary)] px-2 py-0.5 rounded-full border border-[var(--border-secondary)]">
-                                #{tag}
-                            </span>
-                        ))}
-                        {exam.tags.length > 3 && <span className="text-[10px] text-[var(--text-muted)]">+{exam.tags.length - 3}</span>}
-                    </div>
-                )}
+    const [isActionsOpen, setIsActionsOpen] = useState(false);
 
-                <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] mt-auto pt-2 border-t border-[var(--border-primary)] border-dashed">
-                   <span>{new Date(exam.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                   <span>•</span>
-                   <span>{totalQuestions} Soal</span>
+    const actionItems = [
+        { label: 'Generator Paket', icon: StackIcon, onClick: () => onGeneratePackets(exam.id, exam.title), tone: 'text-purple-600' },
+        { label: 'Acak Sederhana', icon: ShuffleIcon, onClick: () => onShuffle(exam.id), tone: 'text-violet-600' },
+        { label: 'Duplikat', icon: CopyIcon, onClick: () => onCopy(exam.id), tone: 'text-amber-600' },
+        { label: 'Pindah Folder', icon: MoveIcon, onClick: () => onMove(exam.id), tone: 'text-orange-600' },
+        { label: 'Kelola Label', icon: TagIcon, onClick: () => onManageTags(exam.id), tone: 'text-pink-600' },
+        { label: 'Hapus Ujian', icon: TrashIcon, onClick: () => onDelete(exam.id), tone: 'text-red-600' },
+    ];
+
+    return (
+        <>
+            <div className="app-surface rounded-[var(--radius-card)] hover:-translate-y-0.5 transition-all duration-200 flex flex-col group relative overflow-hidden animate-fade-in">
+                <div className="p-5 flex-grow cursor-pointer" onClick={() => onEdit(exam.id)}>
+                    <div className="flex justify-between items-start gap-3 mb-3">
+                        <div className="min-w-0">
+                            <h3 className="text-lg font-bold text-[var(--text-primary)] leading-tight line-clamp-2" title={exam.title}>{exam.title}</h3>
+                            <p className="text-sm text-[var(--text-secondary)] mt-1">{exam.subject} • {exam.class}</p>
+                        </div>
+                        <span className={`flex-shrink-0 px-2.5 py-1 text-[10px] uppercase tracking-[0.14em] font-bold rounded-full ${
+                        exam.status === 'published' 
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' 
+                            : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300'
+                        }`}>
+                            {exam.status === 'published' ? 'Selesai' : 'Draf'}
+                        </span>
+                    </div>
+                    
+                    {exam.tags && exam.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mb-4">
+                            {exam.tags.slice(0, 2).map((tag, idx) => (
+                                <span key={idx} className="text-[10px] bg-[var(--bg-muted)] text-[var(--text-secondary)] px-2.5 py-1 rounded-full border border-[var(--border-secondary)]">
+                                    #{tag}
+                                </span>
+                            ))}
+                            {exam.tags.length > 2 && <span className="text-[10px] text-[var(--text-muted)] self-center">+{exam.tags.length - 2} label</span>}
+                        </div>
+                    )}
+
+                    <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] mt-auto pt-3 border-t border-[var(--border-primary)] border-dashed">
+                       <span>{new Date(exam.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                       <span>•</span>
+                       <span>{totalQuestions} Soal</span>
+                    </div>
+                </div>
+
+                <div className="border-t border-[var(--border-primary)] bg-[var(--bg-tertiary)] p-2.5 md:hidden">
+                    <div className="grid grid-cols-3 gap-2">
+                        <button onClick={() => onEdit(exam.id)} aria-label="Edit" title="Edit" className="app-control flex items-center justify-center gap-2 px-3 py-2.5 bg-[var(--bg-secondary)] text-[var(--text-primary)] font-semibold border border-[var(--border-primary)]">
+                            <EditIcon />
+                            <span className="max-[380px]:hidden">Edit</span>
+                        </button>
+                        <button onClick={() => onPreview(exam.id)} aria-label="Preview" title="Preview" className="app-control flex items-center justify-center gap-2 px-3 py-2.5 bg-[var(--bg-secondary)] text-[var(--text-primary)] font-semibold border border-[var(--border-primary)]">
+                            <PrinterIcon />
+                            <span className="max-[380px]:hidden">Preview</span>
+                        </button>
+                        <button onClick={() => setIsActionsOpen(true)} aria-label="Aksi" title="Aksi" className="app-control flex items-center justify-center gap-2 px-3 py-2.5 bg-[var(--bg-secondary)] text-[var(--text-secondary)] font-semibold border border-[var(--border-primary)]">
+                            <MoreIcon />
+                            <span className="max-[380px]:hidden">Aksi</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div className="hidden md:grid bg-[var(--bg-tertiary)] p-2 grid-cols-8 gap-1 border-t border-[var(--border-primary)]">
+                    <button onClick={() => onEdit(exam.id)} title="Edit" className="p-2 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-blue-600 flex justify-center items-center transition-colors"><EditIcon/></button>
+                    <button onClick={() => onPreview(exam.id)} title="Cetak/Preview" className="p-2 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-green-600 flex justify-center items-center transition-colors"><PrinterIcon/></button>
+                    <button onClick={() => onGeneratePackets(exam.id, exam.title)} title="Generator Paket" className="p-2 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-purple-600 flex justify-center items-center transition-colors"><StackIcon/></button>
+                    <button onClick={() => onShuffle(exam.id)} title="Acak Sederhana" className="p-2 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-purple-400 flex justify-center items-center transition-colors"><ShuffleIcon/></button>
+                    <button onClick={() => onCopy(exam.id)} title="Duplikat" className="p-2 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-yellow-600 flex justify-center items-center transition-colors"><CopyIcon/></button>
+                    <button onClick={() => onMove(exam.id)} title="Pindah Folder" className="p-2 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-orange-600 flex justify-center items-center transition-colors"><MoveIcon/></button>
+                    <button onClick={() => onManageTags(exam.id)} title="Label" className="p-2 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-pink-600 flex justify-center items-center transition-colors"><TagIcon/></button>
+                    <button onClick={() => onDelete(exam.id)} title="Hapus" className="p-2 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-red-600 flex justify-center items-center transition-colors"><TrashIcon/></button>
                 </div>
             </div>
-            
-            {/* Quick Actions Bar - Always visible on mobile, hover on desktop */}
-            <div className="bg-[var(--bg-tertiary)] p-2 grid grid-cols-8 gap-1 border-t border-[var(--border-primary)]">
-                <button onClick={() => onEdit(exam.id)} title="Edit" className="p-2 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-blue-600 flex justify-center items-center transition-colors"><EditIcon/></button>
-                <button onClick={() => onPreview(exam.id)} title="Cetak/Preview" className="p-2 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-green-600 flex justify-center items-center transition-colors"><PrinterIcon/></button>
-                <button onClick={() => onGeneratePackets(exam.id, exam.title)} title="Generator Paket" className="p-2 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-purple-600 flex justify-center items-center transition-colors"><StackIcon/></button>
-                <button onClick={() => onShuffle(exam.id)} title="Acak Sederhana" className="p-2 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-purple-400 flex justify-center items-center transition-colors"><ShuffleIcon/></button>
-                <button onClick={() => onCopy(exam.id)} title="Duplikat" className="p-2 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-yellow-600 flex justify-center items-center transition-colors"><CopyIcon/></button>
-                <button onClick={() => onMove(exam.id)} title="Pindah Folder" className="p-2 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-orange-600 flex justify-center items-center transition-colors"><MoveIcon/></button>
-                <button onClick={() => onManageTags(exam.id)} title="Label" className="p-2 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-pink-600 flex justify-center items-center transition-colors"><TagIcon/></button>
-                <button onClick={() => onDelete(exam.id)} title="Hapus" className="p-2 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-red-600 flex justify-center items-center transition-colors"><TrashIcon/></button>
-            </div>
-        </div>
+
+            {isActionsOpen && (
+                <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 backdrop-blur-sm p-0 md:hidden" onClick={() => setIsActionsOpen(false)}>
+                    <div className="w-full rounded-t-[28px] bg-[var(--bg-secondary)] border-t border-[var(--border-primary)] shadow-2xl animate-scale-in" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex justify-center py-3">
+                            <div className="h-1.5 w-14 rounded-full bg-[var(--border-secondary)]"></div>
+                        </div>
+                        <div className="px-5 pb-2">
+                            <h4 className="text-base font-bold text-[var(--text-primary)] line-clamp-1">{exam.title}</h4>
+                            <p className="text-sm text-[var(--text-secondary)]">Aksi tambahan untuk ujian ini</p>
+                        </div>
+                        <div className="px-3 pb-4 space-y-1">
+                            {actionItems.map((item) => (
+                                <button
+                                    key={item.label}
+                                    onClick={() => {
+                                        setIsActionsOpen(false);
+                                        item.onClick();
+                                    }}
+                                    className="w-full app-control flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--bg-hover)]"
+                                >
+                                    <div className={`w-9 h-9 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--border-primary)] flex items-center justify-center ${item.tone}`}>
+                                        <item.icon />
+                                    </div>
+                                    <span className="font-medium text-[var(--text-primary)]">{item.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
     );
 };
 
@@ -84,10 +144,10 @@ const FilterPill: React.FC<{
     <button 
         onClick={onClick}
         title={label}
-        className={`flex items-center gap-2 px-3 py-2 sm:px-4 rounded-full text-sm font-medium transition-all border ${
+        className={`app-control flex items-center gap-2 px-3 py-2 sm:px-4 rounded-full text-sm font-medium transition-all border ${
             isActive 
-            ? 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-800' 
-            : 'bg-[var(--bg-secondary)] text-[var(--text-secondary)] border-[var(--border-secondary)] hover:bg-[var(--bg-hover)]'
+                ? 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-800' 
+                : 'bg-[var(--bg-secondary)] text-[var(--text-secondary)] border-[var(--border-secondary)] hover:bg-[var(--bg-hover)]'
         }`}
     >
         <Icon className={isActive ? 'text-blue-600 dark:text-blue-400' : 'text-[var(--text-muted)]'} />

@@ -110,28 +110,33 @@ const AiGeneratorModal: React.FC<AiGeneratorModalProps> = ({ isOpen, onClose, on
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-lg overflow-hidden border border-[var(--border-primary)] flex flex-col max-h-[90vh]">
-                <div className="flex justify-between items-center p-4 border-b border-[var(--border-primary)] bg-[var(--bg-tertiary)]">
+            <div className="app-modal-panel w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+                <div className="app-modal-header flex justify-between items-center p-4 sm:p-5">
                     <div className="flex items-center gap-2">
-                        <StarsIcon className="text-xl text-purple-500" />
-                        <h2 className="text-lg font-bold text-[var(--text-primary)]">AI Generator Soal</h2>
+                        <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 text-purple-600 flex items-center justify-center">
+                            <StarsIcon className="text-xl" />
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-bold text-[var(--text-primary)]">AI Generator Soal</h2>
+                            <p className="text-xs text-[var(--text-secondary)]">Buat soal draft dengan ritme yang lebih cepat.</p>
+                        </div>
                     </div>
                     <button onClick={onClose} disabled={isLoading} className="text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] p-1 rounded-full"><CloseIcon /></button>
                 </div>
                 
-                <div className="p-6 overflow-y-auto space-y-4">
+                <div className="p-4 sm:p-6 overflow-y-auto space-y-4">
                     
                     {/* Provider Toggle */}
-                    <div className="flex p-1 bg-[var(--bg-muted)] rounded-lg">
+                    <div className="flex p-1 bg-[var(--bg-muted)] rounded-xl">
                         <button 
                             onClick={() => setProvider('pollinations')}
-                            className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${provider === 'pollinations' ? 'bg-[var(--bg-secondary)] text-blue-600 shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+                            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${provider === 'pollinations' ? 'bg-[var(--bg-secondary)] text-blue-600 shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
                         >
                             Default (Gratis)
                         </button>
                         <button 
                             onClick={() => setProvider('gemini')}
-                            className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${provider === 'gemini' ? 'bg-[var(--bg-secondary)] text-purple-600 shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+                            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${provider === 'gemini' ? 'bg-[var(--bg-secondary)] text-purple-600 shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
                         >
                             Advance (Gemini)
                         </button>
@@ -157,23 +162,23 @@ const AiGeneratorModal: React.FC<AiGeneratorModalProps> = ({ isOpen, onClose, on
                             value={topic}
                             onChange={(e) => setTopic(e.target.value)}
                             placeholder="Contoh: Hukum Newton, Sejarah Kemerdekaan RI, Fotosintesis..."
-                            className="w-full p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)] focus:ring-2 focus:ring-[var(--border-focus)] outline-none min-h-[80px]"
+                            className="w-full p-3 border border-[var(--border-secondary)] rounded-[var(--radius-control)] bg-[var(--bg-secondary)] focus:ring-2 focus:ring-[var(--border-focus)] outline-none min-h-[100px]"
                         />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Jenjang / Kelas</label>
                             <input 
                                 type="text" 
                                 value={grade}
                                 onChange={(e) => setGrade(e.target.value)}
-                                className="w-full p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]"
+                                className="w-full p-3 border border-[var(--border-secondary)] rounded-[var(--radius-control)] bg-[var(--bg-secondary)]"
                             />
                         </div>
                          <div>
                             <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Kesulitan</label>
-                            <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)} className="w-full p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]">
+                            <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)} className="w-full p-3 border border-[var(--border-secondary)] rounded-[var(--radius-control)] bg-[var(--bg-secondary)]">
                                 <option value="Mudah">Mudah</option>
                                 <option value="Sedang">Sedang</option>
                                 <option value="Sukar">Sukar</option>
@@ -182,10 +187,10 @@ const AiGeneratorModal: React.FC<AiGeneratorModalProps> = ({ isOpen, onClose, on
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Jenis Soal</label>
-                            <select value={qType} onChange={(e) => setQType(e.target.value as QuestionType)} className="w-full p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]">
+                            <select value={qType} onChange={(e) => setQType(e.target.value as QuestionType)} className="w-full p-3 border border-[var(--border-secondary)] rounded-[var(--radius-control)] bg-[var(--bg-secondary)]">
                                 <option value={QuestionType.MULTIPLE_CHOICE}>Pilihan Ganda</option>
                                 <option value={QuestionType.ESSAY}>Esai</option>
                                 <option value={QuestionType.SHORT_ANSWER}>Isian Singkat</option>
@@ -199,19 +204,19 @@ const AiGeneratorModal: React.FC<AiGeneratorModalProps> = ({ isOpen, onClose, on
                                 min="1" max={provider === 'pollinations' ? 5 : 10} 
                                 value={count}
                                 onChange={(e) => setCount(Number(e.target.value))}
-                                className="w-full p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]"
+                                className="w-full p-3 border border-[var(--border-secondary)] rounded-[var(--radius-control)] bg-[var(--bg-secondary)]"
                             />
                             {provider === 'pollinations' && count > 5 && <p className="text-[10px] text-orange-500 mt-1">Saran: Maksimal 5 soal untuk mode Default agar lebih cepat.</p>}
                         </div>
                     </div>
                 </div>
 
-                <div className="p-4 border-t border-[var(--border-primary)] bg-[var(--bg-tertiary)] flex justify-end gap-3">
-                    <button onClick={onClose} disabled={isLoading} className="px-4 py-2 rounded-lg text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]">Batal</button>
+                <div className="app-modal-footer p-4 sm:p-5 flex justify-end gap-3">
+                    <button onClick={onClose} disabled={isLoading} className="px-4 py-2 rounded-[var(--radius-control)] text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]">Batal</button>
                     <button 
                         onClick={handleGenerate} 
                         disabled={isLoading || (provider === 'gemini' && !hasGeminiKey)}
-                        className={`px-4 py-2 rounded-lg text-sm font-semibold text-white flex items-center gap-2 transition-all ${isLoading || (provider === 'gemini' && !hasGeminiKey) ? 'bg-gray-400 cursor-not-allowed' : provider === 'gemini' ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-lg' : 'bg-blue-600 hover:bg-blue-700 shadow-lg'}`}
+                        className={`px-4 py-2 rounded-[var(--radius-control)] text-sm font-semibold text-white flex items-center gap-2 transition-all ${isLoading || (provider === 'gemini' && !hasGeminiKey) ? 'bg-gray-400 cursor-not-allowed' : provider === 'gemini' ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-lg' : 'bg-blue-600 hover:bg-blue-700 shadow-lg'}`}
                     >
                         {isLoading ? (
                             <>

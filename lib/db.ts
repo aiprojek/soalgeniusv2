@@ -1,4 +1,4 @@
-import Dexie, { type EntityTable } from 'dexie';
+import Dexie, { type Table } from 'dexie';
 import type { Exam, Settings, BankQuestion, Folder } from '../types';
 
 /**
@@ -10,13 +10,10 @@ import type { Exam, Settings, BankQuestion, Folder } from '../types';
  * - `folders`: Menyimpan struktur folder untuk pengorganisasian.
  */
 class SoalGeniusDB extends Dexie {
-  exams!: EntityTable<Exam, 'id'>;
-  settings!: EntityTable<Settings & { key: string }, 'key'>;
-  bankQuestions!: EntityTable<BankQuestion, 'bankId'>;
-  folders!: EntityTable<Folder, 'id'>;
-
-  version!: Dexie['version'];
-  transaction!: Dexie['transaction'];
+  exams!: Table<Exam, string>;
+  settings!: Table<Settings & { key: string }, string>;
+  bankQuestions!: Table<BankQuestion, string>;
+  folders!: Table<Folder, string>;
 
   constructor() {
     super('SoalGeniusDB');

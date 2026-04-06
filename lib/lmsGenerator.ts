@@ -1,5 +1,5 @@
 import { Exam, Question, QuestionType, Section } from "../types";
-import { escapeHtml } from "./utils";
+import { sanitizeRichHtml } from "./utils";
 
 const cdata = (content: string) => `<![CDATA[${content}]]>`;
 
@@ -18,15 +18,16 @@ const getMoodleType = (type: QuestionType): string => {
 
 const formatQuestion = (q: Question, category: string): string => {
     const type = getMoodleType(q.type);
+    const safeQuestionText = sanitizeRichHtml(q.text);
     let xml = `  <question type="${type}">\n`;
     
     // For Stimulus, name doesn't have a number since q.number is empty
     const qNameText = q.type === QuestionType.STIMULUS 
-        ? `Stimulus: ${q.text.substring(0, 50)}...`
-        : `${q.number}. ${q.text.substring(0, 50)}...`;
+        ? `Stimulus: ${safeQuestionText.substring(0, 50)}...`
+        : `${q.number}. ${safeQuestionText.substring(0, 50)}...`;
 
     xml += `    <name><text>${cdata(qNameText)}</text></name>\n`;
-    xml += `    <questiontext format="html"><text>${cdata(q.text)}</text></questiontext>\n`;
+    xml += `    <questiontext format="html"><text>${cdata(safeQuestionText)}</text></questiontext>\n`;
     
     // Default grade is only relevant for actual questions
     if (q.type !== QuestionType.STIMULUS) {
@@ -39,7 +40,7 @@ const formatQuestion = (q: Question, category: string): string => {
         q.choices?.forEach(choice => {
             const isCorrect = q.answerKey === choice.id;
             xml += `    <answer fraction="${isCorrect ? '100' : '0'}" format="html">\n`;
-            xml += `      <text>${cdata(choice.text)}</text>\n`;
+            xml += `      <text>${cdata(sanitizeRichHtml(choice.text))}</text>\n`;
             xml += `    </answer>\n`;
         });
     } 
@@ -54,7 +55,7 @@ const formatQuestion = (q: Question, category: string): string => {
             // Moodle penalty logic for wrong answers in multi-select is usually negative, but let's keep it simple: 0 for wrong.
             // Note: Moodle strictly requires sum of positive fractions to be 100.
             xml += `    <answer fraction="${isCorrect ? fraction.toFixed(5) : '0'}" format="html">\n`;
-            xml += `      <text>${cdata(choice.text)}</text>\n`;
+            xml += `      <text>${cdata(sanitizeRichHtml(choice.text))}</text>\n`;
             xml += `    </answer>\n`;
         });
     }
@@ -70,8 +71,8 @@ const formatQuestion = (q: Question, category: string): string => {
     else if (q.type === QuestionType.MATCHING) {
         xml += `    <shuffleanswers>true</shuffleanswers>\n`;
         q.matchingKey?.forEach(pair => {
-            const prompt = q.matchingPrompts?.find(p => p.id === pair.promptId)?.text || '';
-            const answer = q.matchingAnswers?.find(a => a.id === pair.answerId)?.text || '';
+            const prompt = sanitizeRichHtml(q.matchingPrompts?.find(p => p.id === pair.promptId)?.text || '');
+            const answer = sanitizeRichHtml(q.matchingAnswers?.find(a => a.id === pair.answerId)?.text || '');
             xml += `    <subquestion format="html">\n`;
             xml += `      <text>${cdata(prompt)}</text>\n`;
             xml += `      <answer><text>${answer}</text></answer>\n`;

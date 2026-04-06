@@ -1,5 +1,6 @@
 import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, ImageRun, AlignmentType, BorderStyle, VerticalAlign, VerticalMergeType, HeightRule, Footer } from "docx";
 import { Exam, Settings, QuestionType } from "../types";
+import { sanitizeRichHtml } from "./utils";
 
 // Helper to convert base64 string to Uint8Array for images
 const base64ToUint8Array = (base64: string): Uint8Array => {
@@ -57,7 +58,7 @@ const HEADER_CELL_BORDER = {
 const parseHtmlToRuns = (html: string, mainFont: string): (TextRun | ImageRun)[] => {
     const runs: (TextRun | ImageRun)[] = [];
     const div = document.createElement('div');
-    div.innerHTML = html;
+    div.innerHTML = sanitizeRichHtml(html);
 
     const traverse = (node: Node, style: { bold?: boolean, italics?: boolean, underline?: boolean, sub?: boolean, super?: boolean } = {}) => {
         if (node.nodeType === Node.TEXT_NODE) {

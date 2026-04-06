@@ -17,13 +17,6 @@ import {
 
 type SettingsTab = 'general' | 'header' | 'format' | 'ai' | 'cloud' | 'storage';
 
-// Add type definition for global Html5QrcodeScanner
-declare global {
-    interface Window {
-        Html5QrcodeScanner: any;
-    }
-}
-
 const formatBytes = (bytes: number, decimals = 2) => {
     if (!+bytes) return '0 Bytes';
     const k = 1024;
@@ -108,7 +101,7 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
     useEffect(() => {
         if (activeTab === 'storage') {
             loadStorageData();
-            setSelectedExamIds(new Set()); // Reset selection
+            setSelectedExamIds(new Set<string>()); // Reset selection
         }
     }, [activeTab]);
 
@@ -289,7 +282,7 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
 
     // --- Donation Prompt ---
     const showDonationPrompt = useCallback(() => {
-        setTimeout(() => {
+        setTimeout(async () => {
             showConfirm({
                 title: "Dukungan Pengembangan ☕",
                 content: (
@@ -449,15 +442,14 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
             addToast('Konfigurasi App Key dan Secret belum lengkap.', 'error');
             return;
         }
-        
-        // Include Access Token in QR Code for Instant Auth
+
         const token = getDropboxToken();
-        
+
         try {
-            const payload = { 
-                k: dropboxAppKey, 
+            const payload = {
+                k: dropboxAppKey,
                 s: dropboxAppSecret,
-                t: token || '' // Add token (if available)
+                t: token || ''
             };
             const json = JSON.stringify(payload);
             const code = btoa(json);
@@ -479,19 +471,16 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
             const data = JSON.parse(json);
             
             if (data.k && data.s) {
-                // 1. Save Config
                 setDropboxAppKey(data.k);
                 setDropboxAppSecret(data.s);
                 saveDropboxConfig(data.k, data.s);
 
-                // 2. Check for Token (Instant Auth)
                 if (data.t) {
                     saveDropboxToken(data.t);
                     setIsDropboxConnected(true);
                     
                     addToast('Berhasil terhubung ke Dropbox (Instant Auth).', 'success');
                     
-                    // Auto Restore Trigger
                     showConfirm({
                         title: "Sinkronisasi Data",
                         content: "Perangkat terhubung! Apakah Anda ingin mengunduh data dari Cloud sekarang?",
@@ -510,12 +499,11 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
                         }
                     });
                 } else {
-                    // Fallback to manual flow if token not in QR
                     sessionStorage.setItem('soalgenius_auto_restore', '1');
                     addToast('Konfigurasi diterapkan! Silakan klik "Dapatkan Kode" untuk melanjutkan.', 'success');
                     document.getElementById('auth-section')?.scrollIntoView({ behavior: 'smooth' });
                 }
-                
+
                 setIsScanning(false);
             } else {
                 throw new Error('Format kode salah');
@@ -556,12 +544,13 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
     const startScanner = () => {
         setIsScanning(true);
         // Wait for DOM element to exist
-        setTimeout(() => {
+        setTimeout(async () => {
             if (!document.getElementById('reader')) return;
             
             try {
-                if (window.Html5QrcodeScanner) {
-                    const scanner = new window.Html5QrcodeScanner(
+                const { Html5QrcodeScanner } = await import('html5-qrcode');
+                if (Html5QrcodeScanner) {
+                    const scanner = new Html5QrcodeScanner(
                         "reader",
                         { fps: 10, qrbox: { width: 250, height: 250 } },
                         /* verbose= */ false
@@ -569,7 +558,7 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
                     scannerRef.current = scanner;
                     scanner.render(onScanSuccess, onScanFailure);
                 } else {
-                    addToast('Pustaka Scanner belum dimuat. Periksa koneksi internet.', 'error');
+                    addToast('Pustaka scanner tidak tersedia.', 'error');
                     setIsScanning(false);
                 }
             } catch (e: any) {
@@ -607,9 +596,9 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
             confirmLabel: 'Hapus Semua',
             onConfirm: async () => {
                 try {
-                    await Promise.all(Array.from(selectedExamIds).map(id => deleteExam(id)));
+                    await Promise.all(Array.from(selectedExamIds).map((id: string) => deleteExam(id)));
                     addToast(`${selectedExamIds.size} data dihapus.`, 'success');
-                    setSelectedExamIds(new Set());
+                    setSelectedExamIds(new Set<string>());
                     loadStorageData();
                 } catch (e: any) {
                     addToast('Gagal menghapus beberapa data.', 'error');
@@ -640,7 +629,7 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
         addToast(`${selectedExams.length} data berhasil diunduh (JSON).`, 'success');
-        setSelectedExamIds(new Set());
+        setSelectedExamIds(new Set<string>());
     }, [examList, selectedExamIds, addToast]);
 
     const handleBulkExportFiles = useCallback(async (format: 'docx' | 'html') => {
@@ -666,13 +655,13 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
         }
         
         addToast(`Selesai mengunduh ${selectedExams.length} dokumen.`, 'success');
-        setSelectedExamIds(new Set());
+        setSelectedExamIds(new Set<string>());
         showDonationPrompt(); // Show for bulk export as well
     }, [examList, selectedExamIds, addToast, handleExportExam, showDonationPrompt]);
 
     const toggleSelection = (id: string) => {
         setSelectedExamIds(prev => {
-            const newSet = new Set(prev);
+            const newSet = new Set<string>(prev);
             newSet.has(id) ? newSet.delete(id) : newSet.add(id);
             return newSet;
         });
@@ -680,7 +669,7 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
 
     const toggleSelectAll = () => {
         if (selectedExamIds.size === filteredExamList.length) {
-            setSelectedExamIds(new Set());
+            setSelectedExamIds(new Set<string>());
         } else {
             setSelectedExamIds(new Set(filteredExamList.map(e => e.id)));
         }
@@ -704,6 +693,16 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
         { id: 'cloud', label: 'Cloud', icon: DropboxIcon },
         { id: 'storage', label: 'Data', icon: HddIcon },
     ];
+    const tabDescriptions: Record<SettingsTab, string> = {
+        general: 'Tema aplikasi dan kesiapan offline.',
+        header: 'Identitas sekolah, teks kop, dan logo.',
+        format: 'Ukuran kertas, font, spasi, dan margin.',
+        ai: 'Konfigurasi fitur AI dan kunci Gemini.',
+        cloud: 'Sinkronisasi Dropbox dan pairing perangkat.',
+        storage: 'Backup lokal, restore, dan penggunaan data.',
+    };
+    const activeTabMeta = tabs.find((tab) => tab.id === activeTab) ?? tabs[0];
+    const ActiveTabIcon = activeTabMeta.icon;
 
     const storagePercent = storageUsage ? Math.min(100, (storageUsage.usage / storageUsage.quota) * 100) : 0;
     const dropboxPercent = dropboxUsage ? Math.min(100, (dropboxUsage.used / dropboxUsage.allocation.allocated) * 100) : 0;
@@ -728,9 +727,40 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
 
             <div className="flex-shrink-0">
                 <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-4">Pengaturan</h2>
-                
+
+                <div className="md:hidden app-surface p-4 rounded-[var(--radius-card)] space-y-3">
+                    <div className="flex items-start gap-3">
+                        <div className="w-11 h-11 rounded-2xl bg-[var(--bg-tertiary)] border border-[var(--border-primary)] flex items-center justify-center text-[var(--text-accent)]">
+                            <ActiveTabIcon className="text-lg" />
+                        </div>
+                        <div className="min-w-0">
+                            <p className="text-xs uppercase tracking-[0.14em] text-[var(--text-muted)]">Section Aktif</p>
+                            <h3 className="text-lg font-bold text-[var(--text-primary)]">{activeTabMeta.label}</h3>
+                            <p className="text-sm text-[var(--text-secondary)]">{tabDescriptions[activeTab]}</p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label htmlFor="settings-tab-select" className="block text-sm font-medium text-[var(--text-secondary)]">
+                            Pindah section
+                        </label>
+                        <select
+                            id="settings-tab-select"
+                            value={activeTab}
+                            onChange={(e) => setActiveTab(e.target.value as SettingsTab)}
+                            className="w-full p-3 border border-[var(--border-secondary)] rounded-[var(--radius-control)] bg-[var(--bg-secondary)] text-[var(--text-primary)]"
+                        >
+                            {tabs.map((tab) => (
+                                <option key={tab.id} value={tab.id}>
+                                    {tab.label}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+
                 {/* Tab Navigation */}
-                <div className="flex space-x-1 bg-[var(--bg-secondary)] p-1 rounded-xl shadow-sm border border-[var(--border-primary)] overflow-x-auto">
+                <div className="hidden md:flex space-x-1 bg-[var(--bg-secondary)] p-1 rounded-xl shadow-sm border border-[var(--border-primary)] overflow-x-auto">
                     {tabs.map((tab) => (
                         <button
                             key={tab.id}
@@ -756,7 +786,7 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
                             <h3 className="text-xl font-bold text-[var(--text-primary)] mb-4 border-b border-[var(--border-primary)] pb-2">Tampilan Aplikasi</h3>
                             <div className="flex items-center justify-between">
                                 <label className="text-sm font-medium text-[var(--text-secondary)]">Mode Tema</label>
-                                <div className="flex items-center rounded-lg bg-[var(--bg-muted)] p-0.5">
+                                <div className="flex items-center rounded-xl bg-[var(--bg-muted)] p-0.5">
                                     <button
                                         onClick={() => setTheme('light')}
                                         className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${theme === 'light' ? 'bg-[var(--bg-secondary)] text-blue-600 dark:text-slate-100 shadow-sm' : 'text-[var(--text-secondary)]'}`}
@@ -947,65 +977,105 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
                                 <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg text-sm text-blue-800 dark:text-blue-200">
                                     Hubungkan ke Dropbox untuk menyimpan backup data ujian Anda secara otomatis dan mengaksesnya dari perangkat lain.
                                 </div>
+
+                                <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-lg border border-amber-200 dark:border-amber-800">
+                                    <div className="flex items-start gap-3">
+                                        <InfoIcon className="text-amber-600 dark:text-amber-300 text-lg mt-0.5 flex-shrink-0" />
+                                        <div className="space-y-2 text-sm text-amber-900 dark:text-amber-100">
+                                            <p className="font-semibold">Model keamanan Dropbox di SoalGenius: client-first, bukan server-managed.</p>
+                                            <p>Kredensial Dropbox disimpan lokal di browser ini agar aplikasi bisa sinkron tanpa backend tambahan. Ini praktis, tetapi berarti keamanan akun Dropbox mengikuti keamanan perangkat dan browser yang digunakan.</p>
+                                            <p className="text-xs opacity-90">Saran: gunakan fitur ini di perangkat pribadi, lindungi browser dengan akun OS yang aman, dan hindari pairing cepat pada perangkat publik atau milik bersama.</p>
+                                        </div>
+                                    </div>
+                                </div>
                                 
-                                {/* Client Pairing Section (For New Device) */}
-                                <div className="border border-[var(--border-secondary)] rounded-lg overflow-hidden">
-                                    <div className="bg-[var(--bg-tertiary)] px-4 py-2 border-b border-[var(--border-secondary)] flex items-center gap-2">
-                                        <QrCodeIcon className="text-purple-600" />
-                                        <h4 className="font-semibold text-[var(--text-primary)]">Penyandingan Perangkat (Pairing)</h4>
-                                    </div>
-                                    <div className="p-4 space-y-4">
-                                        <p className="text-sm text-[var(--text-secondary)]">Punya perangkat utama yang sudah terhubung? Scan QR Code untuk masuk cepat tanpa setting manual.</p>
-                                        
-                                        <div className="flex gap-2 flex-wrap">
-                                            <button onClick={startScanner} className="flex-1 flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
-                                                <ScanIcon className="text-lg" /> Scan QR Code
-                                            </button>
+                                <div className="space-y-6">
+                                    <div className="border border-[var(--border-secondary)] rounded-lg overflow-hidden">
+                                        <div className="bg-[var(--bg-tertiary)] px-4 py-3 border-b border-[var(--border-secondary)] flex items-center justify-between gap-3">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-7 h-7 rounded-full bg-blue-600 text-white text-sm font-bold flex items-center justify-center">1</div>
+                                                <div>
+                                                    <h4 className="font-semibold text-[var(--text-primary)]">Setup Perangkat Utama</h4>
+                                                    <p className="text-xs text-[var(--text-secondary)]">Lakukan ini terlebih dahulu di perangkat utama Anda.</p>
+                                                </div>
+                                            </div>
+                                            <span className="text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200">Wajib</span>
                                         </div>
-
-                                        <div className="text-center text-xs text-[var(--text-muted)]">- ATAU -</div>
-
-                                        <div className="flex gap-2">
-                                            <input 
-                                                type="text" 
-                                                value={inputPairingCode} 
-                                                onChange={(e) => setInputPairingCode(e.target.value)} 
-                                                className="flex-grow p-2 text-sm border border-[var(--border-secondary)] rounded bg-[var(--bg-secondary)]"
-                                                placeholder="Tempel kode teks pairing..."
-                                            />
-                                            <button onClick={handleApplyPairingCode} className="bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] border border-[var(--border-secondary)] px-3 py-2 rounded text-sm font-bold">Masuk</button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="relative flex py-2 items-center">
-                                    <div className="flex-grow border-t border-[var(--border-primary)]"></div>
-                                    <span className="flex-shrink-0 mx-4 text-gray-400 text-xs uppercase">Atau Konfigurasi Manual</span>
-                                    <div className="flex-grow border-t border-[var(--border-primary)]"></div>
-                                </div>
-
-                                <div className="space-y-4" id="auth-section">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-[var(--text-secondary)]">App Key</label>
-                                            <input type="text" value={dropboxAppKey} onChange={e => setDropboxAppKey(e.target.value)} className="w-full p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]" placeholder="Masukkan Dropbox App Key" />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-[var(--text-secondary)]">App Secret</label>
-                                            <input type="password" value={dropboxAppSecret} onChange={e => setDropboxAppSecret(e.target.value)} className="w-full p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]" placeholder="Masukkan Dropbox App Secret" />
+                                        <div className="p-4 space-y-4" id="auth-section">
+                                            <p className="text-sm text-[var(--text-secondary)]">Masukkan konfigurasi Dropbox lalu lakukan otorisasi langsung di perangkat utama. Setelah perangkat utama berhasil terhubung, barulah pairing cepat dipakai untuk perangkat kedua.</p>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-sm font-medium text-[var(--text-secondary)]">App Key</label>
+                                                    <input type="text" value={dropboxAppKey} onChange={e => setDropboxAppKey(e.target.value)} className="w-full p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]" placeholder="Masukkan Dropbox App Key" />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-[var(--text-secondary)]">App Secret</label>
+                                                    <input type="password" value={dropboxAppSecret} onChange={e => setDropboxAppSecret(e.target.value)} className="w-full p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]" placeholder="Masukkan Dropbox App Secret" />
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col gap-2">
+                                                <p className="text-sm font-bold text-[var(--text-primary)]">Langkah 1: Dapatkan Kode Otorisasi</p>
+                                                <button onClick={handleGetAuthCode} className="w-full md:w-auto bg-blue-100 text-blue-700 hover:bg-blue-200 px-4 py-2 rounded-md font-semibold text-sm text-left">Buka Dropbox & Salin Kode</button>
+                                            </div>
+                                            <div className="flex flex-col gap-2">
+                                                <p className="text-sm font-bold text-[var(--text-primary)]">Langkah 2: Masukkan Kode</p>
+                                                <div className="flex gap-2">
+                                                    <input type="text" value={dropboxAuthCode} onChange={e => setDropboxAuthCode(e.target.value)} className="flex-grow p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]" placeholder="Tempel kode di sini..." />
+                                                    <button onClick={handleConnectWithCode} disabled={isExchangingCode} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-semibold text-sm disabled:opacity-50">
+                                                        {isExchangingCode ? 'Menghubungkan...' : 'Hubungkan'}
+                                                    </button>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="flex flex-col gap-2">
-                                        <p className="text-sm font-bold text-[var(--text-primary)]">Langkah 1: Dapatkan Kode Otorisasi</p>
-                                        <button onClick={handleGetAuthCode} className="w-full md:w-auto bg-blue-100 text-blue-700 hover:bg-blue-200 px-4 py-2 rounded-md font-semibold text-sm text-left">Buka Dropbox & Salin Kode</button>
-                                    </div>
-                                    <div className="flex flex-col gap-2">
-                                        <p className="text-sm font-bold text-[var(--text-primary)]">Langkah 2: Masukkan Kode</p>
-                                        <div className="flex gap-2">
-                                            <input type="text" value={dropboxAuthCode} onChange={e => setDropboxAuthCode(e.target.value)} className="flex-grow p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]" placeholder="Tempel kode di sini..." />
-                                            <button onClick={handleConnectWithCode} disabled={isExchangingCode} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-semibold text-sm disabled:opacity-50">
-                                                {isExchangingCode ? 'Menghubungkan...' : 'Hubungkan'}
-                                            </button>
+
+                                    <div className="border border-dashed border-[var(--border-secondary)] rounded-lg overflow-hidden bg-[var(--bg-tertiary)]/35">
+                                        <div className="bg-[var(--bg-tertiary)] px-4 py-3 border-b border-[var(--border-secondary)] flex items-center justify-between gap-3">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-7 h-7 rounded-full bg-purple-600 text-white text-sm font-bold flex items-center justify-center">2</div>
+                                                <div>
+                                                    <h4 className="font-semibold text-[var(--text-primary)]">Pairing Perangkat Kedua</h4>
+                                                    <p className="text-xs text-[var(--text-secondary)]">Gunakan setelah perangkat utama sudah berhasil terhubung.</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded-full bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-200">Butuh perangkat utama aktif</span>
+                                                <span className="text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-200">Opsional</span>
+                                            </div>
+                                        </div>
+                                        <div className="p-4 space-y-4">
+                                            <div className="flex items-start gap-3 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-primary)] p-3">
+                                                <div className="mt-0.5 text-green-600 dark:text-green-400">
+                                                    <CheckIcon className="text-base" />
+                                                </div>
+                                                <div className="text-xs text-[var(--text-secondary)]">
+                                                    <p className="font-semibold text-[var(--text-primary)]">Syarat sebelum pairing</p>
+                                                    <p>Pastikan perangkat utama sudah berhasil login dan terhubung ke Dropbox terlebih dahulu.</p>
+                                                </div>
+                                            </div>
+                                            <p className="text-sm text-[var(--text-secondary)]">Jika Anda sudah punya perangkat utama yang aktif, gunakan pairing cepat ini untuk menyalin akses ke perangkat kedua milik Anda tanpa setup ulang dari nol.</p>
+                                            <div className="text-xs rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 p-3 text-purple-900 dark:text-purple-100">
+                                                Pairing cepat paling cocok antar perangkat pribadi yang sama-sama Anda percaya. Hindari memakai alur ini pada perangkat publik atau bersama.
+                                            </div>
+                                            
+                                            <div className="flex gap-2 flex-wrap">
+                                                <button onClick={startScanner} className="flex-1 flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm">
+                                                    <ScanIcon className="text-lg" /> Scan QR Code
+                                                </button>
+                                            </div>
+
+                                            <div className="text-center text-xs text-[var(--text-muted)]">- ATAU -</div>
+
+                                            <div className="flex gap-2">
+                                                <input 
+                                                    type="text" 
+                                                    value={inputPairingCode} 
+                                                    onChange={(e) => setInputPairingCode(e.target.value)} 
+                                                    className="flex-grow p-2 text-sm border border-[var(--border-secondary)] rounded bg-[var(--bg-secondary)]"
+                                                    placeholder="Tempel kode teks pairing..."
+                                                />
+                                                <button onClick={handleApplyPairingCode} className="bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] border border-[var(--border-secondary)] px-3 py-2 rounded text-sm font-bold">Masuk dengan Kode</button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -1041,13 +1111,24 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
                                     )}
                                 </div>
 
+                                <div className="bg-slate-50 dark:bg-slate-900/30 p-4 rounded-lg border border-[var(--border-primary)]">
+                                    <div className="flex items-start gap-3">
+                                        <InfoIcon className="text-slate-600 dark:text-slate-300 text-lg mt-0.5 flex-shrink-0" />
+                                        <div className="space-y-2 text-sm text-[var(--text-secondary)]">
+                                            <p className="font-semibold text-[var(--text-primary)]">Catatan arsitektur</p>
+                                            <p>Sinkronisasi Dropbox di SoalGenius memakai model client-first. Artinya proses otorisasi, token, dan pairing dikelola langsung di browser agar aplikasi bisa tetap sederhana, offline-friendly, dan tanpa backend sendiri.</p>
+                                            <p className="text-xs">Konsekuensinya, pairing cepat paling aman dipakai hanya antar perangkat pribadi yang Anda percaya.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 {/* Host Pairing Section */}
                                 <div className="border border-[var(--border-secondary)] rounded-lg p-4 bg-[var(--bg-tertiary)]">
-                                    <h4 className="font-semibold text-[var(--text-primary)] mb-2 flex items-center gap-2"><QrCodeIcon /> Bagikan Konfigurasi (Pairing)</h4>
-                                    <p className="text-sm text-[var(--text-secondary)] mb-3">Gunakan ini untuk menghubungkan perangkat lain tanpa memasukkan App Key manual.</p>
+                                    <h4 className="font-semibold text-[var(--text-primary)] mb-2 flex items-center gap-2"><QrCodeIcon /> Pairing Cepat Antar Perangkat</h4>
+                                    <p className="text-sm text-[var(--text-secondary)] mb-3">Gunakan ini untuk menghubungkan perangkat lain tanpa memasukkan App Key manual. Rekomendasi: hanya untuk perangkat Anda sendiri.</p>
                                     
                                     {!showPairingHost ? (
-                                        <button onClick={handleGeneratePairingCode} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">Tampilkan Kode Pairing</button>
+                                        <button onClick={handleGeneratePairingCode} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">Tampilkan Kode Pairing Cepat</button>
                                     ) : (
                                         <div className="space-y-4 animate-fade-in bg-[var(--bg-secondary)] p-4 rounded-lg border border-[var(--border-primary)]">
                                             <div className="flex flex-col items-center gap-3">
@@ -1064,6 +1145,9 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
                                                     <input readOnly value={generatedPairingCode} className="flex-grow p-2 text-xs font-mono border rounded bg-[var(--bg-primary)]" />
                                                     <button onClick={handleCopyPairingCode} className="p-2 bg-[var(--bg-hover)] rounded hover:bg-gray-300 dark:hover:bg-gray-600"><CopyIcon /></button>
                                                 </div>
+                                            </div>
+                                            <div className="text-xs rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 p-3 text-amber-900 dark:text-amber-100">
+                                                Jangan bagikan QR/kode ini ke orang lain. Kode pairing cepat dimaksudkan untuk memindahkan akses ke perangkat Anda yang lain, bukan untuk perangkat publik atau bersama.
                                             </div>
                                             <button onClick={() => setShowPairingHost(false)} className="text-xs text-red-500 hover:underline w-full text-center">Tutup</button>
                                         </div>
@@ -1086,9 +1170,9 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
                                         </div>
                                     </button>
                                 </div>
+                            </div>
                             )}
                         </div>
-                    </div>
                 )}
 
                 {/* Storage Tab */}

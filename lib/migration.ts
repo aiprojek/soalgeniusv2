@@ -67,7 +67,7 @@ export async function migrateFromLocalStorage() {
     const qbankToMigrate: BankQuestion[] = qbankJson ? JSON.parse(qbankJson) : [];
 
     // 4. Lakukan transaksi database untuk memasukkan semua data
-    await db.transaction('rw', db.exams, db.settings, db.bankQuestions, async () => {
+    await (db as any).transaction('rw', db.exams, db.settings, db.bankQuestions, async () => {
       await db.exams.bulkPut(examsToMigrate);
       await db.settings.put(settingsForDb);
       await db.bankQuestions.bulkPut(qbankToMigrate);

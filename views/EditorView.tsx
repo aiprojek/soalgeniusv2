@@ -5,7 +5,7 @@ import { useModal } from '../contexts/ModalContext';
 import { useToast } from '../contexts/ToastContext';
 import { getExam, saveExam, getSettings, saveQuestionToBank } from '../lib/storage';
 import { isDropboxConnected, hasUnsavedLocalChanges, uploadToDropbox } from '../lib/dropbox';
-import { toRoman } from '../lib/utils';
+import { sanitizeRichHtml, toRoman } from '../lib/utils';
 import { generateHtmlContent } from '../lib/htmlGenerator';
 import QuestionBankView from './QuestionBankView';
 import AiGeneratorModal from '../components/AiGeneratorModal';
@@ -413,7 +413,7 @@ const RichTextEditor: React.FC<{
     
     return (
         <div className={`so-genius-quill-wrapper ${isOption ? 'so-genius-quill-option-wrapper' : ''}`}>
-            <ReactQuill ref={quillRef} value={value} onChange={handleChange} placeholder={placeholder} theme="snow" modules={modules} />
+            <ReactQuillComponent ref={quillRef} value={value} onChange={handleChange} placeholder={placeholder} theme="snow" modules={modules} />
         </div>
     );
 };
@@ -754,14 +754,14 @@ const QuestionEditor: React.FC<{
                 return (question.choices || []).map(choice => (
                      <label key={choice.id} className="flex items-center space-x-2 p-2 rounded-md hover:bg-[var(--bg-hover)]">
                         <input type="radio" name={`answer-${question.id}`} value={choice.id} checked={question.answerKey === choice.id} onChange={(e) => handleAnswerKeyChange(e.target.value)} className="form-radio text-blue-600 bg-transparent border-[var(--border-secondary)] focus:ring-blue-500" />
-                         <div className="text-[var(--text-primary)]" dangerouslySetInnerHTML={{ __html: choice.text || `<span class="italic text-[var(--text-muted)]">${T.emptyOptionPlaceholder.replace('{letter}', String.fromCharCode(65 + (question.choices || []).indexOf(choice)))}</span>` }}></div>
+                         <div className="text-[var(--text-primary)]" dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(choice.text || `<span class="italic text-[var(--text-muted)]">${T.emptyOptionPlaceholder.replace('{letter}', String.fromCharCode(65 + (question.choices || []).indexOf(choice)))}</span>`) }}></div>
                      </label>
                 ));
             case QuestionType.COMPLEX_MULTIPLE_CHOICE:
                  return (question.choices || []).map(choice => (
                      <label key={choice.id} className="flex items-center space-x-2 p-2 rounded-md hover:bg-[var(--bg-hover)]">
                         <input type="checkbox" value={choice.id} checked={(question.answerKey as string[] || []).includes(choice.id)} onChange={(e) => { const currentAnswers = (question.answerKey as string[] || []); const newAnswers = e.target.checked ? [...currentAnswers, choice.id] : currentAnswers.filter(id => id !== choice.id); handleAnswerKeyChange(newAnswers); }} className="form-checkbox text-blue-600 bg-transparent border-[var(--border-secondary)] rounded focus:ring-blue-500" />
-                        <div className="text-[var(--text-primary)]" dangerouslySetInnerHTML={{ __html: choice.text || `<span class="italic text-[var(--text-muted)]">${T.emptyOptionPlaceholder.replace('{letter}', String.fromCharCode(65 + (question.choices || []).indexOf(choice)))}</span>` }}></div>
+                        <div className="text-[var(--text-primary)]" dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(choice.text || `<span class="italic text-[var(--text-muted)]">${T.emptyOptionPlaceholder.replace('{letter}', String.fromCharCode(65 + (question.choices || []).indexOf(choice)))}</span>`) }}></div>
                      </label>
                 ));
             case QuestionType.TRUE_FALSE:
@@ -796,7 +796,7 @@ const QuestionEditor: React.FC<{
                             {(question.choices || []).map((choice, choiceIndex) => (
                                 <label key={choice.id} className="flex items-center space-x-2">
                                     <input type="radio" name={`answer-${question.id}-${row.id}`} value={choice.id} checked={(question.tableChoiceAnswerKey || {})[row.id] === choice.id} onChange={(e) => { const newKey = { ...(question.tableChoiceAnswerKey || {}), [row.id]: e.target.value }; updateField('tableChoiceAnswerKey', newKey); }} className="form-radio text-blue-600 bg-transparent border-[var(--border-secondary)]" />
-                                    <div className="text-[var(--text-primary)] text-sm" dangerouslySetInnerHTML={{ __html: choice.text || `Opsi ${String.fromCharCode(65 + choiceIndex)}`}}></div>
+                                    <div className="text-[var(--text-primary)] text-sm" dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(choice.text || `Opsi ${String.fromCharCode(65 + choiceIndex)}`)}}></div>
                                 </label>
                             ))}
                         </div>
@@ -810,7 +810,7 @@ const QuestionEditor: React.FC<{
                             {(question.choices || []).map((choice, choiceIndex) => (
                                 <label key={choice.id} className="flex items-center space-x-2">
                                     <input type="checkbox" value={choice.id} checked={((question.tableChoiceAnswerKey || {})[row.id] as string[] || []).includes(choice.id)} onChange={(e) => { const currentAnswers = ((question.tableChoiceAnswerKey || {})[row.id] as string[] || []); const newAnswers = e.target.checked ? [...currentAnswers, choice.id] : currentAnswers.filter(id => id !== choice.id); const newKey = { ...(question.tableChoiceAnswerKey || {}), [row.id]: newAnswers }; updateField('tableChoiceAnswerKey', newKey); }} className="form-checkbox text-blue-600 bg-transparent border-[var(--border-secondary)] rounded" />
-                                     <div className="text-[var(--text-primary)] text-sm" dangerouslySetInnerHTML={{ __html: choice.text || `Opsi ${String.fromCharCode(65 + choiceIndex)}`}}></div>
+                                     <div className="text-[var(--text-primary)] text-sm" dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(choice.text || `Opsi ${String.fromCharCode(65 + choiceIndex)}`)}}></div>
                                 </label>
                             ))}
                         </div>
@@ -1343,11 +1343,18 @@ const EditorView: React.FC<{ examId: string; onBack: () => void }> = ({ examId, 
     if (isLoading || !exam || !settings) return <div className="flex justify-center items-center h-screen">Memuat...</div>;
 
     return (
-        <div className="flex flex-col h-screen bg-[var(--bg-primary)]">
-             <div className="bg-[var(--bg-secondary)] border-b border-[var(--border-primary)] p-2 sm:p-4 flex items-center justify-between sticky top-0 z-20 shadow-sm gap-2">
+            <div className="flex flex-col h-screen bg-[var(--bg-primary)]">
+             <div className="bg-[color:color-mix(in_srgb,var(--bg-secondary)_92%,transparent)] border-b border-[var(--border-primary)] px-3 py-2.5 sm:p-4 flex items-center justify-between sticky top-0 z-20 backdrop-blur-md gap-2">
                 <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                     <button onClick={onBack} className="p-2 rounded-full hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] flex-shrink-0"><ChevronLeftIcon /></button>
-                    <h1 className="text-lg sm:text-xl font-bold text-[var(--text-primary)] truncate" title={exam.title}>{exam.title}</h1>
+                    <div className="min-w-0">
+                        <h1 className="text-base sm:text-xl font-bold text-[var(--text-primary)] truncate" title={exam.title}>{exam.title}</h1>
+                        {totalPages > 1 && (
+                            <p className="md:hidden text-[10px] uppercase tracking-[0.14em] text-[var(--text-muted)] mt-0.5">
+                                Halaman {currentPage}/{totalPages}
+                            </p>
+                        )}
+                    </div>
                 </div>
                 
                 <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
@@ -1402,16 +1409,16 @@ const EditorView: React.FC<{ examId: string; onBack: () => void }> = ({ examId, 
                         )}
                     </div>
 
-                    <button onClick={handleManualSave} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-lg font-semibold transition-colors shadow-sm">
+                    <button onClick={handleManualSave} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-xl font-semibold transition-colors shadow-sm">
                         <SaveIcon />
-                        <span className="hidden sm:inline">{T.save}</span>
+                        <span>{T.save}</span>
                     </button>
                 </div>
             </div>
 
-            <div className="flex-grow overflow-y-auto p-4 md:p-8 space-y-6 max-w-5xl mx-auto w-full pb-20">
+            <div className="flex-grow overflow-y-auto px-3 py-4 sm:p-4 md:p-8 space-y-6 max-w-5xl mx-auto w-full pb-28 md:pb-24">
                 {/* Exam Info Card */}
-                <div className="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-md space-y-4">
+                <div className="app-surface p-4 sm:p-6 rounded-[var(--radius-card)] space-y-4">
                      <h3 className="text-lg font-bold text-[var(--text-primary)] border-b border-[var(--border-primary)] pb-2">{T.examInfo}</h3>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                          <div>
@@ -1485,7 +1492,7 @@ const EditorView: React.FC<{ examId: string; onBack: () => void }> = ({ examId, 
                     />
                 ))}
 
-                <button onClick={handleAddSection} className="w-full py-4 border-2 border-dashed border-[var(--border-secondary)] rounded-lg text-[var(--text-secondary)] hover:border-blue-500 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all font-bold flex items-center justify-center gap-2">
+                <button onClick={handleAddSection} className="w-full py-4 border-2 border-dashed border-[var(--border-secondary)] rounded-[var(--radius-control)] text-[var(--text-secondary)] hover:border-blue-500 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all font-bold flex items-center justify-center gap-2">
                     <PlusIcon className="text-xl" />
                     <span>{T.addSection}</span>
                 </button>
@@ -1493,7 +1500,10 @@ const EditorView: React.FC<{ examId: string; onBack: () => void }> = ({ examId, 
 
             {/* Pagination Sticky Footer */}
             {totalPages > 1 && (
-                <div className="fixed bottom-0 left-0 right-0 bg-[var(--bg-secondary)] border-t border-[var(--border-primary)] p-3 flex justify-center items-center gap-4 shadow-lg z-30">
+                <div
+                    className="fixed bottom-4 left-1/2 z-30 flex w-[calc(100%-1.5rem)] max-w-sm -translate-x-1/2 items-center justify-between gap-3 rounded-2xl border border-[var(--border-primary)] bg-[color:color-mix(in_srgb,var(--bg-secondary)_94%,transparent)] px-4 py-3 shadow-xl backdrop-blur-md md:bottom-0 md:left-0 md:right-0 md:w-auto md:max-w-none md:translate-x-0 md:justify-center md:gap-4 md:rounded-none md:border-x-0 md:border-b-0 md:px-3"
+                    style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
+                >
                     <button 
                         onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                         disabled={currentPage === 1}
@@ -1501,7 +1511,7 @@ const EditorView: React.FC<{ examId: string; onBack: () => void }> = ({ examId, 
                     >
                         <ChevronLeftIcon className="text-xl" />
                     </button>
-                    <span className="text-sm font-medium text-[var(--text-primary)]">
+                    <span className="text-sm font-medium text-[var(--text-primary)] min-w-0 text-center">
                         Halaman {currentPage} dari {totalPages}
                     </span>
                     <button 
@@ -1545,3 +1555,4 @@ const EditorView: React.FC<{ examId: string; onBack: () => void }> = ({ examId, 
 };
 
 export default EditorView;
+const ReactQuillComponent = ReactQuill as any;

@@ -1,0 +1,115 @@
+@import "tailwindcss";
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--text-primary);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+a {
+  color: inherit;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.18s ease-out;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.18s ease-out;
+}
+
+.app-shell-page {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(36, 87, 214, 0.06), transparent 26%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 24%),
+    var(--bg-primary);
+}
+
+.app-surface {
+  background: color-mix(in srgb, var(--bg-secondary) 94%, white 6%);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+.app-surface-muted {
+  background: color-mix(in srgb, var(--bg-tertiary) 92%, white 8%);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-card);
+}
+
+.app-control {
+  border-radius: var(--radius-control);
+}
+
+.app-modal-panel {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: 24px;
+  box-shadow: var(--shadow-soft);
+}
+
+.app-modal-header {
+  background: color-mix(in srgb, var(--bg-tertiary) 92%, white 8%);
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.app-modal-footer {
+  background: color-mix(in srgb, var(--bg-secondary) 88%, var(--bg-tertiary) 12%);
+  border-top: 1px solid var(--border-primary);
+}
+
+.app-bottom-safe {
+  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+.app-mobile-nav {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-shadow: var(--shadow-soft);
+}
+
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-secondary) transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--border-secondary);
+  border-radius: 9999px;
+}

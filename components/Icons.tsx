@@ -55,6 +55,7 @@ export const FolderIcon = ({ className }: IconProps) => <i className={`bi bi-fol
 export const FolderOpenIcon = ({ className }: IconProps) => <i className={`bi bi-folder2-open ${className || ''}`}></i>;
 export const TagIcon = ({ className }: IconProps) => <i className={`bi bi-tags-fill ${className || ''}`}></i>;
 export const MoveIcon = ({ className }: IconProps) => <i className={`bi bi-arrow-right-square-fill ${className || ''}`}></i>;
+export const MoreIcon = ({ className }: IconProps) => <i className={`bi bi-three-dots ${className || ''}`}></i>;
 
 // Icons for Help View
 export const CoffeeIcon = ({ className }: IconProps) => <i className={`bi bi-cup-hot-fill ${className || ''}`}></i>;

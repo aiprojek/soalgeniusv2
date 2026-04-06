@@ -1,12 +1,3 @@
-<!--
-  SoalGenius: Aplikasi Pembuat Soal Ujian
-  =======================================
-  File HTML utama ini berfungsi sebagai titik masuk (entry point) untuk seluruh aplikasi.
-  - Memuat semua stylesheet, font, dan skrip yang diperlukan.
-  - Menyediakan titik mount (root element) untuk aplikasi React.
-  - Menginisialisasi tema (terang/gelap) untuk mencegah FOUC (Flash of Unstyled Content).
-  - Mendefinisikan meta tag penting untuk SEO dan PWA.
--->
 <!DOCTYPE html>
 <html lang="id">
   <head>
@@ -44,17 +35,6 @@
     <meta name="theme-color" content="#f1f5f9" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#0f172a" media="(prefers-color-scheme: dark)">
 
-    <!-- External Stylesheets -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Areef+Ruqaa:wght@400;700&family=Liberation+Sans:ital,wght@0,400;0,700;1,400;1,700&family=Liberation+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css">
-    
-    <!-- QR Code Scanner Library -->
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-
     <!-- Custom Application Styles -->
     <!--
       Gaya kustom untuk:
@@ -64,52 +44,65 @@
     -->
     <style>
       :root {
-        --bg-primary: #f1f5f9; /* slate-100 */
-        --bg-secondary: #ffffff; /* white */
-        --bg-tertiary: #f8fafc; /* slate-50 */
-        --bg-muted: #f1f5f9; /* slate-100 */
-        --bg-hover: #e2e8f0; /* slate-200 */
-        --bg-accent: #3b82f6; /* blue-600 */
-        --bg-accent-hover: #2563eb; /* blue-700 */
+        --bg-primary: #f5f3ec;
+        --bg-secondary: #fffdf9;
+        --bg-tertiary: #f7f2e9;
+        --bg-muted: #efe8dc;
+        --bg-hover: #e9e0d1;
+        --bg-accent: #2457d6;
+        --bg-accent-hover: #1d46ad;
 
-        --text-primary: #1e293b; /* slate-800 */
-        --text-secondary: #475569; /* slate-600 */
-        --text-muted: #94a3b8; /* slate-400 */
-        --text-accent: #3b82f6; /* blue-600 */
+        --text-primary: #1f2937;
+        --text-secondary: #4b5563;
+        --text-muted: #8b95a7;
+        --text-accent: #2457d6;
         --text-on-accent: #ffffff;
 
-        --border-primary: #e2e8f0; /* slate-200 */
-        --border-secondary: #cbd5e1; /* slate-300 */
-        --border-focus: #3b82f6;
+        --border-primary: #ddd4c6;
+        --border-secondary: #cdbfae;
+        --border-focus: #2457d6;
 
-        --shadow-color: rgba(0, 0, 0, 0.1);
+        --shadow-color: rgba(38, 45, 62, 0.08);
+        --shadow-soft: 0 8px 24px rgba(38, 45, 62, 0.08);
+        --shadow-card: 0 2px 10px rgba(38, 45, 62, 0.06);
+        --radius-card: 18px;
+        --radius-control: 12px;
       }
 
       html.dark {
-        --bg-primary: #0f172a; /* slate-900 */
-        --bg-secondary: #1e293b; /* slate-800 */
-        --bg-tertiary: #1e293b; /* slate-800 */
-        --bg-muted: #334155; /* slate-700 */
-        --bg-hover: #334155; /* slate-700 */
-        --bg-accent: #60a5fa; /* blue-400 */
-        --bg-accent-hover: #3b82f6; /* blue-500 */
+        --bg-primary: #161b22;
+        --bg-secondary: #1e2630;
+        --bg-tertiary: #252f3a;
+        --bg-muted: #31404f;
+        --bg-hover: #344251;
+        --bg-accent: #7aa2ff;
+        --bg-accent-hover: #5e88ef;
 
-        --text-primary: #e2e8f0; /* slate-200 */
-        --text-secondary: #94a3b8; /* slate-400 */
-        --text-muted: #64748b; /* slate-500 */
-        --text-accent: #60a5fa; /* blue-400 */
-        --text-on-accent: #0f172a;
+        --text-primary: #e8edf5;
+        --text-secondary: #bdc8d6;
+        --text-muted: #8794a6;
+        --text-accent: #8fb0ff;
+        --text-on-accent: #101722;
 
-        --border-primary: #334155; /* slate-700 */
-        --border-secondary: #475569; /* slate-600 */
-        --border-focus: #60a5fa;
+        --border-primary: #36414f;
+        --border-secondary: #49586a;
+        --border-focus: #8fb0ff;
 
-        --shadow-color: rgba(0, 0, 0, 0.4);
+        --shadow-color: rgba(0, 0, 0, 0.35);
+        --shadow-soft: 0 10px 28px rgba(0, 0, 0, 0.28);
+        --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.2);
+      }
+
+      html {
+        background:
+          radial-gradient(circle at top, rgba(36, 87, 214, 0.08), transparent 34%),
+          linear-gradient(180deg, rgba(255, 255, 255, 0.2), transparent 30%);
       }
 
       body {
         background-color: var(--bg-primary);
         color: var(--text-primary);
+        font-family: "Plus Jakarta Sans", "Segoe UI", sans-serif;
       }
 
       @media print {
@@ -243,27 +236,6 @@
         }
       })();
     </script>
-    
-    <!-- ESM Import Map -->
-    <!--
-      Import Map memungkinkan kita untuk menggunakan nama modul 'kosong' (bare module specifiers)
-      di dalam file JavaScript, seperti 'import React from "react"'.
-      Ini menyederhanakan manajemen dependensi tanpa memerlukan proses build yang kompleks.
-    -->
-    <script type="importmap">
-{
-  "imports": {
-    "react": "https://aistudiocdn.com/react@^18.2.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^18.2.0/",
-    "react/": "https://aistudiocdn.com/react@^18.2.0/",
-    "react-quill": "https://cdn.jsdelivr.net/npm/react-quill@2.0.0/+esm",
-    "quill": "https://cdn.jsdelivr.net/npm/quill@2.0.2/+esm",
-    "dexie": "https://cdn.jsdelivr.net/npm/dexie@4.0.7/+esm",
-    "@google/genai": "https://esm.sh/@google/genai@^1.35.0",
-    "docx": "https://jspm.dev/docx"
-  }
-}
-</script>
   </head>
   <body>
     <!-- React Mount Point -->
