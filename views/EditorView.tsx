@@ -28,6 +28,7 @@ icons['strike'] = '<i class="bi bi-type-strikethrough" aria-hidden="true"></i>';
 icons['color'] = '<i class="bi bi-palette-fill" aria-hidden="true"></i>';
 icons['background'] = '<i class="bi bi-highlighter" aria-hidden="true"></i>';
 icons['image'] = '<i class="bi bi-image-fill" aria-hidden="true"></i>';
+icons['math'] = '<i class="bi bi-calculator-fill" aria-hidden="true"></i>';
 icons['direction'] = '<i class="bi bi-text-right" aria-hidden="true"></i>';
 icons['script'] = {
   'sub': '<i class="bi bi-subscript" aria-hidden="true"></i>',
@@ -381,6 +382,28 @@ const RichTextEditor: React.FC<{
             }
         };
     }, [addToast]);
+
+    const mathHandler = useCallback(() => {
+        const latex = window.prompt(
+            'Masukkan rumus LaTeX.\nContoh: x^2+1 atau \\frac{a}{b}'
+        );
+        if (!latex?.trim()) return;
+
+        const isDisplayMode = window.confirm(
+            'Tampilkan sebagai rumus blok besar?\nPilih "OK" untuk blok, "Cancel" untuk inline.'
+        );
+
+        const editor = quillRef.current?.getEditor();
+        if (!editor) return;
+
+        const range = editor.getSelection(true);
+        const wrappedFormula = isDisplayMode
+            ? `$$${latex.trim()}$$`
+            : `$${latex.trim()}$`;
+
+        editor.insertText(range.index, wrappedFormula, 'user');
+        editor.setSelection(range.index + wrappedFormula.length, 0, 'user');
+    }, []);
     
     const modules = useMemo(() => {
         const mainToolbar = [
@@ -388,22 +411,23 @@ const RichTextEditor: React.FC<{
             [{ 'script': 'sub'}, { 'script': 'super' }], 
             [{ 'color': [] }, { 'background': [] }], 
             [{ 'direction': 'rtl' }, { 'align': '' }, { 'align': 'center' }, { 'align': 'right' }, { 'align': 'justify' }], 
-            ['image', 'aiImage'], // Added custom aiImage button here
+            ['image', 'math', 'aiImage'],
             ['clean']
         ];
-        const optionToolbar = [['bold', 'italic', 'underline'], [{ 'script': 'sub'}, { 'script': 'super' }], [{ 'align': '' }, { 'align': 'center' }, { 'align': 'right' }, { 'align': 'justify' }], ['clean']];
+        const optionToolbar = [['bold', 'italic', 'underline'], [{ 'script': 'sub'}, { 'script': 'super' }], [{ 'align': '' }, { 'align': 'center' }, { 'align': 'right' }, { 'align': 'justify' }], ['math'], ['clean']];
         const toolbarContainer = isOption ? optionToolbar : mainToolbar;
         return { 
             toolbar: { 
                 container: toolbarContainer, 
                 handlers: { 
                     image: imageHandler,
+                    math: mathHandler,
                     aiImage: aiImageHandler // Register handler
                 } 
             }, 
             clipboard: { matchVisual: false } 
         };
-    }, [imageHandler, aiImageHandler, isOption]);
+    }, [imageHandler, mathHandler, aiImageHandler, isOption]);
 
     const handleChange = (content: string) => {
         const normalizedContent = (content === '<p><br></p>' || content === '<br>') ? '' : content;
@@ -423,8 +447,18 @@ const RichTextEditor: React.FC<{
     }, [direction]);
     
     return (
-        <div className={`so-genius-quill-wrapper ${isOption ? 'so-genius-quill-option-wrapper' : ''} ${direction === 'rtl' ? 'so-genius-quill-rtl' : 'so-genius-quill-ltr'}`} dir={direction}>
-            <ReactQuillComponent ref={quillRef} value={value} onChange={handleChange} placeholder={placeholder} theme="snow" modules={modules} />
+        <div
+            className={`so-genius-quill-wrapper ${isOption ? 'so-genius-quill-option-wrapper' : ''} ${direction === 'rtl' ? 'so-genius-quill-rtl' : 'so-genius-quill-ltr'}`}
+            dir={direction}
+        >
+            <ReactQuillComponent
+                ref={quillRef}
+                value={value}
+                onChange={handleChange}
+                placeholder={placeholder}
+                theme="snow"
+                modules={modules}
+            />
         </div>
     );
 };
@@ -954,10 +988,7 @@ const SectionEditor: React.FC<{
     onAddQuestionsFromBank: (sectionId: string) => void;
     onOpenAiModal: (sectionId: string) => void;
     onOpenSmartImport: (sectionId: string) => void;
-    // New Props for Pagination
-    startIndex: number;
-    visibleRange: { start: number, end: number };
-}> = ({ section, T, onSectionUpdate, onSectionDelete, onAddQuestionsFromBank, onOpenAiModal, onOpenSmartImport, startIndex, visibleRange, ...questionCallbacks }) => {
+}> = ({ section, T, onSectionUpdate, onSectionDelete, onAddQuestionsFromBank, onOpenAiModal, onOpenSmartImport, ...questionCallbacks }) => {
     const [isAddQuestionOpen, setAddQuestionOpen] = useState(false);
     // Deprecated: old stimulus state removed
     const addQuestionRef = useRef<HTMLDivElement>(null);
@@ -1001,15 +1032,6 @@ const SectionEditor: React.FC<{
         onSectionUpdate(section.id, 'instructions', `${newTitle}. ${newInstruction}`);
     };
 
-    // Filter questions based on pagination
-    const visibleQuestions = section.questions.map((q, idx) => ({ q, idx })).filter(({ idx }) => {
-        const globalIndex = startIndex + idx;
-        return globalIndex >= visibleRange.start && globalIndex < visibleRange.end;
-    });
-
-    const hasVisibleQuestions = visibleQuestions.length > 0;
-    const hiddenQuestionCount = section.questions.length - visibleQuestions.length;
-
     return (
         <div className="app-surface rounded-[28px] p-4 shadow-[var(--shadow-soft)] sm:p-6">
             <div className="border-b border-[var(--border-primary)] pb-4">
@@ -1020,7 +1042,6 @@ const SectionEditor: React.FC<{
                         <input type="text" value={instructionText} onChange={(e) => handleInstructionChange(title, e.target.value)} placeholder={T.instructionPlaceholder} aria-label={T.sectionInstructionAria} className="w-full rounded-[var(--radius-control)] bg-[var(--bg-tertiary)] px-3 py-2 text-base font-bold text-[var(--text-primary)] outline-none transition-colors hover:bg-[var(--bg-hover)] focus:bg-[var(--bg-hover)] focus:ring-2 focus:ring-[var(--border-focus)] sm:text-lg" />
                         <div className="flex flex-wrap gap-2 text-[11px] sm:text-xs">
                             <span className="rounded-full border border-[var(--border-primary)] bg-[var(--bg-tertiary)] px-3 py-1 text-[var(--text-secondary)]">{section.questions.length} soal di bagian ini</span>
-                            {hiddenQuestionCount > 0 && <span className="rounded-full border border-[var(--border-primary)] bg-[var(--bg-tertiary)] px-3 py-1 text-[var(--text-secondary)]">{hiddenQuestionCount} soal ada di halaman lain</span>}
                         </div>
                      </div>
                 </div>
@@ -1031,14 +1052,8 @@ const SectionEditor: React.FC<{
             </div>
             
             <div className="space-y-4 pt-4">
-            {visibleQuestions.map(({ q }) => <QuestionEditor key={q.id} sectionId={section.id} question={q} T={T} {...questionCallbacks} />)}
+            {section.questions.map((q) => <QuestionEditor key={q.id} sectionId={section.id} question={q} T={T} {...questionCallbacks} />)}
             </div>
-            
-            {!hasVisibleQuestions && section.questions.length > 0 && (
-                <div className="text-center text-[var(--text-muted)] italic text-sm py-4 border-2 border-dashed border-[var(--border-secondary)] rounded-lg">
-                    Soal di bagian ini ada di halaman lain.
-                </div>
-            )}
 
             <div className="pt-5">
             <div ref={addQuestionRef} className="relative inline-block text-center">
@@ -1060,8 +1075,6 @@ const SectionEditor: React.FC<{
     );
 };
 
-const QUESTIONS_PER_PAGE = 10;
-
 const EditorView: React.FC<{ examId: string; onBack: () => void }> = ({ examId, onBack }) => {
     const [exam, setExam, undo, redo, canUndo, canRedo] = useHistoryState<Exam | null>(null);
     const [settings, setSettings] = useState<Settings | null>(null);
@@ -1079,9 +1092,6 @@ const EditorView: React.FC<{ examId: string; onBack: () => void }> = ({ examId, 
         if (typeof window === 'undefined') return true;
         return window.innerWidth >= 768;
     });
-
-    // Pagination State
-    const [currentPage, setCurrentPage] = useState(1);
 
     const { addToast } = useToast();
     const { showConfirm } = useModal();
@@ -1378,25 +1388,10 @@ const EditorView: React.FC<{ examId: string; onBack: () => void }> = ({ examId, 
         setActiveSectionId(null);
     };
 
-    // Calculate pagination data
-    const { totalQuestions, sectionStartIndices } = useMemo(() => {
-        if (!exam) return { totalQuestions: 0, sectionStartIndices: [] };
-        
-        let total = 0;
-        const indices = exam.sections.map(s => {
-            const currentStart = total;
-            total += s.questions.length;
-            return currentStart;
-        });
-        
-        return { totalQuestions: total, sectionStartIndices: indices };
+    const totalQuestions = useMemo(() => {
+        if (!exam) return 0;
+        return exam.sections.reduce((total, section) => total + section.questions.length, 0);
     }, [exam]);
-
-    const totalPages = Math.max(1, Math.ceil(totalQuestions / QUESTIONS_PER_PAGE));
-    const visibleRange = {
-        start: (currentPage - 1) * QUESTIONS_PER_PAGE,
-        end: currentPage * QUESTIONS_PER_PAGE
-    };
     if (isLoading || !exam || !settings) return <div className="app-loading-state h-screen">Memuat...</div>;
 
     const examInfoSummary = [
@@ -1417,7 +1412,6 @@ const EditorView: React.FC<{ examId: string; onBack: () => void }> = ({ examId, 
                     <div className="min-w-0">
                         <h1 className="text-[15px] sm:text-xl font-bold text-[var(--text-primary)] truncate" title={exam.title}>{exam.title}</h1>
                         <div className="mt-0.5 flex items-center gap-2 text-[9px] uppercase tracking-[0.12em] text-[var(--text-muted)] sm:text-[11px]">
-                            {totalPages > 1 && <span>Halaman {currentPage}/{totalPages}</span>}
                             <span className="hidden min-[361px]:inline truncate">{exam.subject?.trim() || 'Editor Ujian'}</span>
                         </div>
                     </div>
@@ -1577,13 +1571,11 @@ const EditorView: React.FC<{ examId: string; onBack: () => void }> = ({ examId, 
                 </div>
 
                 {/* Sections with Pagination Injection */}
-                {exam.sections.map((section, index) => (
+                {exam.sections.map((section) => (
                     <SectionEditor
                         key={section.id}
                         section={section}
                         T={T}
-                        startIndex={sectionStartIndices[index]}
-                        visibleRange={visibleRange}
                         onSectionUpdate={handleUpdateSection}
                         onSectionDelete={handleDeleteSection}
                         onQuestionAdd={handleAddQuestion}
@@ -1601,32 +1593,6 @@ const EditorView: React.FC<{ examId: string; onBack: () => void }> = ({ examId, 
                     <span>{T.addSection}</span>
                 </button>
             </div>
-
-            {/* Pagination Sticky Footer */}
-            {totalPages > 1 && (
-                <div
-                    className="fixed bottom-4 left-1/2 z-30 flex w-[calc(100%-1.5rem)] max-w-[19rem] -translate-x-1/2 items-center justify-between gap-3 rounded-full border border-[var(--border-primary)] bg-[color:color-mix(in_srgb,var(--bg-secondary)_95%,transparent)] px-3 py-2.5 shadow-xl backdrop-blur-md md:bottom-0 md:left-0 md:right-0 md:w-auto md:max-w-none md:translate-x-0 md:justify-center md:gap-4 md:rounded-none md:border-x-0 md:border-b-0 md:px-3 md:py-3"
-                    style={{ paddingBottom: 'calc(0.625rem + env(safe-area-inset-bottom, 0px))' }}
-                >
-                    <button 
-                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                        disabled={currentPage === 1}
-                        className="p-2 rounded-full bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] disabled:opacity-50 hover:bg-[var(--bg-hover)]"
-                    >
-                        <ChevronLeftIcon className="text-xl" />
-                    </button>
-                    <span className="text-sm font-medium text-[var(--text-primary)] min-w-0 text-center">
-                        Halaman {currentPage} dari {totalPages}
-                    </span>
-                    <button 
-                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                        disabled={currentPage === totalPages}
-                        className="p-2 rounded-full bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] disabled:opacity-50 hover:bg-[var(--bg-hover)]"
-                    >
-                        <i className="bi bi-chevron-right text-xl"></i>
-                    </button>
-                </div>
-            )}
 
             {/* Modals */}
             {isBankModalOpen && (

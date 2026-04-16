@@ -2,6 +2,9 @@
 import type { Exam, Settings } from '../types';
 import { QuestionType } from '../types';
 import { escapeHtml, sanitizeRichHtml } from './utils';
+import katexStyles from 'katex/dist/katex.min.css?inline';
+import katexScriptSource from 'katex/dist/katex.min.js?raw';
+import katexAutoRenderSource from 'katex/dist/contrib/auto-render.min.js?raw';
 
 // Helper functions for RTL
 const toArabicNumeral = (n: string | number): string => {
@@ -506,6 +509,8 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
     ` : '';
 
     const embeddedStyles = `
+        ${katexStyles}
+
         /* Basic Reset & Document Setup */
         *, *::before, *::after { box-sizing: border-box; }
         html { -webkit-text-size-adjust: 100%; }
@@ -778,6 +783,17 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
         .ql-formula {
             font-size: 1.2em;
         }
+        .katex {
+            font-size: 1em;
+        }
+        .question-body .katex-display,
+        .choice-text .katex-display,
+        .answer-text .katex-display,
+        .section-stimulus .katex-display {
+            margin: 0.75rem 0;
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
 
         ${columnarStyles}
 
@@ -862,6 +878,29 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
 
       // Rerun on window resize
       window.addEventListener('resize', debouncedAdjust);
+    </script>
+    `;
+
+    const mathRenderScript = `
+    <script>
+      ${katexScriptSource}
+      ${katexAutoRenderSource}
+
+      function renderSoalGeniusMath() {
+        if (typeof renderMathInElement !== 'function') return;
+
+        renderMathInElement(document.body, {
+          delimiters: [
+            { left: '$$', right: '$$', display: true },
+            { left: '$', right: '$', display: false }
+          ],
+          throwOnError: false
+        });
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        renderSoalGeniusMath();
+      });
     </script>
     `;
     
@@ -1137,6 +1176,7 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
         </main>
     </div>
     ${dynamicHeaderScript}
+    ${mathRenderScript}
     ${previewPaginationScript}
     ${autoZoomScript}
 </body>

@@ -20,14 +20,14 @@ const SocialButton: React.FC<{ href: string; icon: React.ElementType; label: str
         href={href} 
         target="_blank" 
         rel="noopener noreferrer" 
-        className={`flex items-center gap-4 p-4 rounded-[var(--radius-card)] transition-all duration-300 transform hover:-translate-y-0.5 border border-transparent ${colorClass} group`}
+        className={`flex items-center gap-3 p-3.5 rounded-[18px] transition-all duration-300 transform hover:-translate-y-0.5 border border-transparent ${colorClass} group`}
     >
-        <div className="p-3 bg-white/20 rounded-2xl">
-            <Icon className="text-2xl text-white" />
+        <div className="p-2.5 bg-white/20 rounded-[16px]">
+            <Icon className="text-xl text-white" />
         </div>
         <div className="text-left">
-            <div className="font-bold text-white text-lg leading-tight">{label}</div>
-            <div className="text-white/80 text-xs font-medium">{subLabel}</div>
+            <div className="font-bold text-white text-base leading-tight">{label}</div>
+            <div className="text-white/80 text-xs font-medium leading-relaxed">{subLabel}</div>
         </div>
     </a>
 );
@@ -54,6 +54,8 @@ const AppLogo = ({ className }: { className?: string }) => (
 );
 
 const AboutTab: React.FC = () => {
+    const buildVersion = import.meta.env.VITE_APP_BUILD_VERSION || 'dev';
+
     return (
         <div className="max-w-4xl mx-auto space-y-4 animate-fade-in pb-8">
             <section className="relative overflow-hidden rounded-[20px] border border-[var(--border-primary)] bg-[linear-gradient(135deg,rgba(59,130,246,0.08),rgba(255,255,255,0.16))] px-4 py-5 sm:px-6 sm:py-6">
@@ -85,8 +87,7 @@ const AboutTab: React.FC = () => {
                             </p>
                         </div>
                         <div className="flex flex-wrap gap-1.5">
-                            <span className="app-status-pill app-status-info">Versi 2.1</span>
-                            <span className="app-status-pill app-status-success">100% Offline</span>
+                            <span className="app-status-pill app-status-info">Versi {buildVersion}</span>
                             <span className="app-status-pill" style={{ background: 'rgba(124, 58, 237, 0.12)', color: 'rgb(109, 40, 217)' }}>Open Source</span>
                         </div>
                     </div>
@@ -99,13 +100,17 @@ const AboutTab: React.FC = () => {
                 </div>
             </section>
 
-            <section className="grid grid-cols-1 gap-4 md:grid-cols-[1.15fr_0.85fr]">
+            <section className="grid grid-cols-1 gap-4">
                 <div className="app-surface rounded-[var(--radius-card)] p-4 sm:p-5">
-                    <h3 className="font-bold text-[var(--text-primary)] mb-4 text-lg">Kenapa aplikasi ini dibuat?</h3>
-                    <p className="text-[var(--text-secondary)] leading-relaxed mb-5">
-                    SoalGenius dirancang dengan filosofi "Fokus pada Konten". Kami menangani tata letak, penomoran, dan format teknis lainnya, sehingga Anda bisa fokus menyusun butir soal yang berkualitas.
-                    Semua data tersimpan aman di browser Anda (IndexedDB) dan tidak dikirim ke server manapun kecuali Anda mengaktifkan sinkronisasi Cloud.
-                    </p>
+                    <h3 className="font-bold text-[var(--text-primary)] mb-4 text-lg">Kenapa SoalGenius dibuat?</h3>
+                    <div className="space-y-3 text-sm leading-relaxed text-[var(--text-secondary)]">
+                        <p>
+                            SoalGenius dibuat agar guru bisa fokus menyusun butir soal tanpa direpotkan oleh tata letak, penomoran, dan pekerjaan teknis lain yang berulang.
+                        </p>
+                        <p>
+                            Pendekatannya client-first: data utama tetap tersimpan di browser Anda, alur kerja terasa cepat, dan dokumen tetap rapi saat dipreview maupun diekspor.
+                        </p>
+                    </div>
                     <div className="grid gap-3 sm:grid-cols-2">
                         <ValuePoint
                             title="Cepat dipakai"
@@ -117,24 +122,6 @@ const AboutTab: React.FC = () => {
                         />
                     </div>
                 </div>
-                
-                <div className="app-surface rounded-[var(--radius-card)] p-4 sm:p-5">
-                    <h3 className="font-bold text-[var(--text-primary)] mb-4 text-lg">Informasi Proyek</h3>
-                    <div className="space-y-4">
-                        <div>
-                            <span className="block text-xs text-[var(--text-muted)] uppercase font-bold tracking-wider mb-1">Pengembang</span>
-                            <a href="https://www.aiprojek01.my.id/" target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 hover:underline">AI Projek</a>
-                        </div>
-                        <div className="pt-4 border-t border-[var(--border-primary)]">
-                            <span className="block text-xs text-[var(--text-muted)] uppercase font-bold tracking-wider mb-1">Lisensi</span>
-                            <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 hover:underline">GNU GPL v3</a>
-                        </div>
-                        <div className="pt-4 border-t border-[var(--border-primary)]">
-                            <span className="block text-xs text-[var(--text-muted)] uppercase font-bold tracking-wider mb-1">Karakter Produk</span>
-                            <p className="text-sm text-[var(--text-secondary)]">Offline-first, client-first, dan berfokus pada kebutuhan pendidik sehari-hari.</p>
-                        </div>
-                    </div>
-                </div>
             </section>
 
             <section className="space-y-3">
@@ -142,7 +129,7 @@ const AboutTab: React.FC = () => {
                     <h3 className="font-bold text-[var(--text-primary)] text-lg">Dukung & Bergabung</h3>
                     <p className="text-sm text-[var(--text-secondary)]">Jika aplikasi ini membantu, Anda bisa mendukung atau ikut mengikuti pengembangannya.</p>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.05fr_1.05fr_0.9fr]">
                     <SocialButton 
                         href="https://lynk.id/aiprojek/s/bvBJvdA" 
                         icon={CoffeeIcon} 
@@ -164,6 +151,16 @@ const AboutTab: React.FC = () => {
                         subLabel="Diskusi komunitas"
                         colorClass="bg-gradient-to-r from-blue-400 to-blue-600 hover:from-blue-500 hover:to-blue-700"
                     />
+                </div>
+                <div className="flex flex-col gap-2 rounded-[var(--radius-card)] border border-[var(--border-primary)] bg-[var(--bg-secondary)] px-4 py-3 text-sm text-[var(--text-secondary)] sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                        <span>Dikembangkan oleh <a href="https://www.aiprojek01.my.id/" target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 hover:underline">AI Projek</a></span>
+                        <span className="hidden sm:inline text-[var(--text-muted)]">•</span>
+                        <span>Lisensi <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 hover:underline">GNU GPL v3</a></span>
+                    </div>
+                    <a href="https://github.com/aiprojek/soalgeniusv2" target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 hover:underline">
+                        Lihat repositori proyek
+                    </a>
                 </div>
             </section>
         </div>

@@ -56,6 +56,7 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
     // Storage States
     const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
     const [storageUsage, setStorageUsage] = useState<{usage: number, quota: number} | null>(null);
+    const [storageBreakdown, setStorageBreakdown] = useState<{ examData: number; offlineCacheEstimate: number } | null>(null);
     const [examList, setExamList] = useState<(Exam & { size: number })[]>([]);
     const [storageSearchTerm, setStorageSearchTerm] = useState('');
     const [selectedExamIds, setSelectedExamIds] = useState<Set<string>>(new Set());
@@ -129,9 +130,11 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
     }, [activeTab]);
 
     const loadStorageData = async () => {
+        let totalUsage = 0;
         if ('storage' in navigator && 'estimate' in navigator.storage) {
             const estimate = await navigator.storage.estimate();
             if (estimate.usage !== undefined && estimate.quota !== undefined) {
+                totalUsage = estimate.usage;
                 setStorageUsage({ usage: estimate.usage, quota: estimate.quota });
             }
         }
@@ -141,6 +144,30 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
             ...exam,
             size: new Blob([JSON.stringify(exam)]).size
         })).sort((a, b) => b.size - a.size); // Sort by size desc
+
+        const examData = examsWithSize.reduce((total, exam) => total + exam.size, 0);
+
+        let offlineCacheEstimate = 0;
+        try {
+            if ('caches' in window) {
+                const cacheNames = await caches.keys();
+                for (const cacheName of cacheNames) {
+                    const cache = await caches.open(cacheName);
+                    const requests = await cache.keys();
+                    for (const request of requests) {
+                        const response = await cache.match(request);
+                        if (response) {
+                            const blob = await response.clone().blob();
+                            offlineCacheEstimate += blob.size;
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            console.warn('Failed to estimate offline cache size:', error);
+        }
+
+        setStorageBreakdown({ examData, offlineCacheEstimate });
         
         setExamList(examsWithSize);
     };
@@ -717,7 +744,6 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
 
     const storagePercent = storageUsage ? Math.min(100, (storageUsage.usage / storageUsage.quota) * 100) : 0;
     const dropboxPercent = dropboxUsage ? Math.min(100, (dropboxUsage.used / dropboxUsage.allocation.allocated) * 100) : 0;
-
     return (
         <div className="space-y-4 flex flex-col h-[calc(100vh-140px)]">
             <input type="file" ref={restoreInputRef} onChange={handleFileRestore} className="hidden" accept="application/json" />
@@ -770,7 +796,6 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
                     </div>
                 </div>
 
-                {/* Tab Navigation */}
                 <div className="hidden md:flex space-x-1 app-tab-shell p-1 overflow-x-auto">
                     {tabs.map((tab) => (
                         <button
@@ -1229,10 +1254,24 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
                                 </div>
                             )}
 
+                            {storageBreakdown && (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+                                    <div className="app-surface-muted rounded-[var(--radius-control)] p-3">
+                                        <p className="text-[11px] uppercase tracking-[0.12em] text-[var(--text-muted)]">Data ujian</p>
+                                        <p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">{formatBytes(storageBreakdown.examData)}</p>
+                                    </div>
+                                    <div className="app-surface-muted rounded-[var(--radius-control)] p-3">
+                                        <p className="text-[11px] uppercase tracking-[0.12em] text-[var(--text-muted)]">Cache offline aplikasi</p>
+                                        <p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">{formatBytes(storageBreakdown.offlineCacheEstimate)}</p>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-100 dark:border-blue-800 flex gap-3 mb-6">
                                 <InfoIcon className="text-blue-600 dark:text-blue-300 text-xl flex-shrink-0 mt-0.5" />
                                 <div className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
-                                    <p><strong>Penting:</strong> Data aplikasi ini disimpan secara lokal di browser perangkat Anda. Kapasitas penyimpanan bergantung pada sisa ruang disk di perangkat Anda.</p>
+                                    <p><strong>Penting:</strong> Angka terpakai di atas adalah total penyimpanan aplikasi di browser ini, bukan hanya ukuran soal.</p>
+                                    <p>Jadi kalau angka total terlihat besar padahal soal masih sedikit, biasanya penyebab utamanya adalah <strong>cache offline aplikasi</strong>.</p>
                                     <p>Jika penyimpanan hampir penuh, sebaiknya <strong>hapus ujian lama</strong> yang tidak diperlukan atau gunakan fitur <strong>Cloud Sync (Dropbox)</strong> untuk memindahkan data ke cloud.</p>
                                 </div>
                             </div>

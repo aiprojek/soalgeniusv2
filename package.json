@@ -16,6 +16,7 @@
     "dexie": "4.0.7",
     "docx": "latest",
     "html5-qrcode": "^2.3.8",
+    "katex": "^0.16.45",
     "quill": "2.0.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
