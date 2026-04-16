@@ -122,7 +122,7 @@ const QuestionBankView: React.FC<QuestionBankViewProps> = ({ isModalMode = false
 
             <div className="flex-grow overflow-y-auto space-y-4">
                 {isLoading ? (
-                    <div className="text-center py-16 text-[var(--text-secondary)]">Memuat bank soal...</div>
+                    <div className="app-loading-state">Memuat bank soal...</div>
                 ) : filteredBank.length > 0 ? (
                     filteredBank.map(bq => (
                         <div key={bq.bankId} className="app-surface p-4 rounded-[var(--radius-card)] flex gap-4">
@@ -135,7 +135,7 @@ const QuestionBankView: React.FC<QuestionBankViewProps> = ({ isModalMode = false
                                 <QuestionPreview question={bq.question} />
                                 <div className="mt-3 pt-3 border-t border-[var(--border-primary)] flex justify-between items-center text-xs text-[var(--text-secondary)]">
                                     <div className="flex items-center gap-2 flex-wrap">
-                                        <span className="px-2 py-0.5 bg-blue-100 text-blue-800 dark:bg-blue-900/70 dark:text-blue-200 rounded-full font-semibold">{bq.question.type}</span>
+                                        <span className="app-status-pill app-status-info !tracking-[0.08em]">{bq.question.type}</span>
                                         <span className="font-bold text-[var(--text-primary)]">{bq.subject}</span>
                                         <span>/</span>
                                         <span>{bq.class}</span>
@@ -148,7 +148,7 @@ const QuestionBankView: React.FC<QuestionBankViewProps> = ({ isModalMode = false
                         </div>
                     ))
                 ) : (
-                    <div className="text-center py-16 px-6 bg-[var(--bg-tertiary)] rounded-[var(--radius-card)] border border-[var(--border-primary)]">
+                    <div className="app-empty-state">
                         <h3 className="text-xl font-semibold text-[var(--text-primary)]">Bank Soal Kosong</h3>
                         <p className="text-[var(--text-secondary)] mt-2">Simpan soal dari editor untuk menambahkannya ke sini.</p>
                     </div>

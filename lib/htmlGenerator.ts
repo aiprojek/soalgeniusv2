@@ -76,10 +76,10 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
     const isRTL = direction === 'rtl';
 
     const paperDimensions = {
-        'A4': { width: '210mm' },
-        'F4': { width: '215mm' },
-        'Legal': { width: '216mm' },
-        'Letter': { width: '216mm' },
+        'A4': { width: '210mm', height: '297mm' },
+        'F4': { width: '215mm', height: '330mm' },
+        'Legal': { width: '216mm', height: '356mm' },
+        'Letter': { width: '216mm', height: '279mm' },
     };
     
     // --- Start Main Content Generation ---
@@ -325,7 +325,7 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
                     <span>${T.score}</span>
                 </div>
             </div>
-            <div class="exam-body">
+            <div class="exam-body" data-paginate-root="exam-body">
                 ${examBodyHtml}
             </div>
         `;
@@ -487,7 +487,9 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
                     <span>${T.class}: <strong>${escapeHtml(exam.class || '')}</strong></span>
                 </div>
             </div>
-            ${sectionsHtml}
+            <div class="answer-key-body" data-paginate-root="answer-key-body">
+                ${sectionsHtml}
+            </div>
         `;
     }
     // --- End Main Content Generation ---
@@ -515,7 +517,7 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
         /* Font & Page Layout Settings */
         @page {
             size: ${paperSize};
-            margin: ${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm;
+            margin: 0;
         }
         body { 
             font-family: "${fontFamily}", ${fontFallback};
@@ -524,17 +526,28 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
         }
         .exam-sheet-container {
              display: flex;
-             justify-content: center;
+             flex-direction: column;
+             align-items: center;
+             gap: 1.5rem;
              padding: 2rem 0;
         }
         .exam-sheet {
             background-color: white;
             width: ${paperDimensions[paperSize].width};
-            min-height: calc(${paperDimensions[paperSize].width} * 1.414); /* A4 aspect ratio approximation */
+            min-height: ${paperDimensions[paperSize].height};
+            height: ${paperDimensions[paperSize].height};
             padding: ${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm;
             transform-origin: top;
             transition: transform 0.2s ease-in-out;
             position: relative; /* For footer positioning context if needed */
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .exam-sheet-inner {
+            flex: 1;
+            min-height: 0;
         }
 
         /* Print-specific Styles */
@@ -545,8 +558,24 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
                 background-color: white !important;
             }
             .no-print { display: none !important; }
-            .exam-sheet-container { padding: 0 !important; }
-            .exam-sheet { box-shadow: none !important; border: none !important; margin: 0 !important; padding: 0 !important; width: 100%; min-height: auto; transform: none !important; }
+            .exam-sheet-container { display: block !important; padding: 0 !important; }
+            .exam-sheet {
+                box-shadow: none !important;
+                border: none !important;
+                margin: 0 !important;
+                margin-bottom: 0 !important;
+                width: ${paperDimensions[paperSize].width};
+                min-height: ${paperDimensions[paperSize].height};
+                height: ${paperDimensions[paperSize].height};
+                transform: none !important;
+                page-break-after: always;
+                break-after: page;
+                overflow: hidden !important;
+            }
+            .exam-sheet:last-child {
+                page-break-after: auto;
+                break-after: auto;
+            }
             
             /* Watermark Footer for Print */
             .watermark-footer {
@@ -646,7 +675,7 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
         
         /* --- Semantic Component Styles: BODY --- */
         .exam-body { margin-top: 1rem; }
-        .general-instructions { margin-bottom: 1.5rem; }
+        .general-instructions { margin-bottom: 1.5rem; break-inside: avoid; }
         .general-instructions h4 { font-weight: bold; text-decoration: underline; margin-bottom: 0.5rem; }
         .general-instructions .instructions-text { font-size: 0.95em; white-space: pre-wrap; }
 
@@ -656,6 +685,7 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
             gap: 0.5em;
             font-weight: bold;
             margin-bottom: 1rem;
+            break-after: avoid;
         }
         [dir="rtl"] .exam-section-instruction {
             flex-direction: row-reverse;
@@ -693,7 +723,7 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
             text-align: justify;
         }
 
-        .questions-list { list-style: none; padding-inline-start: 0; }
+        .questions-list, .answers-list { list-style: none; padding-inline-start: 0; }
         .question-item { display: flex; align-items: flex-start; gap: 0.5em; break-inside: avoid; margin-bottom: 1rem; }
         .question-number { font-weight: bold; }
         .question-body { flex: 1; }
@@ -752,7 +782,7 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
         ${columnarStyles}
 
         /* Answer Key Styles */
-        .answer-key-title { text-align: center; margin-bottom: 2rem; }
+        .answer-key-title { text-align: center; margin-bottom: 2rem; break-inside: avoid; }
         .answer-key-title h2 { font-size: 1.5em; font-weight: bold; }
         .answer-key-title h3 { font-size: 1.2em; margin-top: 0.25rem; }
         .answer-key-meta { margin-top: 0.75rem; font-size: 0.9em; color: #475569; }
@@ -777,7 +807,7 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
 
     const dynamicHeaderScript = `
     <script>
-      function debounce(func, wait) {
+      function sgDebounce(func, wait) {
         let timeout;
         return function executedFunction(...args) {
           const later = () => {
@@ -818,7 +848,7 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
         });
       }
       
-      const debouncedAdjust = debounce(adjustHeaderTextSize, 150);
+      const debouncedAdjust = sgDebounce(adjustHeaderTextSize, 150);
 
       // Run when the document is ready and fonts have been loaded
       document.addEventListener('DOMContentLoaded', () => {
@@ -835,56 +865,240 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
     </script>
     `;
     
+    const previewPaginationScript = `
+    <script>
+      function sgPageFits(sheet) {
+        const inner = sheet.querySelector('.exam-sheet-inner');
+        if (!inner) return true;
+        return inner.scrollHeight <= inner.clientHeight + 2;
+      }
+
+      function sgCreatePage(templateSheet) {
+        const page = templateSheet.cloneNode(false);
+        const inner = document.createElement('div');
+        inner.className = 'exam-sheet-inner';
+        page.appendChild(inner);
+
+        const footer = document.createElement('div');
+        footer.className = 'watermark-footer';
+        footer.textContent = 'Dibuat dengan SoalGenius by AI Projek | aiprojek01.my.id';
+        page.appendChild(footer);
+
+        return { sheet: page, inner };
+      }
+
+      function sgCloneChildren(nodes) {
+        return nodes.map(node => node.cloneNode(true));
+      }
+
+      function sgReservedNodeCountForPage(page, pages, firstPageFixedCount) {
+        return page === pages[0] ? firstPageFixedCount : 0;
+      }
+
+      function sgBuildSectionFragment(section, listSelector, items, startIndex) {
+        const fragment = section.cloneNode(false);
+        const originalList = section.querySelector(listSelector);
+        if (startIndex === 0) {
+          const staticChildren = Array.from(section.children).filter(child => child !== originalList);
+          staticChildren.forEach(child => fragment.appendChild(child.cloneNode(true)));
+        }
+
+        if (!originalList) {
+          return { section: section.cloneNode(true), nextIndex: startIndex + 1 };
+        }
+
+        const listClone = originalList.cloneNode(false);
+        fragment.appendChild(listClone);
+
+        let index = startIndex;
+        while (index < items.length) {
+          listClone.appendChild(items[index].cloneNode(true));
+          index += 1;
+        }
+
+        return { section: fragment, nextIndex: index };
+      }
+
+      function paginatePreviewPages() {
+        const container = document.querySelector('.exam-sheet-container');
+        const originalSheet = container && container.querySelector('.exam-sheet');
+        if (!container || !originalSheet) return;
+
+        const sourceSheet = originalSheet.cloneNode(true);
+        const sourceInner = sourceSheet.querySelector('.exam-sheet-inner');
+        if (!sourceInner) return;
+
+        const examBody = sourceInner.querySelector('[data-paginate-root="exam-body"]');
+        const answerKeyBody = sourceInner.querySelector('[data-paginate-root="answer-key-body"]');
+        const paginateRoot = examBody || answerKeyBody;
+        if (!paginateRoot) return;
+
+        const firstPageFixedNodes = Array.from(sourceInner.children).filter(child => child !== paginateRoot);
+        const topLevelBlocks = Array.from(paginateRoot.children);
+        const listSelector = examBody ? '.questions-list' : '.answers-list';
+
+        container.innerHTML = '';
+
+        const pages = [];
+        const createEmptyPage = () => {
+          const page = sgCreatePage(originalSheet);
+          container.appendChild(page.sheet);
+          pages.push(page);
+          return page;
+        };
+
+        let currentPage = createEmptyPage();
+        sgCloneChildren(firstPageFixedNodes).forEach(node => currentPage.inner.appendChild(node));
+
+        const appendBlock = (block) => {
+          currentPage.inner.appendChild(block);
+          if (sgPageFits(currentPage.sheet)) return true;
+          currentPage.inner.removeChild(block);
+          return false;
+        };
+
+        const splitSectionAcrossPages = (section) => {
+          const list = section.querySelector(listSelector);
+          const items = list ? Array.from(list.children) : [];
+          if (!list || items.length === 0) {
+            currentPage.inner.appendChild(section.cloneNode(true));
+            return;
+          }
+
+          let index = 0;
+          while (index < items.length) {
+            const attempt = sgBuildSectionFragment(section, listSelector, items, index);
+            const fragment = attempt.section;
+
+            currentPage.inner.appendChild(fragment);
+            if (sgPageFits(currentPage.sheet)) {
+              index = attempt.nextIndex;
+              continue;
+            }
+
+            currentPage.inner.removeChild(fragment);
+
+            let localIndex = index;
+            const chunk = section.cloneNode(false);
+            if (index === 0) {
+              const staticChildren = Array.from(section.children).filter(child => child !== list);
+              staticChildren.forEach(child => chunk.appendChild(child.cloneNode(true)));
+            }
+            const listClone = list.cloneNode(false);
+            chunk.appendChild(listClone);
+
+            currentPage.inner.appendChild(chunk);
+            if (!sgPageFits(currentPage.sheet)) {
+              currentPage.inner.removeChild(chunk);
+              currentPage = createEmptyPage();
+              continue;
+            }
+
+            while (localIndex < items.length) {
+              const itemClone = items[localIndex].cloneNode(true);
+              listClone.appendChild(itemClone);
+              if (!sgPageFits(currentPage.sheet)) {
+                listClone.removeChild(itemClone);
+                if (listClone.children.length === 0) {
+                  const reservedCount = sgReservedNodeCountForPage(currentPage, pages, firstPageFixedNodes.length);
+                  const pageHasContentBeforeChunk = currentPage.inner.children.length > reservedCount + 1;
+
+                  currentPage.inner.removeChild(chunk);
+
+                  if (pageHasContentBeforeChunk) {
+                    currentPage = createEmptyPage();
+                    continue;
+                  }
+
+                  currentPage.inner.appendChild(chunk);
+                  listClone.appendChild(itemClone);
+                  localIndex += 1;
+                }
+                break;
+              }
+              localIndex += 1;
+            }
+
+            index = localIndex;
+            if (index < items.length) {
+              currentPage = createEmptyPage();
+            }
+          }
+        };
+
+        topLevelBlocks.forEach(block => {
+          const blockClone = block.cloneNode(true);
+          if (appendBlock(blockClone)) return;
+
+          if (block.classList.contains('exam-section')) {
+            splitSectionAcrossPages(block);
+            return;
+          }
+
+          currentPage = createEmptyPage();
+          currentPage.inner.appendChild(block.cloneNode(true));
+        });
+
+        window.__soalGeniusPreviewPageCount = pages.length;
+        document.documentElement.style.setProperty('--sg-preview-pages', String(pages.length));
+      }
+
+      const debouncedPaginatePreview = sgDebounce(paginatePreviewPages, 120);
+
+      document.addEventListener('DOMContentLoaded', () => {
+        const run = () => {
+          paginatePreviewPages();
+          requestAnimationFrame(() => {
+            window.dispatchEvent(new Event('soalgenius-preview-paginated'));
+          });
+        };
+
+        if (document.fonts) {
+          document.fonts.ready.then(() => setTimeout(run, 50));
+        } else {
+          setTimeout(run, 150);
+        }
+      });
+
+      window.addEventListener('resize', debouncedPaginatePreview);
+    </script>
+`;
+
     const autoZoomScript = `
     <script>
       function autoZoomOnMobile() {
-        const sheet = document.querySelector('.exam-sheet');
-        if (!sheet) return;
+        const sheets = document.querySelectorAll('.exam-sheet');
+        if (!sheets.length) return;
         
         // This should only run on smaller screens, not on desktop where user might want 1:1 view.
         // Let's use a threshold, e.g., 850px, which is roughly the width of the paper.
         const isSmallScreen = window.innerWidth < 850;
 
-        if (isSmallScreen) {
-            const viewportWidth = document.documentElement.clientWidth;
-            // offsetWidth includes borders, which is what we want for layout calculation.
-            const sheetWidth = sheet.offsetWidth;
-            
-            // Add a small padding of 16px total (8px each side) for better visuals.
-            const targetWidth = viewportWidth - 16;
+        sheets.forEach(sheet => {
+          if (isSmallScreen) {
+              const viewportWidth = document.documentElement.clientWidth;
+              const sheetWidth = sheet.offsetWidth;
+              const targetWidth = viewportWidth - 16;
 
-            if (sheetWidth > targetWidth) {
-                const scale = targetWidth / sheetWidth;
-                sheet.style.transform = \`scale(\${scale})\`;
-                
-                // Adjust margin to reclaim vertical space that transform leaves empty.
-                const scaledHeight = sheet.offsetHeight * scale;
-                const marginOffset = sheet.offsetHeight - scaledHeight;
-                sheet.style.marginBottom = \`-\${marginOffset}px\`;
-            } else {
-                 sheet.style.transform = 'scale(1)';
-                 sheet.style.marginBottom = '0';
-            }
-        } else {
-            // On larger screens, ensure no scaling is applied.
-            sheet.style.transform = 'scale(1)';
-            sheet.style.marginBottom = '0';
-        }
+              if (sheetWidth > targetWidth) {
+                  const scale = targetWidth / sheetWidth;
+                  sheet.style.transform = \`scale(\${scale})\`;
+                  
+                  const scaledHeight = sheet.offsetHeight * scale;
+                  const marginOffset = sheet.offsetHeight - scaledHeight;
+                  sheet.style.marginBottom = \`-\${marginOffset}px\`;
+              } else {
+                   sheet.style.transform = 'scale(1)';
+                   sheet.style.marginBottom = '0';
+              }
+          } else {
+              sheet.style.transform = 'scale(1)';
+              sheet.style.marginBottom = '0';
+          }
+        });
       }
 
-      function debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-          const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-          };
-          clearTimeout(timeout);
-          timeout = setTimeout(later, wait);
-        };
-      }
-
-      const debouncedAutoZoom = debounce(autoZoomOnMobile, 150);
+      const debouncedAutoZoom = sgDebounce(autoZoomOnMobile, 150);
 
       document.addEventListener('DOMContentLoaded', () => {
         // Run after fonts are loaded to get correct dimensions.
@@ -896,6 +1110,7 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
       });
 
       window.addEventListener('resize', debouncedAutoZoom);
+      window.addEventListener('soalgenius-preview-paginated', debouncedAutoZoom);
     </script>
 `;
 
@@ -914,12 +1129,15 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
 <body>
     ${printButtonHtml}
     <div class="exam-sheet-container">
-        <main class="exam-sheet" style="box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);">
-            ${mainContentHtml}
+        <main class="exam-sheet">
+            <div class="exam-sheet-inner">
+                ${mainContentHtml}
+            </div>
             <div class="watermark-footer">Dibuat dengan SoalGenius by AI Projek | aiprojek01.my.id</div>
         </main>
     </div>
     ${dynamicHeaderScript}
+    ${previewPaginationScript}
     ${autoZoomScript}
 </body>
 </html>`;

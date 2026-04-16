@@ -17,7 +17,7 @@ const ServiceCard: React.FC<{
     const btnClass = variant === 'blue' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-purple-600 hover:bg-purple-700 text-white';
     
     return (
-        <div className="bg-[var(--bg-secondary)] rounded-2xl shadow-md border border-[var(--border-primary)] overflow-hidden flex flex-col h-full transform hover:-translate-y-1 transition-all duration-300">
+        <div className="app-surface rounded-[var(--radius-card)] overflow-hidden flex flex-col h-full transform hover:-translate-y-0.5 transition-all duration-300">
             <div className={`p-6 ${bgHeader} text-white relative`}>
                 {badge && (
                     <span className="absolute top-4 right-4 bg-white/20 backdrop-blur-sm text-xs font-bold px-2 py-1 rounded-full uppercase tracking-wider">
@@ -51,7 +51,7 @@ const ServiceCard: React.FC<{
                     href={ctaLink} 
                     target="_blank" 
                     rel="noopener noreferrer" 
-                    className={`block w-full py-3 rounded-xl font-bold text-center transition-colors shadow-sm ${btnClass} flex items-center justify-center gap-2`}
+                    className={`block w-full py-3 rounded-[var(--radius-control)] font-bold text-center transition-colors shadow-sm ${btnClass} flex items-center justify-center gap-2`}
                 >
                     <WhatsappIcon /> {ctaText}
                 </a>
@@ -65,9 +65,9 @@ const SocialButton: React.FC<{ href: string; icon: React.ElementType; label: str
         href={href} 
         target="_blank" 
         rel="noopener noreferrer" 
-        className={`flex items-center gap-4 p-4 rounded-xl transition-all duration-300 transform hover:-translate-y-1 hover:shadow-lg border border-transparent ${colorClass} group`}
+        className={`flex items-center gap-4 p-4 rounded-[var(--radius-card)] transition-all duration-300 transform hover:-translate-y-0.5 border border-transparent ${colorClass} group`}
     >
-        <div className="p-3 bg-white/20 rounded-full">
+        <div className="p-3 bg-white/20 rounded-2xl">
             <Icon className="text-2xl text-white" />
         </div>
         <div className="text-left">

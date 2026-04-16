@@ -104,13 +104,13 @@ const MainLayout: React.FC<{
             <div className="flex flex-col flex-grow">
                 {/* Changed z-10 to z-20 to stack above page content sticky headers */}
                 <header className="sticky top-0 z-20 border-b border-[var(--border-primary)] bg-[color:color-mix(in_srgb,var(--bg-secondary)_88%,transparent)] backdrop-blur-md">
-                    <div className="mx-auto flex w-full max-w-6xl justify-between items-center gap-3 px-4 py-3 md:px-6">
+                    <div className="mx-auto flex w-full max-w-7xl justify-between items-center gap-2 px-2.5 py-2.5 sm:gap-3 sm:px-4 sm:py-3 md:px-6 lg:px-8">
                         <div className="min-w-0">
-                            <h1 className="text-xl md:text-2xl font-bold tracking-tight text-[var(--text-primary)]">
+                            <h1 className="text-lg font-bold tracking-tight text-[var(--text-primary)] sm:text-xl md:text-2xl">
                                 Soal<span className="text-[var(--text-accent)]">Genius</span>
                             </h1>
                             <p className="hidden sm:block text-xs text-[var(--text-secondary)]">
-                                Editor soal yang ringan, fokus, dan siap offline
+                                Editor soal yang ringan, dan fokus
                             </p>
                         </div>
                         
@@ -138,10 +138,10 @@ const MainLayout: React.FC<{
                             <div className="relative" ref={cloudMenuRef}>
                                 <button 
                                     onClick={() => hasDropbox ? setIsCloudMenuOpen(!isCloudMenuOpen) : handleOpenCloudSettingsClick()}
-                                    className={`app-control p-2.5 transition-colors ${hasDropbox ? 'text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'}`}
+                                    className={`app-control p-2 transition-colors sm:p-2.5 ${hasDropbox ? 'text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'}`}
                                     title={hasDropbox ? "Cloud Sync" : "Hubungkan ke Dropbox"}
                                 >
-                                    <DropboxIcon className="text-xl" />
+                                    <DropboxIcon className="text-lg sm:text-xl" />
                                     {hasDropbox && <span className="absolute top-1 right-1 w-2 h-2 bg-green-500 rounded-full border border-white dark:border-slate-800"></span>}
                                 </button>
 
@@ -180,7 +180,7 @@ const MainLayout: React.FC<{
                         </div>
                     </div>
                 </header>
-                <main className="mx-auto w-full max-w-6xl flex-grow px-4 py-4 md:px-6 md:py-8 app-bottom-safe">
+                <main className="mx-auto w-full max-w-7xl flex-grow px-2.5 py-3 sm:px-4 sm:py-4 md:px-6 md:py-8 lg:px-8 app-bottom-safe">
                     {children}
                 </main>
                 <footer className="hidden md:block text-center py-4 text-sm text-[var(--text-secondary)] bg-[var(--bg-tertiary)] border-t border-[var(--border-primary)]">
@@ -188,21 +188,21 @@ const MainLayout: React.FC<{
                 </footer>
 
                 <nav className="app-mobile-nav fixed inset-x-0 bottom-0 z-20 border-t border-[var(--border-primary)] bg-[color:color-mix(in_srgb,var(--bg-secondary)_92%,transparent)] backdrop-blur-md md:hidden">
-                    <div className="grid grid-cols-4 gap-1 px-2 py-2">
+                    <div className="grid grid-cols-4 gap-1 px-1.5 py-1.5 sm:px-2 sm:py-2">
                         {sidebarItems.map(item => {
                             const isActive = currentView === item.id;
                             return (
                                 <button
                                     key={item.id}
                                     onClick={item.action}
-                                    className={`app-control flex flex-col items-center justify-center gap-1 px-2 py-2 text-[11px] font-medium transition-colors ${
+                                    className={`app-control flex flex-col items-center justify-center gap-0.5 px-1 py-1.5 text-[10px] font-medium transition-colors sm:gap-1 sm:px-2 sm:py-2 sm:text-[11px] ${
                                         isActive
                                             ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
                                             : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
                                     }`}
                                     aria-current={isActive ? 'page' : undefined}
                                 >
-                                    <item.icon className="text-lg" />
+                                    <item.icon className="text-base sm:text-lg" />
                                     <span className="truncate">{item.label.replace('Arsip ', '').replace('Bank ', 'Bank ')}</span>
                                 </button>
                             );

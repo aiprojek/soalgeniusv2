@@ -2,6 +2,23 @@ import React from 'react';
 
 type IconProps = { className?: string };
 
+export const AppMarkIcon = ({ className }: IconProps) => (
+    <svg viewBox="0 0 64 64" className={className} xmlns="http://www.w3.org/2000/svg" fill="none" aria-hidden="true">
+        <defs>
+            <linearGradient id="sg-appmark-bg" x1="10" y1="8" x2="54" y2="56" gradientUnits="userSpaceOnUse">
+                <stop stopColor="#2D60DF" />
+                <stop offset="1" stopColor="#5F86EC" />
+            </linearGradient>
+        </defs>
+        <rect x="4" y="4" width="56" height="56" rx="18" fill="url(#sg-appmark-bg)" />
+        <path d="M32 13L11 23L32 33L53 23L32 13Z" fill="white" fillOpacity="0.96" />
+        <path d="M14 25.5V38.5C14 38.5 21.5 43 32 43C42.5 43 50 38.5 50 38.5V25.5" fill="white" fillOpacity="0.82" />
+        <path d="M26.5 32.5L30.5 36.5L39.5 27.5" stroke="#2457D6" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx="46.5" cy="20" r="2.2" fill="#FBBF24" />
+        <path d="M46.5 24.5V30.5" stroke="#FBBF24" strokeWidth="2.4" strokeLinecap="round" />
+    </svg>
+);
+
 export const PlusIcon = ({ className }: IconProps) => <i className={`bi bi-plus-lg ${className || ''}`}></i>;
 export const TrashIcon = ({ className }: IconProps) => <i className={`bi bi-trash3-fill ${className || ''}`}></i>;
 export const PrinterIcon = ({ className }: IconProps) => <i className={`bi bi-printer-fill ${className || ''}`}></i>;

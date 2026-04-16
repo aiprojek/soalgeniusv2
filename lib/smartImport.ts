@@ -13,7 +13,28 @@ interface ParsedRawQuestion {
  */
 const cleanLine = (line: string): string => {
     // Hapus karakter kontrol arah teks dan spasi berlebih
-    return line.replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '').trim();
+    return line
+        .replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '')
+        .replace(/[–—]/g, '-')
+        .trim();
+};
+
+export const detectTextDirection = (text: string): 'ltr' | 'rtl' => {
+    const plainText = text
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/&nbsp;/g, ' ')
+        .trim();
+
+    const arabicLetters = plainText.match(/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/g) || [];
+    const arabicIndicDigits = plainText.match(/[\u0660-\u0669\u06F0-\u06F9]/g) || [];
+    const arabicPunctuation = plainText.match(/[\u060C\u061B\u061F]/g) || [];
+    const latinLetters = plainText.match(/[A-Za-z]/g) || [];
+
+    const rtlScore = arabicLetters.length + (arabicIndicDigits.length * 2) + arabicPunctuation.length;
+    const ltrScore = latinLetters.length;
+
+    if (rtlScore === 0 && ltrScore === 0) return 'ltr';
+    return rtlScore >= ltrScore ? 'rtl' : 'ltr';
 };
 
 // Helper: Normalisasi Angka Arab (١ -> 1, ۱ -> 1)
@@ -62,15 +83,15 @@ export const parseRawText = (text: string): Question[] => {
 
     // 1. Deteksi Awal Soal
     // Mendukung: Latin (1.), Arab (١.), Arab-Farsi (۱.)
-    const questionStartRegex = /^(\d+|[\u0660-\u0669]+|[\u06F0-\u06F9]+)(?:[\.\)\-]|\s\.)\s+(.*)/; 
+    const questionStartRegex = /^(\d+|[\u0660-\u0669]+|[\u06F0-\u06F9]+)\s*(?:[\.\)\-:]|(?:\s+\.)|(?:\s*[\u061B\u061F]))\s*(.*)$/;
     
     // 2. Deteksi Awal Opsi
     // Mendukung: A., (A), أ., (أ), هـ.
     // Menangkap huruf Arab apa saja di awal yg diikuti pemisah
-    const optionStartRegex = /^(\(?\s*(?:[a-zA-Z]|[أ-ي]{1,2})\s*[\.\)\-]?\)?)\s+(.*)/; 
+    const optionStartRegex = /^([\(（]?\s*(?:[a-zA-Z]|[أ-ي]{1,2})\s*[\.\)\-:،]?\s*[\)）]?)\s*(.*)$/;
     
     // 3. Deteksi Kunci Jawaban
-    const answerKeyRegex = /^(?:Kunci|Jawab|Jawaban|Ans|Answer|Key|الجواب|الإجابة|الحل)\s*:?\s*([a-zA-Z]|[أ-ي])(?:\s|$)/i;
+    const answerKeyRegex = /^(?:Kunci|Jawab|Jawaban|Ans|Answer|Key|الجواب|الإجابة|الحل|الإجابة الصحيحة|الجواب الصحيح)\s*[:\-]?\s*([a-zA-Z]|[أ-ي])(?:[\.\)\-]|\s|$)/i;
 
     for (let i = 0; i < rawLines.length; i++) {
         // PENTING: Bersihkan baris dari karakter aneh sebelum di-regex
@@ -95,6 +116,7 @@ export const parseRawText = (text: string): Question[] => {
         if (questionMatch) {
             const rawNumber = questionMatch[1];
             const qText = questionMatch[2];
+            if (!qText) continue;
             
             currentQuestion = {
                 text: qText,
@@ -114,7 +136,7 @@ export const parseRawText = (text: string): Question[] => {
             const optText = optionMatch[2];
 
             // Validasi: Pastikan huruf yang dideteksi masuk akal (A-E)
-            if (['A', 'B', 'C', 'D', 'E'].includes(normalizedLetter)) {
+            if (['A', 'B', 'C', 'D', 'E', 'F', 'G'].includes(normalizedLetter) && optionMatch[2]) {
                 currentQuestion.options.push({
                     letter: normalizedLetter,
                     text: optText

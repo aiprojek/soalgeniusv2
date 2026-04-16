@@ -83,28 +83,30 @@ const ModalComponent: React.FC<ModalState & { hideModal: () => void }> = ({ isOp
             aria-modal="true"
             aria-labelledby="modal-title"
         >
-            <div className="fixed inset-0 bg-black bg-opacity-50" onClick={handleClose} aria-hidden="true"></div>
+            <div className="fixed inset-0 bg-black/55 backdrop-blur-sm" onClick={handleClose} aria-hidden="true"></div>
             <div 
-                className={`bg-[var(--bg-secondary)] rounded-lg shadow-xl w-full max-w-md transform transition-all duration-200 ${isOpen && !isClosing ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}
+                className={`app-modal-panel w-full max-w-md transform transition-all duration-200 ${isOpen && !isClosing ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}
                 onClick={e => e.stopPropagation()}
             >
-                <div className="p-6">
+                <div className="app-modal-header px-6 py-5">
                     <div className="flex justify-between items-start">
                         <h3 id="modal-title" className="text-xl font-bold text-[var(--text-primary)]">{title}</h3>
                         <button onClick={handleClose} className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-full hover:bg-[var(--bg-hover)]" aria-label="Tutup">
                             <CloseIcon className="text-lg" />
                         </button>
                     </div>
+                </div>
+                <div className="px-6 py-5">
                     <div className="mt-4 text-[var(--text-secondary)]">
                         {typeof content === 'string' ? <p>{content}</p> : content}
                     </div>
                 </div>
-                <div className="bg-[var(--bg-tertiary)] px-6 py-4 flex justify-end space-x-3 rounded-b-lg">
+                <div className="app-modal-footer px-6 py-4 flex justify-end space-x-3">
                     {actions.map((action, index) => (
                         <button 
                             key={index} 
                             onClick={action.onClick}
-                            className={`font-semibold py-2 px-4 rounded-lg transition-colors duration-200 ${getButtonClass(action.variant)}`}
+                            className={`font-semibold py-2 px-4 rounded-[var(--radius-control)] transition-colors duration-200 ${getButtonClass(action.variant)}`}
                         >
                             {action.label}
                         </button>

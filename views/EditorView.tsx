@@ -305,7 +305,8 @@ const RichTextEditor: React.FC<{
     onChange: (newValue: string) => void; 
     placeholder?: string;
     isOption?: boolean;
-}> = ({ value, onChange, placeholder, isOption = false }) => {
+    direction?: 'ltr' | 'rtl';
+}> = ({ value, onChange, placeholder, isOption = false, direction = 'ltr' }) => {
     const quillRef = useRef<ReactQuill>(null);
     const { addToast } = useToast();
 
@@ -410,9 +411,19 @@ const RichTextEditor: React.FC<{
             onChange(normalizedContent);
         }
     };
+
+    useEffect(() => {
+        const editor = quillRef.current?.getEditor();
+        if (!editor) return;
+
+        const root = editor.root;
+        root.setAttribute('dir', direction);
+        root.style.direction = direction;
+        root.style.textAlign = direction === 'rtl' ? 'right' : 'left';
+    }, [direction]);
     
     return (
-        <div className={`so-genius-quill-wrapper ${isOption ? 'so-genius-quill-option-wrapper' : ''}`}>
+        <div className={`so-genius-quill-wrapper ${isOption ? 'so-genius-quill-option-wrapper' : ''} ${direction === 'rtl' ? 'so-genius-quill-rtl' : 'so-genius-quill-ltr'}`} dir={direction}>
             <ReactQuillComponent ref={quillRef} value={value} onChange={handleChange} placeholder={placeholder} theme="snow" modules={modules} />
         </div>
     );
@@ -690,6 +701,8 @@ const QuestionEditor: React.FC<{
 }> = ({ sectionId, question, T, onQuestionUpdate, onQuestionDelete, onSaveToBank }) => {
     
     const updateField = (field: keyof Question, value: any) => onQuestionUpdate(sectionId, question.id, field, value);
+    const choiceCount = question.choices?.length || 0;
+    const matchingCount = question.matchingPrompts?.length || 0;
 
     const updateMatchingList = (listType: 'matchingPrompts' | 'matchingAnswers', itemId: string, newText: string) => {
         const oldList = question[listType] || [];
@@ -825,48 +838,65 @@ const QuestionEditor: React.FC<{
     
     // Determine card background color: lighter for stimulus to differentiate
     const cardBgClass = question.type === QuestionType.STIMULUS 
-        ? "bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800"
-        : "bg-[var(--bg-tertiary)] border-[var(--border-primary)]";
+        ? "bg-blue-50/80 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800"
+        : "bg-[var(--bg-secondary)] border-[var(--border-primary)]";
 
     return (
-        <div className={`${cardBgClass} p-4 rounded-lg border`}>
-            <div className="flex justify-between items-start mb-3">
-                 <div className="flex items-center">
+        <div className={`${cardBgClass} rounded-[22px] border shadow-[var(--shadow-soft)] overflow-hidden`}>
+            <div className="border-b border-[var(--border-primary)] bg-[color:color-mix(in_srgb,var(--bg-tertiary)_72%,transparent)] px-4 py-3 sm:px-5">
+            <div className="flex justify-between items-start gap-3">
+                 <div className="min-w-0 flex items-center">
                     {/* Hide number input for STIMULUS type */}
                     {question.type !== QuestionType.STIMULUS && (
                         <input 
                             type="text" 
                             value={question.number} 
                             onChange={(e) => updateField('number', e.target.value)}
-                            className="bg-slate-700 dark:bg-slate-600 text-white rounded-full h-8 w-12 text-center font-bold me-3 outline-none focus:ring-2 focus:ring-blue-500 transition-colors" 
+                            className="me-3 h-9 w-12 rounded-full border border-slate-600 bg-slate-700 text-center font-bold text-white outline-none transition-colors focus:ring-2 focus:ring-blue-500" 
                             aria-label={T.questionNumberAria.replace('{number}', question.number)} 
                             title="Nomor soal"
                         />
                     )}
-                    <span className={`font-semibold ${question.type === QuestionType.STIMULUS ? 'text-blue-800 dark:text-blue-300' : 'text-[var(--text-secondary)]'}`}>
-                        {question.type === QuestionType.STIMULUS ? <span className="flex items-center gap-2"><StimulusIcon/> {T.questionTypes[QuestionType.STIMULUS]}</span> : T.questionTypes[question.type]}
-                    </span>
+                    <div className="min-w-0">
+                        <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${question.type === QuestionType.STIMULUS ? 'border-blue-200 bg-blue-100/80 text-blue-800 dark:border-blue-800 dark:bg-blue-900/40 dark:text-blue-300' : 'border-[var(--border-primary)] bg-[var(--bg-secondary)] text-[var(--text-secondary)]'}`}>
+                            {question.type === QuestionType.STIMULUS ? <StimulusIcon/> : null}
+                            {T.questionTypes[question.type]}
+                        </span>
+                        <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-[var(--text-muted)]">
+                            {choiceCount > 0 && <span>{choiceCount} opsi</span>}
+                            {matchingCount > 0 && <span>{matchingCount} pasangan</span>}
+                            {(question.type === QuestionType.TABLE || question.type === QuestionType.TABLE_MULTIPLE_CHOICE || question.type === QuestionType.TABLE_COMPLEX_MULTIPLE_CHOICE) && <span>Mode tabel</span>}
+                        </div>
+                    </div>
                 </div>
                  <div className="flex items-center space-x-1">
                     {question.type !== QuestionType.STIMULUS && (
-                        <button onClick={() => onSaveToBank(question)} title={T.saveToBank} aria-label={T.saveToBank} className="text-blue-500 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 p-1 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"><BookmarkPlusIcon className="text-xl" /></button>
+                        <button onClick={() => onSaveToBank(question)} title={T.saveToBank} aria-label={T.saveToBank} className="rounded-full p-2 text-blue-500 transition-colors hover:bg-blue-100 hover:text-blue-700 dark:text-blue-400 dark:hover:bg-blue-900/50 dark:hover:text-blue-300"><BookmarkPlusIcon className="text-xl" /></button>
                     )}
-                    <button onClick={() => onQuestionDelete(sectionId, question.id)} title={T.deleteQuestion} aria-label={T.deleteQuestion} className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"><TrashIcon className="text-xl" /></button>
+                    <button onClick={() => onQuestionDelete(sectionId, question.id)} title={T.deleteQuestion} aria-label={T.deleteQuestion} className="rounded-full p-2 text-red-500 transition-colors hover:bg-red-100 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-900/50 dark:hover:text-red-300"><TrashIcon className="text-xl" /></button>
                 </div>
             </div>
+            </div>
+            <div className="space-y-4 px-4 py-4 sm:px-5 sm:py-5">
             <RichTextEditor 
                 value={question.text} 
                 onChange={(newText) => updateField('text', newText)} 
                 placeholder={question.type === QuestionType.STIMULUS ? T.stimulusTextPlaceholder : T.questionPlaceholder} 
+                direction={T === translations.rtl ? 'rtl' : 'ltr'}
             />
             
             {/* Options Render Block */}
             {(question.type === QuestionType.MULTIPLE_CHOICE || question.type === QuestionType.COMPLEX_MULTIPLE_CHOICE || question.type === QuestionType.TABLE_MULTIPLE_CHOICE || question.type === QuestionType.TABLE_COMPLEX_MULTIPLE_CHOICE) && (
-                <div className="mt-4 space-y-3 ps-4 border-s-2 border-[var(--border-primary)]">
+                <div className="rounded-[18px] border border-[var(--border-primary)] bg-[var(--bg-tertiary)] p-3 sm:p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                    <h4 className="text-sm font-semibold text-[var(--text-secondary)]">Opsi Jawaban</h4>
+                    <span className="text-xs text-[var(--text-muted)]">{choiceCount} opsi</span>
+                </div>
+                <div className="space-y-3 ps-3 border-s-2 border-[var(--border-primary)]">
                     {(question.choices || []).map((choice, choiceIndex) => (
                         <div key={choice.id} className="flex items-start space-x-2">
                             <span className="font-mono mt-2">{String.fromCharCode(97 + choiceIndex)}.</span>
-                             <div className="flex-grow min-w-0"><RichTextEditor isOption={true} value={choice.text} onChange={(newText) => handleChoiceChange(choice.id, newText)} placeholder={`${T.optionPlaceholder} ${String.fromCharCode(65 + choiceIndex)}`} /></div>
+                             <div className="flex-grow min-w-0"><RichTextEditor isOption={true} value={choice.text} onChange={(newText) => handleChoiceChange(choice.id, newText)} placeholder={`${T.optionPlaceholder} ${String.fromCharCode(65 + choiceIndex)}`} direction={T === translations.rtl ? 'rtl' : 'ltr'} /></div>
                             <button onClick={() => deleteChoice(choice.id)} aria-label={T.deleteOptionAria.replace('{letter}', String.fromCharCode(65 + choiceIndex))} className="text-[var(--text-muted)] hover:text-red-500 dark:hover:text-red-400 p-1 mt-1" disabled={(question.choices || []).length <= 1}><TrashIcon className="text-base" /></button>
                         </div>
                     ))}
@@ -875,28 +905,39 @@ const QuestionEditor: React.FC<{
                         <div className="pt-2"><label className="flex items-center space-x-2 text-sm text-[var(--text-secondary)]"><input type="checkbox" checked={!!question.isTwoColumns} onChange={e => updateField('isTwoColumns', e.target.checked)} className="form-checkbox rounded text-blue-600 bg-transparent border-[var(--border-secondary)] focus:ring-blue-500" /><span>{T.twoColumnLayout}</span></label></div>
                     )}
                 </div>
+                </div>
             )}
             {question.type === QuestionType.ESSAY && (<div className="mt-3"><label className="flex items-center space-x-2 text-sm text-[var(--text-secondary)]"><input type="checkbox" checked={!!question.hasAnswerSpace} onChange={e => updateField('hasAnswerSpace', e.target.checked)} className="form-checkbox text-blue-600 bg-transparent border-[var(--border-secondary)]" /><span>{T.provideAnswerSpace}</span></label></div>)}
             {question.type === QuestionType.MATCHING && (
-                <div className="mt-4 flex flex-col md:flex-row gap-6">
+                <div className="rounded-[18px] border border-[var(--border-primary)] bg-[var(--bg-tertiary)] p-3 sm:p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                    <h4 className="text-sm font-semibold text-[var(--text-secondary)]">Pasangan Jawaban</h4>
+                    <span className="text-xs text-[var(--text-muted)]">{matchingCount} pernyataan</span>
+                </div>
+                <div className="flex flex-col md:flex-row gap-6">
                     <div className="w-full md:w-1/2 space-y-2">
                         <h4 className="font-semibold text-[var(--text-secondary)]">{T.matchingColumnA}</h4>
-                        {(question.matchingPrompts || []).map((prompt, index) => (<div key={prompt.id} className="flex items-start space-x-2"><span className="font-mono mt-2">{index + 1}.</span><div className="w-full min-w-0"><RichTextEditor isOption={true} value={prompt.text} onChange={newText => updateMatchingList('matchingPrompts', prompt.id, newText)} placeholder={T.statementPlaceholder} /></div><button onClick={() => deleteMatchingItem('matchingPrompts', prompt.id)} aria-label={T.deleteMatchingPromptAria.replace('{index}', String(index + 1))} className="text-[var(--text-muted)] hover:text-red-500 dark:hover:text-red-400 p-1 mt-1" disabled={(question.matchingPrompts || []).length <= 1}><TrashIcon /></button></div>))}
+                        {(question.matchingPrompts || []).map((prompt, index) => (<div key={prompt.id} className="flex items-start space-x-2"><span className="font-mono mt-2">{index + 1}.</span><div className="w-full min-w-0"><RichTextEditor isOption={true} value={prompt.text} onChange={newText => updateMatchingList('matchingPrompts', prompt.id, newText)} placeholder={T.statementPlaceholder} direction={T === translations.rtl ? 'rtl' : 'ltr'} /></div><button onClick={() => deleteMatchingItem('matchingPrompts', prompt.id)} aria-label={T.deleteMatchingPromptAria.replace('{index}', String(index + 1))} className="text-[var(--text-muted)] hover:text-red-500 dark:hover:text-red-400 p-1 mt-1" disabled={(question.matchingPrompts || []).length <= 1}><TrashIcon /></button></div>))}
                         <button onClick={() => addMatchingItem('matchingPrompts')} className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-semibold text-sm flex items-center space-x-1 pt-2"><PlusIcon /><span>{T.addStatement}</span></button>
                     </div>
                     <div className="w-full md:w-1/2 space-y-2">
                         <h4 className="font-semibold text-[var(--text-secondary)]">{T.matchingColumnB}</h4>
-                        {(question.matchingAnswers || []).map((answer, index) => (<div key={answer.id} className="flex items-start space-x-2"><span className="font-mono mt-2">{String.fromCharCode(65 + index)}.</span><div className="w-full min-w-0"><RichTextEditor isOption={true} value={answer.text} onChange={newText => updateMatchingList('matchingAnswers', answer.id, newText)} placeholder={T.answerPlaceholder} /></div><button onClick={() => deleteMatchingItem('matchingAnswers', answer.id)} aria-label={T.deleteMatchingAnswerAria.replace('{letter}', String.fromCharCode(65 + index))} className="text-[var(--text-muted)] hover:text-red-500 dark:hover:text-red-400 p-1 mt-1" disabled={(question.matchingAnswers || []).length <= 1}><TrashIcon /></button></div>))}
+                        {(question.matchingAnswers || []).map((answer, index) => (<div key={answer.id} className="flex items-start space-x-2"><span className="font-mono mt-2">{String.fromCharCode(65 + index)}.</span><div className="w-full min-w-0"><RichTextEditor isOption={true} value={answer.text} onChange={newText => updateMatchingList('matchingAnswers', answer.id, newText)} placeholder={T.answerPlaceholder} direction={T === translations.rtl ? 'rtl' : 'ltr'} /></div><button onClick={() => deleteMatchingItem('matchingAnswers', answer.id)} aria-label={T.deleteMatchingAnswerAria.replace('{letter}', String.fromCharCode(65 + index))} className="text-[var(--text-muted)] hover:text-red-500 dark:hover:text-red-400 p-1 mt-1" disabled={(question.matchingAnswers || []).length <= 1}><TrashIcon /></button></div>))}
                          <button onClick={() => addMatchingItem('matchingAnswers')} className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-semibold text-sm flex items-center space-x-1 pt-2"><PlusIcon /><span>{T.addAnswer}</span></button>
                     </div>
+                </div>
                 </div>
             )}
             {(question.type === QuestionType.TABLE || question.type === QuestionType.TABLE_MULTIPLE_CHOICE || question.type === QuestionType.TABLE_COMPLEX_MULTIPLE_CHOICE) && question.tableData && (<TableBuilder tableData={question.tableData} onTableChange={(newTable) => updateField('tableData', newTable)} T={T} />)}
             
             {/* Answer Key Block: Hidden for Stimulus */}
             {question.type !== QuestionType.STIMULUS && (
-                <div className="mt-4 pt-3 border-t border-[var(--border-primary)]"><h4 className="font-semibold text-[var(--text-secondary)] text-sm mb-2">{T.answerKeyTitle}</h4><div className="space-y-2">{renderAnswerKeyInput()}</div></div>
+                <div className="rounded-[18px] border border-[var(--border-primary)] bg-[var(--bg-tertiary)] p-3 sm:p-4">
+                    <h4 className="mb-2 text-sm font-semibold text-[var(--text-secondary)]">{T.answerKeyTitle}</h4>
+                    <div className="space-y-2">{renderAnswerKeyInput()}</div>
+                </div>
             )}
+            </div>
         </div>
     );
 };
@@ -967,20 +1008,31 @@ const SectionEditor: React.FC<{
     });
 
     const hasVisibleQuestions = visibleQuestions.length > 0;
+    const hiddenQuestionCount = section.questions.length - visibleQuestions.length;
 
     return (
-        <div className="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-md space-y-4">
-            <div className="flex justify-between items-center border-b border-[var(--border-primary)] pb-3 gap-4">
-                <div className="flex items-center gap-2 flex-grow">
-                     <input type="text" value={title} onChange={(e) => handleInstructionChange(e.target.value, instructionText)} aria-label={T.sectionNumberAria} className="text-lg font-bold text-[var(--text-primary)] p-1 rounded-md bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)] focus:bg-[var(--bg-hover)] focus:ring-2 focus:ring-[var(--border-focus)] outline-none w-16 text-center transition-colors" />
-                     <input type="text" value={instructionText} onChange={(e) => handleInstructionChange(title, e.target.value)} placeholder={T.instructionPlaceholder} aria-label={T.sectionInstructionAria} className="text-lg font-bold text-[var(--text-primary)] w-full p-1 rounded-md bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)] focus:bg-[var(--bg-hover)] focus:ring-2 focus:ring-[var(--border-focus)] outline-none transition-colors" />
+        <div className="app-surface rounded-[28px] p-4 shadow-[var(--shadow-soft)] sm:p-6">
+            <div className="border-b border-[var(--border-primary)] pb-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex flex-1 items-start gap-3">
+                     <input type="text" value={title} onChange={(e) => handleInstructionChange(e.target.value, instructionText)} aria-label={T.sectionNumberAria} className="mt-0.5 w-16 rounded-full border border-[var(--border-primary)] bg-[var(--bg-tertiary)] px-2 py-2 text-center text-base font-bold text-[var(--text-primary)] outline-none transition-colors hover:bg-[var(--bg-hover)] focus:bg-[var(--bg-hover)] focus:ring-2 focus:ring-[var(--border-focus)]" />
+                     <div className="min-w-0 flex-1 space-y-3">
+                        <input type="text" value={instructionText} onChange={(e) => handleInstructionChange(title, e.target.value)} placeholder={T.instructionPlaceholder} aria-label={T.sectionInstructionAria} className="w-full rounded-[var(--radius-control)] bg-[var(--bg-tertiary)] px-3 py-2 text-base font-bold text-[var(--text-primary)] outline-none transition-colors hover:bg-[var(--bg-hover)] focus:bg-[var(--bg-hover)] focus:ring-2 focus:ring-[var(--border-focus)] sm:text-lg" />
+                        <div className="flex flex-wrap gap-2 text-[11px] sm:text-xs">
+                            <span className="rounded-full border border-[var(--border-primary)] bg-[var(--bg-tertiary)] px-3 py-1 text-[var(--text-secondary)]">{section.questions.length} soal di bagian ini</span>
+                            {hiddenQuestionCount > 0 && <span className="rounded-full border border-[var(--border-primary)] bg-[var(--bg-tertiary)] px-3 py-1 text-[var(--text-secondary)]">{hiddenQuestionCount} soal ada di halaman lain</span>}
+                        </div>
+                     </div>
                 </div>
-                <div className="flex items-center gap-2">
-                    <button onClick={() => onSectionDelete(section.id)} aria-label={T.deleteSectionAria} className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors flex-shrink-0"><TrashIcon className="text-xl" /></button>
+                <div className="flex items-center justify-end gap-2">
+                    <button onClick={() => onSectionDelete(section.id)} aria-label={T.deleteSectionAria} className="rounded-full p-2 text-red-500 transition-colors hover:bg-red-100 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-900/50 dark:hover:text-red-300 flex-shrink-0"><TrashIcon className="text-xl" /></button>
+                </div>
                 </div>
             </div>
             
+            <div className="space-y-4 pt-4">
             {visibleQuestions.map(({ q }) => <QuestionEditor key={q.id} sectionId={section.id} question={q} T={T} {...questionCallbacks} />)}
+            </div>
             
             {!hasVisibleQuestions && section.questions.length > 0 && (
                 <div className="text-center text-[var(--text-muted)] italic text-sm py-4 border-2 border-dashed border-[var(--border-secondary)] rounded-lg">
@@ -988,10 +1040,11 @@ const SectionEditor: React.FC<{
                 </div>
             )}
 
-            <div ref={addQuestionRef} className="relative inline-block text-center pt-4">
-                 <button onClick={() => setAddQuestionOpen(p => !p)} aria-haspopup="true" aria-expanded={isAddQuestionOpen} className="flex items-center space-x-2 bg-blue-100 dark:bg-blue-900/50 hover:bg-blue-200 dark:hover:bg-blue-900 text-blue-800 dark:text-blue-300 font-semibold py-2 px-4 rounded-lg transition-all duration-200"><PlusIcon /><span>{T.addQuestion}</span></button>
+            <div className="pt-5">
+            <div ref={addQuestionRef} className="relative inline-block text-center">
+                 <button onClick={() => setAddQuestionOpen(p => !p)} aria-haspopup="true" aria-expanded={isAddQuestionOpen} className="flex items-center space-x-2 rounded-full bg-blue-100 px-4 py-2.5 font-semibold text-blue-800 transition-all duration-200 hover:bg-blue-200 dark:bg-blue-900/50 dark:text-blue-300 dark:hover:bg-blue-900"><PlusIcon /><span>{T.addQuestion}</span></button>
                 {isAddQuestionOpen && (
-                    <div className="absolute start-0 mt-2 w-56 bg-[var(--bg-secondary)] rounded-md shadow-lg z-10 border border-[var(--border-secondary)] text-start max-h-80 overflow-y-auto">
+                    <div className="absolute start-0 z-10 mt-2 max-h-80 w-64 overflow-y-auto rounded-[20px] border border-[var(--border-secondary)] bg-[var(--bg-secondary)] text-start shadow-lg">
                         <ul className="py-1">
                             <li><a href="#" onClick={(e) => { e.preventDefault(); addFromBankAndClose(); }} className="flex items-center space-x-2 block px-4 py-2 text-sm font-semibold text-blue-600 dark:text-blue-300 hover:bg-[var(--bg-hover)]"><BankIcon /> <span>{T.getFromBank}</span></a></li>
                             <li><a href="#" onClick={(e) => { e.preventDefault(); openSmartImportAndClose(); }} className="flex items-center space-x-2 block px-4 py-2 text-sm font-semibold text-yellow-600 dark:text-yellow-400 hover:bg-[var(--bg-hover)]"><LightningIcon /> <span>{T.smartImport}</span></a></li>
@@ -1001,6 +1054,7 @@ const SectionEditor: React.FC<{
                         </ul>
                     </div>
                 )}
+            </div>
             </div>
         </div>
     );
@@ -1021,6 +1075,10 @@ const EditorView: React.FC<{ examId: string; onBack: () => void }> = ({ examId, 
     const [isFirstLoad, setIsFirstLoad] = useState(true); // Prevent auto-save on initial load
     const [isStatusMenuOpen, setStatusMenuOpen] = useState(false); // Status dropdown state
     const statusMenuRef = useRef<HTMLDivElement>(null);
+    const [isExamInfoOpen, setExamInfoOpen] = useState(() => {
+        if (typeof window === 'undefined') return true;
+        return window.innerWidth >= 768;
+    });
 
     // Pagination State
     const [currentPage, setCurrentPage] = useState(1);
@@ -1339,25 +1397,33 @@ const EditorView: React.FC<{ examId: string; onBack: () => void }> = ({ examId, 
         start: (currentPage - 1) * QUESTIONS_PER_PAGE,
         end: currentPage * QUESTIONS_PER_PAGE
     };
+    if (isLoading || !exam || !settings) return <div className="app-loading-state h-screen">Memuat...</div>;
 
-    if (isLoading || !exam || !settings) return <div className="flex justify-center items-center h-screen">Memuat...</div>;
+    const examInfoSummary = [
+        exam.subject?.trim() || 'Mata pelajaran belum diisi',
+        exam.class?.trim() || 'Kelas belum diisi',
+        `${exam.sections.length} bagian`,
+        `${totalQuestions} item`,
+    ];
+    const examInfoFieldClass = "w-full rounded-[18px] border-2 border-[var(--border-primary)] bg-[color:color-mix(in_srgb,var(--bg-secondary)_80%,white)] px-3.5 py-3 text-[var(--text-primary)] shadow-sm outline-none transition-all placeholder:text-[var(--text-muted)] hover:border-[var(--border-secondary)] focus:border-blue-500 focus:bg-[var(--bg-secondary)] focus:ring-4 focus:ring-blue-100/70 dark:focus:ring-blue-900/20";
+    const examInfoLabelClass = "mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]";
 
     return (
             <div className="flex flex-col h-screen bg-[var(--bg-primary)]">
-             <div className="bg-[color:color-mix(in_srgb,var(--bg-secondary)_92%,transparent)] border-b border-[var(--border-primary)] px-3 py-2.5 sm:p-4 flex items-center justify-between sticky top-0 z-20 backdrop-blur-md gap-2">
-                <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-                    <button onClick={onBack} className="p-2 rounded-full hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] flex-shrink-0"><ChevronLeftIcon /></button>
+             <div className="sticky top-0 z-20 border-b border-[var(--border-primary)] bg-[color:color-mix(in_srgb,var(--bg-secondary)_92%,transparent)] px-2.5 py-2 backdrop-blur-md sm:px-4 sm:py-3">
+                <div className="flex items-center justify-between gap-2">
+                <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+                    <button onClick={onBack} className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] sm:h-10 sm:w-10"><ChevronLeftIcon /></button>
                     <div className="min-w-0">
-                        <h1 className="text-base sm:text-xl font-bold text-[var(--text-primary)] truncate" title={exam.title}>{exam.title}</h1>
-                        {totalPages > 1 && (
-                            <p className="md:hidden text-[10px] uppercase tracking-[0.14em] text-[var(--text-muted)] mt-0.5">
-                                Halaman {currentPage}/{totalPages}
-                            </p>
-                        )}
+                        <h1 className="text-[15px] sm:text-xl font-bold text-[var(--text-primary)] truncate" title={exam.title}>{exam.title}</h1>
+                        <div className="mt-0.5 flex items-center gap-2 text-[9px] uppercase tracking-[0.12em] text-[var(--text-muted)] sm:text-[11px]">
+                            {totalPages > 1 && <span>Halaman {currentPage}/{totalPages}</span>}
+                            <span className="hidden min-[361px]:inline truncate">{exam.subject?.trim() || 'Editor Ujian'}</span>
+                        </div>
                     </div>
                 </div>
                 
-                <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                <div className="flex flex-shrink-0 items-center gap-1 sm:gap-2">
                     <div className="hidden md:flex items-center bg-[var(--bg-tertiary)] rounded-lg p-1 mr-2">
                         <button onClick={undo} disabled={!canUndo} className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-30"><UndoIcon /></button>
                         <button onClick={redo} disabled={!canRedo} className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-30"><RedoIcon /></button>
@@ -1374,16 +1440,16 @@ const EditorView: React.FC<{ examId: string; onBack: () => void }> = ({ examId, 
                     <div className="relative" ref={statusMenuRef}>
                         <button
                             onClick={() => setStatusMenuOpen(!isStatusMenuOpen)}
-                            className={`flex items-center gap-2 px-3 py-2 rounded-lg font-bold text-xs uppercase transition-colors border ${
+                            className={`flex items-center gap-1.5 rounded-xl border px-2 py-1.5 font-bold text-[11px] uppercase transition-colors sm:gap-2 sm:px-3 sm:py-2 sm:text-xs ${
                                 exam.status === 'published'
-                                    ? 'bg-green-100 text-green-800 border-green-200 hover:bg-green-200 dark:bg-green-900/50 dark:text-green-300 dark:border-green-800'
-                                    : 'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200 dark:bg-yellow-900/50 dark:text-yellow-300 dark:border-yellow-800'
+                                    ? 'app-status-success border-green-200 dark:border-green-900/50 hover:bg-green-200/60 dark:hover:bg-green-900/40'
+                                    : 'app-status-warning border-amber-200 dark:border-amber-900/50 hover:bg-amber-200/60 dark:hover:bg-amber-900/40'
                             }`}
                             aria-haspopup="true"
                             aria-expanded={isStatusMenuOpen}
                         >
                             {exam.status === 'published' ? <CheckIcon className="text-lg" /> : <EditIcon className="text-lg" />}
-                            <span className="hidden sm:inline">
+                            <span className="hidden md:inline">
                                 {exam.status === 'published' ? T.statusPublished : T.statusDraft}
                             </span>
                             <i className={`bi bi-chevron-down ml-1 text-[10px] transition-transform ${isStatusMenuOpen ? 'rotate-180' : ''}`}></i>
@@ -1409,67 +1475,105 @@ const EditorView: React.FC<{ examId: string; onBack: () => void }> = ({ examId, 
                         )}
                     </div>
 
-                    <button onClick={handleManualSave} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-xl font-semibold transition-colors shadow-sm">
+                    <button onClick={handleManualSave} className="flex items-center gap-2 rounded-xl bg-blue-600 px-2.5 py-1.5 font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 sm:px-4 sm:py-2" title={T.save} aria-label={T.save}>
                         <SaveIcon />
-                        <span>{T.save}</span>
+                        <span className="hidden sm:inline">{T.save}</span>
                     </button>
                 </div>
             </div>
+            </div>
 
-            <div className="flex-grow overflow-y-auto px-3 py-4 sm:p-4 md:p-8 space-y-6 max-w-5xl mx-auto w-full pb-28 md:pb-24">
+            <div dir={exam.direction} className="flex-grow overflow-y-auto px-2.5 py-3 sm:p-4 md:p-8 space-y-5 sm:space-y-6 max-w-6xl mx-auto w-full pb-28 md:pb-24">
                 {/* Exam Info Card */}
-                <div className="app-surface p-4 sm:p-6 rounded-[var(--radius-card)] space-y-4">
-                     <h3 className="text-lg font-bold text-[var(--text-primary)] border-b border-[var(--border-primary)] pb-2">{T.examInfo}</h3>
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                         <div>
-                             <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">{T.examTitle}</label>
-                             <input type="text" value={exam.title} onChange={e => handleUpdateExam('title', e.target.value)} className="w-full p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]" />
+                <div className="app-surface overflow-hidden rounded-[var(--radius-card)]">
+                     <button
+                        type="button"
+                        onClick={() => setExamInfoOpen(open => !open)}
+                        className="flex w-full items-start justify-between gap-4 px-3.5 py-3.5 text-left sm:px-5 sm:py-4"
+                     >
+                        <div className="min-w-0 space-y-3">
+                            <div>
+                                <h3 className="text-base sm:text-lg font-bold text-[var(--text-primary)]">{T.examInfo}</h3>
+                                <p className="mt-1 text-xs sm:text-sm text-[var(--text-secondary)]">
+                                    Judul, mapel, dan pengaturan dasar ujian.
+                                </p>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                {examInfoSummary.map((item, index) => (
+                                    <span
+                                        key={`${item}-${index}`}
+                                        className="rounded-full border border-[var(--border-primary)] bg-[var(--bg-tertiary)] px-3 py-1 text-[11px] font-medium text-[var(--text-secondary)] sm:text-xs"
+                                    >
+                                        {item}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                        <span className="mt-1 inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-[var(--border-primary)] bg-[var(--bg-tertiary)] text-[var(--text-secondary)]">
+                            <i className={`bi ${isExamInfoOpen ? 'bi-chevron-up' : 'bi-chevron-down'}`}></i>
+                        </span>
+                     </button>
+
+                     {isExamInfoOpen && (
+                     <div className="space-y-4 border-t border-[var(--border-primary)] px-3.5 py-3.5 sm:px-5 sm:py-4.5">
+                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                         <div className="md:col-span-2">
+                             <label className={examInfoLabelClass}>{T.examTitle}</label>
+                             <input type="text" value={exam.title} onChange={e => handleUpdateExam('title', e.target.value)} className={`${examInfoFieldClass} text-base font-semibold sm:text-lg`} />
                          </div>
-                         <div>
-                             <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">{T.subject}</label>
-                             <input type="text" value={exam.subject} onChange={e => handleUpdateExam('subject', e.target.value)} className="w-full p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]" />
+                         <div className="md:col-span-1">
+                             <label className={examInfoLabelClass}>{T.subject}</label>
+                             <input type="text" value={exam.subject} onChange={e => handleUpdateExam('subject', e.target.value)} className={`${examInfoFieldClass} font-medium`} />
                          </div>
-                         <div>
-                             <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">{T.class}</label>
-                             <input type="text" value={exam.class} onChange={e => handleUpdateExam('class', e.target.value)} className="w-full p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]" />
+                         <div className="md:col-span-1">
+                             <label className={examInfoLabelClass}>{T.class}</label>
+                             <input type="text" value={exam.class} onChange={e => handleUpdateExam('class', e.target.value)} className={`${examInfoFieldClass} font-medium`} />
                          </div>
-                         <div>
-                             <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">{T.date}</label>
-                             <input type="date" value={exam.date} onChange={e => handleUpdateExam('date', e.target.value)} className="w-full p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]" />
+                         <div className="md:col-span-1">
+                             <label className={examInfoLabelClass}>{T.date}</label>
+                             <input type="date" value={exam.date} onChange={e => handleUpdateExam('date', e.target.value)} className={examInfoFieldClass} />
                          </div>
-                         <div>
-                             <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">{T.examTime}</label>
-                             <input type="text" value={exam.waktuUjian} onChange={e => handleUpdateExam('waktuUjian', e.target.value)} className="w-full p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]" />
+                         <div className="md:col-span-1">
+                             <label className={examInfoLabelClass}>{T.examTime}</label>
+                             <input type="text" value={exam.waktuUjian} onChange={e => handleUpdateExam('waktuUjian', e.target.value)} className={examInfoFieldClass} />
                          </div>
-                         <div>
-                            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">{T.directionLabel}</label>
-                            <select value={exam.direction} onChange={e => handleUpdateExam('direction', e.target.value)} className="w-full p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]">
-                                <option value="ltr">{T.directionLtr}</option>
-                                <option value="rtl">{T.directionRtl}</option>
-                            </select>
+                         <div className="md:col-span-2">
+                            <label className={examInfoLabelClass}>{T.directionLabel}</label>
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                <label className={`flex items-center gap-3 rounded-[18px] border-2 px-3.5 py-3 transition-all cursor-pointer ${exam.direction === 'ltr' ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300' : 'border-[var(--border-primary)] bg-[color:color-mix(in_srgb,var(--bg-secondary)_80%,white)] text-[var(--text-secondary)]'}`}>
+                                    <input type="radio" name="examDirection" value="ltr" checked={exam.direction === 'ltr'} onChange={() => handleUpdateExam('direction', 'ltr')} className="form-radio" />
+                                    <span className="font-medium">{T.directionLtr}</span>
+                                </label>
+                                <label className={`flex items-center gap-3 rounded-[18px] border-2 px-3.5 py-3 transition-all cursor-pointer ${exam.direction === 'rtl' ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300' : 'border-[var(--border-primary)] bg-[color:color-mix(in_srgb,var(--bg-secondary)_80%,white)] text-[var(--text-secondary)]'}`}>
+                                    <input type="radio" name="examDirection" value="rtl" checked={exam.direction === 'rtl'} onChange={() => handleUpdateExam('direction', 'rtl')} className="form-radio" />
+                                    <span className="font-medium">{T.directionRtl}</span>
+                                </label>
+                            </div>
                         </div>
                      </div>
                      <div>
-                        <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">{T.previewLayoutLabel}</label>
-                        <div className="flex gap-4">
-                            <label className="flex items-center gap-2 cursor-pointer">
+                        <label className={examInfoLabelClass}>{T.previewLayoutLabel}</label>
+                        <div className="flex flex-col gap-2 sm:flex-row sm:gap-4">
+                            <label className="flex items-center gap-2 rounded-[var(--radius-control)] border border-[var(--border-primary)] bg-[var(--bg-tertiary)] px-3 py-2 cursor-pointer">
                                 <input type="radio" name="layoutColumns" checked={exam.layoutColumns !== 2} onChange={() => handleUpdateExam('layoutColumns', 1)} className="form-radio" />
                                 <span className="flex items-center gap-1"><CardTextIcon /> {T.layout1Col}</span>
                             </label>
-                            <label className="flex items-center gap-2 cursor-pointer">
+                            <label className="flex items-center gap-2 rounded-[var(--radius-control)] border border-[var(--border-primary)] bg-[var(--bg-tertiary)] px-3 py-2 cursor-pointer">
                                 <input type="radio" name="layoutColumns" checked={exam.layoutColumns === 2} onChange={() => handleUpdateExam('layoutColumns', 2)} className="form-radio" />
                                 <span className="flex items-center gap-1"><LayoutSplitIcon /> {T.layout2Col}</span>
                             </label>
                         </div>
                      </div>
                      <div>
-                         <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">{T.description}</label>
-                         <textarea value={exam.keterangan} onChange={e => handleUpdateExam('keterangan', e.target.value)} placeholder={T.descriptionPlaceholder} className="w-full p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)] h-20" />
+                         <label className={examInfoLabelClass}>{T.description}</label>
+                         <textarea value={exam.keterangan} onChange={e => handleUpdateExam('keterangan', e.target.value)} placeholder={T.descriptionPlaceholder} className={`${examInfoFieldClass} h-24 resize-y`} />
                      </div>
                      <div>
-                         <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">{T.generalInstructions}</label>
-                         <textarea value={exam.instructions} onChange={e => handleUpdateExam('instructions', e.target.value)} placeholder={T.generalInstructionsPlaceholder} className="w-full p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)] h-24 font-mono text-sm" />
+                         <label className={examInfoLabelClass}>{T.generalInstructions}</label>
+                         <textarea value={exam.instructions} onChange={e => handleUpdateExam('instructions', e.target.value)} placeholder={T.generalInstructionsPlaceholder} className={`${examInfoFieldClass} h-28 resize-y font-mono text-sm`} />
                      </div>
+                     </div>
+                     )}
                 </div>
 
                 {/* Sections with Pagination Injection */}
@@ -1501,8 +1605,8 @@ const EditorView: React.FC<{ examId: string; onBack: () => void }> = ({ examId, 
             {/* Pagination Sticky Footer */}
             {totalPages > 1 && (
                 <div
-                    className="fixed bottom-4 left-1/2 z-30 flex w-[calc(100%-1.5rem)] max-w-sm -translate-x-1/2 items-center justify-between gap-3 rounded-2xl border border-[var(--border-primary)] bg-[color:color-mix(in_srgb,var(--bg-secondary)_94%,transparent)] px-4 py-3 shadow-xl backdrop-blur-md md:bottom-0 md:left-0 md:right-0 md:w-auto md:max-w-none md:translate-x-0 md:justify-center md:gap-4 md:rounded-none md:border-x-0 md:border-b-0 md:px-3"
-                    style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
+                    className="fixed bottom-4 left-1/2 z-30 flex w-[calc(100%-1.5rem)] max-w-[19rem] -translate-x-1/2 items-center justify-between gap-3 rounded-full border border-[var(--border-primary)] bg-[color:color-mix(in_srgb,var(--bg-secondary)_95%,transparent)] px-3 py-2.5 shadow-xl backdrop-blur-md md:bottom-0 md:left-0 md:right-0 md:w-auto md:max-w-none md:translate-x-0 md:justify-center md:gap-4 md:rounded-none md:border-x-0 md:border-b-0 md:px-3 md:py-3"
+                    style={{ paddingBottom: 'calc(0.625rem + env(safe-area-inset-bottom, 0px))' }}
                 >
                     <button 
                         onClick={() => setCurrentPage(p => Math.max(1, p - 1))}

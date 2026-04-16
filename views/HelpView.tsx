@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { InfoIcon, StarsIcon, BankIcon, BriefcaseIcon } from '../components/Icons';
+import { InfoIcon, StarsIcon, BankIcon } from '../components/Icons';
 import AboutTab from './help/AboutTab';
 import FeaturesTab from './help/FeaturesTab';
 import GuideTab from './help/GuideTab';
-import ServicesTab from './help/ServicesTab';
 
-type HelpTab = 'about' | 'features' | 'guide' | 'services';
+type HelpTab = 'about' | 'features' | 'guide';
 
 const HelpView = () => {
   const [activeTab, setActiveTab] = useState<HelpTab>('about');
@@ -13,24 +12,23 @@ const HelpView = () => {
   const tabs: { id: HelpTab; label: string; icon: React.ElementType }[] = [
       { id: 'about', label: 'Tentang', icon: InfoIcon },
       { id: 'features', label: 'Fitur', icon: StarsIcon },
-      { id: 'guide', label: 'Panduan', icon: BankIcon }, 
-      { id: 'services', label: 'Layanan', icon: BriefcaseIcon },
+      { id: 'guide', label: 'Panduan', icon: BankIcon },
   ];
 
   return (
-    <div className="container mx-auto px-4 md:px-8 max-w-5xl flex flex-col h-[calc(100vh-80px)]">
+    <div className="mx-auto w-full max-w-5xl flex flex-col h-[calc(100vh-80px)] px-1 sm:px-2 md:px-4">
       {/* Header Area - Clean & Centered */}
-      <div className="flex-shrink-0 py-6">
-          <div className="flex justify-center mb-6">
-              <div className="inline-flex bg-[var(--bg-secondary)] p-1.5 rounded-2xl shadow-sm border border-[var(--border-primary)] overflow-x-auto max-w-full">
+      <div className="flex-shrink-0 py-3 sm:py-4">
+          <div className="flex justify-center mb-4">
+              <div className="inline-flex app-tab-shell p-1 overflow-x-auto max-w-full">
                   {tabs.map((tab) => (
                       <button
                           key={tab.id}
                           onClick={() => setActiveTab(tab.id)}
-                          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 whitespace-nowrap ${
+                          className={`app-tab-button flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-semibold whitespace-nowrap ${
                               activeTab === tab.id
-                                  ? 'bg-blue-600 text-white shadow-md transform scale-105'
-                                  : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+                                  ? 'app-tab-button-active'
+                                  : ''
                           }`}
                       >
                           <tab.icon className={activeTab === tab.id ? 'text-white' : 'text-current'} />
@@ -42,11 +40,10 @@ const HelpView = () => {
       </div>
 
       {/* Content Area - Fluid & Scrollable */}
-      <div className="flex-grow overflow-y-auto custom-scrollbar px-1">
+      <div className="flex-grow overflow-y-auto custom-scrollbar px-1 pb-4">
           {activeTab === 'about' && <AboutTab />}
           {activeTab === 'features' && <FeaturesTab />}
           {activeTab === 'guide' && <GuideTab />}
-          {activeTab === 'services' && <ServicesTab />}
       </div>
     </div>
   );

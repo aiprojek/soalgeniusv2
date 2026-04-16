@@ -7,7 +7,7 @@ import { useDebounce } from '../hooks/useDebounce';
 import PacketGeneratorModal from '../components/PacketGeneratorModal';
 import { 
     PlusIcon, EditIcon, PrinterIcon, ShuffleIcon, CopyIcon, TrashIcon, SearchIcon, CloseIcon,
-    FolderIcon, FolderOpenIcon, TagIcon, MoveIcon, CheckIcon, ChevronLeftIcon, StackIcon, MoreIcon
+    FolderIcon, FolderOpenIcon, TagIcon, MoveIcon, CheckIcon, ChevronLeftIcon, StackIcon, MoreIcon, FunnelIcon
 } from '../components/Icons';
 
 // --- Sub-components ---
@@ -38,52 +38,48 @@ const ExamCard: React.FC<{
     return (
         <>
             <div className="app-surface rounded-[var(--radius-card)] hover:-translate-y-0.5 transition-all duration-200 flex flex-col group relative overflow-hidden animate-fade-in">
-                <div className="p-5 flex-grow cursor-pointer" onClick={() => onEdit(exam.id)}>
-                    <div className="flex justify-between items-start gap-3 mb-3">
+                <div className="p-3 sm:p-5 flex-grow cursor-pointer" onClick={() => onEdit(exam.id)}>
+                    <div className="flex justify-between items-start gap-2 sm:gap-3 mb-2.5">
                         <div className="min-w-0">
-                            <h3 className="text-lg font-bold text-[var(--text-primary)] leading-tight line-clamp-2" title={exam.title}>{exam.title}</h3>
-                            <p className="text-sm text-[var(--text-secondary)] mt-1">{exam.subject} • {exam.class}</p>
+                            <h3 className="text-[15px] sm:text-lg font-bold text-[var(--text-primary)] leading-tight line-clamp-2" title={exam.title}>{exam.title}</h3>
+                            <p className="text-[11px] sm:text-sm text-[var(--text-secondary)] mt-1 line-clamp-1">{exam.subject} • {exam.class}</p>
                         </div>
-                        <span className={`flex-shrink-0 px-2.5 py-1 text-[10px] uppercase tracking-[0.14em] font-bold rounded-full ${
-                        exam.status === 'published' 
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' 
-                            : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300'
-                        }`}>
+                        <span className={`app-status-pill flex-shrink-0 !px-2 !py-0.5 !text-[9px] sm:!px-[0.65rem] sm:!py-[0.35rem] sm:!text-[0.65rem] ${exam.status === 'published' ? 'app-status-success' : 'app-status-warning'}`}>
                             {exam.status === 'published' ? 'Selesai' : 'Draf'}
                         </span>
                     </div>
                     
                     {exam.tags && exam.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mb-4">
-                            {exam.tags.slice(0, 2).map((tag, idx) => (
-                                <span key={idx} className="text-[10px] bg-[var(--bg-muted)] text-[var(--text-secondary)] px-2.5 py-1 rounded-full border border-[var(--border-secondary)]">
+                        <div className="flex flex-wrap gap-1.5 mb-3">
+                            {exam.tags.slice(0, 1).map((tag, idx) => (
+                                <span key={idx} className="text-[10px] bg-[var(--bg-muted)] text-[var(--text-secondary)] px-2 py-0.5 rounded-full border border-[var(--border-secondary)]">
                                     #{tag}
                                 </span>
                             ))}
-                            {exam.tags.length > 2 && <span className="text-[10px] text-[var(--text-muted)] self-center">+{exam.tags.length - 2} label</span>}
+                            {exam.tags.length > 1 && <span className="text-[10px] text-[var(--text-muted)] self-center">+{exam.tags.length - 1}</span>}
                         </div>
                     )}
 
-                    <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] mt-auto pt-3 border-t border-[var(--border-primary)] border-dashed">
+                    <div className="flex items-center gap-1 text-[10px] sm:text-xs text-[var(--text-muted)] mt-auto pt-2 border-t border-[var(--border-primary)] border-dashed">
                        <span>{new Date(exam.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                        <span>•</span>
                        <span>{totalQuestions} Soal</span>
                     </div>
                 </div>
 
-                <div className="border-t border-[var(--border-primary)] bg-[var(--bg-tertiary)] p-2.5 md:hidden">
-                    <div className="grid grid-cols-3 gap-2">
-                        <button onClick={() => onEdit(exam.id)} aria-label="Edit" title="Edit" className="app-control flex items-center justify-center gap-2 px-3 py-2.5 bg-[var(--bg-secondary)] text-[var(--text-primary)] font-semibold border border-[var(--border-primary)]">
+                <div className="border-t border-[var(--border-primary)] bg-[var(--bg-tertiary)] p-2 md:hidden">
+                    <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+                        <button onClick={() => onEdit(exam.id)} aria-label="Edit" title="Edit" className="app-control flex items-center justify-center gap-1.5 px-1.5 py-2 bg-[var(--bg-secondary)] text-[var(--text-primary)] font-semibold border border-[var(--border-primary)] text-xs">
                             <EditIcon />
-                            <span className="max-[380px]:hidden">Edit</span>
+                            <span className="hidden min-[431px]:inline">Edit</span>
                         </button>
-                        <button onClick={() => onPreview(exam.id)} aria-label="Preview" title="Preview" className="app-control flex items-center justify-center gap-2 px-3 py-2.5 bg-[var(--bg-secondary)] text-[var(--text-primary)] font-semibold border border-[var(--border-primary)]">
+                        <button onClick={() => onPreview(exam.id)} aria-label="Preview" title="Preview" className="app-control flex items-center justify-center gap-1.5 px-1.5 py-2 bg-[var(--bg-secondary)] text-[var(--text-primary)] font-semibold border border-[var(--border-primary)] text-xs">
                             <PrinterIcon />
-                            <span className="max-[380px]:hidden">Preview</span>
+                            <span className="hidden min-[431px]:inline">Preview</span>
                         </button>
-                        <button onClick={() => setIsActionsOpen(true)} aria-label="Aksi" title="Aksi" className="app-control flex items-center justify-center gap-2 px-3 py-2.5 bg-[var(--bg-secondary)] text-[var(--text-secondary)] font-semibold border border-[var(--border-primary)]">
+                        <button onClick={() => setIsActionsOpen(true)} aria-label="Aksi" title="Aksi" className="app-control flex items-center justify-center gap-1.5 px-1.5 py-2 bg-[var(--bg-secondary)] text-[var(--text-secondary)] font-semibold border border-[var(--border-primary)] text-xs">
                             <MoreIcon />
-                            <span className="max-[380px]:hidden">Aksi</span>
+                            <span className="hidden min-[431px]:inline">Aksi</span>
                         </button>
                     </div>
                 </div>
@@ -92,8 +88,8 @@ const ExamCard: React.FC<{
                     <button onClick={() => onEdit(exam.id)} title="Edit" className="p-2 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-blue-600 flex justify-center items-center transition-colors"><EditIcon/></button>
                     <button onClick={() => onPreview(exam.id)} title="Cetak/Preview" className="p-2 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-green-600 flex justify-center items-center transition-colors"><PrinterIcon/></button>
                     <button onClick={() => onGeneratePackets(exam.id, exam.title)} title="Generator Paket" className="p-2 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-purple-600 flex justify-center items-center transition-colors"><StackIcon/></button>
-                    <button onClick={() => onShuffle(exam.id)} title="Acak Sederhana" className="p-2 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-purple-400 flex justify-center items-center transition-colors"><ShuffleIcon/></button>
-                    <button onClick={() => onCopy(exam.id)} title="Duplikat" className="p-2 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-yellow-600 flex justify-center items-center transition-colors"><CopyIcon/></button>
+                    <button onClick={() => onShuffle(exam.id)} title="Acak Sederhana" className="p-2 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-violet-600 flex justify-center items-center transition-colors"><ShuffleIcon/></button>
+                    <button onClick={() => onCopy(exam.id)} title="Duplikat" className="p-2 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-amber-600 flex justify-center items-center transition-colors"><CopyIcon/></button>
                     <button onClick={() => onMove(exam.id)} title="Pindah Folder" className="p-2 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-orange-600 flex justify-center items-center transition-colors"><MoveIcon/></button>
                     <button onClick={() => onManageTags(exam.id)} title="Label" className="p-2 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-pink-600 flex justify-center items-center transition-colors"><TagIcon/></button>
                     <button onClick={() => onDelete(exam.id)} title="Hapus" className="p-2 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-red-600 flex justify-center items-center transition-colors"><TrashIcon/></button>
@@ -163,7 +159,34 @@ const FilterPill: React.FC<{
     </button>
 );
 
+const LoadingCard: React.FC = () => (
+    <div className="app-surface rounded-[var(--radius-card)] overflow-hidden">
+        <div className="p-5 space-y-4 animate-pulse">
+            <div className="flex items-start justify-between gap-3">
+                <div className="space-y-2 flex-1">
+                    <div className="h-5 w-3/4 rounded bg-[var(--bg-muted)]"></div>
+                    <div className="h-4 w-1/2 rounded bg-[var(--bg-muted)]"></div>
+                </div>
+                <div className="h-6 w-16 rounded-full bg-[var(--bg-muted)]"></div>
+            </div>
+            <div className="flex gap-2">
+                <div className="h-6 w-16 rounded-full bg-[var(--bg-muted)]"></div>
+                <div className="h-6 w-20 rounded-full bg-[var(--bg-muted)]"></div>
+            </div>
+            <div className="h-4 w-2/3 rounded bg-[var(--bg-muted)]"></div>
+        </div>
+        <div className="border-t border-[var(--border-primary)] bg-[var(--bg-tertiary)] p-2.5">
+            <div className="grid grid-cols-3 gap-2">
+                <div className="h-10 rounded-[var(--radius-control)] bg-[var(--bg-muted)] animate-pulse"></div>
+                <div className="h-10 rounded-[var(--radius-control)] bg-[var(--bg-muted)] animate-pulse"></div>
+                <div className="h-10 rounded-[var(--radius-control)] bg-[var(--bg-muted)] animate-pulse"></div>
+            </div>
+        </div>
+    </div>
+);
+
 const ITEMS_PER_PAGE = 12;
+type SortOption = 'recent' | 'oldest' | 'title' | 'questions';
 
 const ArchiveView: React.FC<{ 
     onEditExam: (id: string) => void; 
@@ -186,7 +209,9 @@ const ArchiveView: React.FC<{
     // Modals State
     const [isFolderSelectorOpen, setIsFolderSelectorOpen] = useState(false);
     const [isTagSelectorOpen, setIsTagSelectorOpen] = useState(false);
+    const [isSortSelectorOpen, setIsSortSelectorOpen] = useState(false);
     const [isPacketGeneratorOpen, setIsPacketGeneratorOpen] = useState(false);
+    const [sortBy, setSortBy] = useState<SortOption>('recent');
     
     // Packet Generator State
     const [packetGeneratorExamId, setPacketGeneratorExamId] = useState<string | null>(null);
@@ -355,14 +380,27 @@ const ArchiveView: React.FC<{
 
     // --- Filtered Data ---
     const filteredExams = useMemo(() => {
-        return exams.filter(exam => {
+        const base = exams.filter(exam => {
             const searchLower = debouncedSearchTerm.toLowerCase();
             const matchesSearch = !debouncedSearchTerm || exam.title.toLowerCase().includes(searchLower) || exam.subject.toLowerCase().includes(searchLower);
             const matchesFolder = selectedFolderId === null ? true : selectedFolderId === 'uncategorized' ? !exam.folderId : exam.folderId === selectedFolderId;
             const matchesTag = !selectedTag || (exam.tags && exam.tags.includes(selectedTag));
             return matchesSearch && matchesFolder && matchesTag;
         });
-    }, [exams, debouncedSearchTerm, selectedFolderId, selectedTag]);
+        return base.sort((a, b) => {
+            switch (sortBy) {
+                case 'oldest':
+                    return new Date(a.date).getTime() - new Date(b.date).getTime();
+                case 'title':
+                    return a.title.localeCompare(b.title, 'id');
+                case 'questions':
+                    return b.sections.reduce((acc, s) => acc + s.questions.length, 0) - a.sections.reduce((acc, s) => acc + s.questions.length, 0);
+                case 'recent':
+                default:
+                    return new Date(b.date).getTime() - new Date(a.date).getTime();
+            }
+        });
+    }, [exams, debouncedSearchTerm, selectedFolderId, selectedTag, sortBy]);
 
     // --- Pagination Logic ---
     const paginatedExams = useMemo(() => {
@@ -379,30 +417,44 @@ const ArchiveView: React.FC<{
     }, [exams]);
 
     const selectedFolderName = selectedFolderId === null ? 'Semua Folder' : selectedFolderId === 'uncategorized' ? 'Tanpa Folder' : folders.find(f => f.id === selectedFolderId)?.name || 'Folder';
-
-    if (isLoading) return <div className="flex h-full items-center justify-center text-[var(--text-muted)]">Memuat...</div>;
+    const selectedSortLabel = {
+        recent: 'Terbaru',
+        oldest: 'Terlama',
+        title: 'Nama A-Z',
+        questions: 'Soal Terbanyak',
+    }[sortBy];
 
     return (
         <div className="flex flex-col h-full bg-[var(--bg-primary)]">
-            {/* --- TOP BAR (Sticky) --- */}
-            <div className="sticky top-0 z-10 bg-[var(--bg-primary)]/95 backdrop-blur-sm pb-4 pt-1 space-y-3">
-                {/* Row 1: Search */}
-                <div className="flex gap-2">
-                    <div className="relative flex-grow">
+            <div className="space-y-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                    <div className="space-y-1">
+                        <h2 className="text-2xl font-bold text-[var(--text-primary)]">Arsip Soal</h2>
+                        <p className="text-sm text-[var(--text-secondary)]">Kelola, cari, dan buka kembali ujian Anda dengan cepat.</p>
+                    </div>
+                    <button 
+                        onClick={onCreateExam} 
+                        title="Buat Ujian Baru"
+                        className="inline-flex items-center justify-center gap-2 bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] text-[var(--text-on-accent)] font-semibold py-3 px-4 sm:px-5 rounded-[var(--radius-control)] shadow-md transition-all hover:shadow-lg hover:-translate-y-0.5"
+                    >
+                        <PlusIcon className="text-lg" /> 
+                        <span>Buat Ujian Baru</span>
+                    </button>
+                </div>
+
+                <div className="app-surface p-4 rounded-[var(--radius-card)] space-y-3">
+                    <div className="relative">
                         <input
                             type="text"
-                            placeholder="Cari judul atau mapel..."
+                            placeholder="Cari judul, mapel, atau kelas..."
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
-                            className="w-full pl-10 pr-4 py-3 rounded-xl border border-[var(--border-secondary)] bg-[var(--bg-secondary)] shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                            className="w-full pl-10 pr-4 py-3 rounded-[var(--radius-control)] border border-[var(--border-secondary)] bg-[var(--bg-secondary)] shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                         />
                         <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
                     </div>
-                </div>
 
-                {/* Row 2: Filters & Actions */}
-                <div className="flex items-center justify-between gap-2 overflow-x-auto no-scrollbar pb-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
                         <FilterPill 
                             label={selectedFolderName} 
                             icon={selectedFolderId === 'uncategorized' ? FolderIcon : FolderOpenIcon}
@@ -417,24 +469,25 @@ const ArchiveView: React.FC<{
                             onClick={() => setIsTagSelectorOpen(true)}
                             onClear={(e) => { e.stopPropagation(); setSelectedTag(''); }}
                         />
+                        <FilterPill 
+                            label={selectedSortLabel}
+                            icon={FunnelIcon}
+                            isActive={sortBy !== 'recent'}
+                            onClick={() => setIsSortSelectorOpen(true)}
+                            onClear={(e) => { e.stopPropagation(); setSortBy('recent'); }}
+                        />
                     </div>
-                    
-                    <button 
-                        onClick={onCreateExam} 
-                        title="Buat Ujian Baru"
-                        className="flex-shrink-0 flex items-center gap-2 bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] text-[var(--text-on-accent)] font-semibold py-2 px-3 sm:px-5 rounded-full shadow-md transition-all hover:shadow-lg hover:-translate-y-0.5"
-                    >
-                        <PlusIcon className="text-lg" /> 
-                        <span className="hidden sm:inline">Buat Ujian</span>
-                    </button>
                 </div>
             </div>
 
-            {/* --- CONTENT GRID --- */}
-            <div className="flex-grow overflow-y-auto pb-4 -mx-1 px-1">
-                {filteredExams.length > 0 ? (
+            <div className="flex-grow overflow-y-auto pt-5 pb-4 -mx-1 px-1">
+                {isLoading ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {Array.from({ length: 6 }).map((_, idx) => <LoadingCard key={idx} />)}
+                    </div>
+                ) : filteredExams.length > 0 ? (
                     <>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-4">
+                        <div className="grid grid-cols-1 min-[520px]:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-4">
                             {paginatedExams.map(exam => (
                                 <ExamCard 
                                     key={exam.id}
@@ -471,12 +524,19 @@ const ArchiveView: React.FC<{
                         )}
                     </>
                 ) : (
-                    <div className="flex flex-col items-center justify-center py-20 text-center opacity-60">
+                    <div className="app-empty-state opacity-75 gap-2">
                         <div className="bg-[var(--bg-tertiary)] p-6 rounded-full mb-4">
                             <FolderOpenIcon className="text-4xl text-[var(--text-muted)]" />
                         </div>
                         <p className="text-lg font-medium text-[var(--text-secondary)]">Tidak ada ujian ditemukan</p>
                         <p className="text-sm text-[var(--text-muted)]">Coba ubah filter atau buat ujian baru.</p>
+                        <button
+                            onClick={onCreateExam}
+                            className="mt-3 inline-flex items-center gap-2 rounded-[var(--radius-control)] bg-[var(--bg-accent)] px-4 py-2.5 font-semibold text-[var(--text-on-accent)] hover:bg-[var(--bg-accent-hover)]"
+                        >
+                            <PlusIcon />
+                            <span>Buat Ujian</span>
+                        </button>
                     </div>
                 )}
             </div>
@@ -579,6 +639,35 @@ const ArchiveView: React.FC<{
                                 ))}
                                 {allUniqueTags.length === 0 && <p className="text-center text-[var(--text-muted)] py-4">Belum ada label dibuat.</p>}
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {isSortSelectorOpen && (
+                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+                    <div className="bg-[var(--bg-secondary)] w-full sm:w-[400px] sm:rounded-2xl rounded-t-2xl shadow-2xl flex flex-col max-h-[85vh] animate-slide-up sm:animate-scale-in">
+                        <div className="p-4 border-b border-[var(--border-primary)] flex justify-between items-center bg-[var(--bg-tertiary)] rounded-t-2xl">
+                            <h3 className="font-bold text-lg text-[var(--text-primary)]">Urutkan Arsip</h3>
+                            <button onClick={() => setIsSortSelectorOpen(false)} className="p-1 hover:bg-[var(--bg-hover)] rounded-full"><CloseIcon/></button>
+                        </div>
+                        <div className="p-4 space-y-2">
+                            {[
+                                { id: 'recent', label: 'Terbaru terlebih dahulu' },
+                                { id: 'oldest', label: 'Terlama terlebih dahulu' },
+                                { id: 'title', label: 'Nama A-Z' },
+                                { id: 'questions', label: 'Jumlah soal terbanyak' },
+                            ].map((option) => (
+                                <button
+                                    key={option.id}
+                                    onClick={() => { setSortBy(option.id as SortOption); setIsSortSelectorOpen(false); }}
+                                    className={`w-full text-left p-3 rounded-lg transition-colors ${
+                                        sortBy === option.id ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 font-semibold' : 'hover:bg-[var(--bg-hover)] text-[var(--text-primary)]'
+                                    }`}
+                                >
+                                    {option.label}
+                                </button>
+                            ))}
                         </div>
                     </div>
                 </div>

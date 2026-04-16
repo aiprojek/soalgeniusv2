@@ -29,10 +29,8 @@ const formatBytes = (bytes: number, decimals = 2) => {
 const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'general' }) => {
     const [settings, setSettings] = useState<Settings | null>(null);
     const [isSaving, setIsSaving] = useState(false);
-    
-    // Offline / Caching State
-    const [isCaching, setIsCaching] = useState(false);
-    const [isOfflineReady, setIsOfflineReady] = useState(false);
+    const [offlineStatus, setOfflineStatus] = useState<'checking' | 'ready' | 'not_ready'>('checking');
+    const [isRefreshingOfflineCache, setIsRefreshingOfflineCache] = useState(false);
     
     // AI Settings
     const [geminiApiKey, setGeminiApiKey] = useState('');
@@ -90,6 +88,31 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
         loadSettings();
     }, []);
 
+    const checkOfflineStatus = useCallback(async () => {
+        if (!('serviceWorker' in navigator) || !('caches' in window)) {
+            setOfflineStatus('not_ready');
+            return;
+        }
+
+        try {
+            const [controller, cachedIndex] = await Promise.all([
+                navigator.serviceWorker.ready.then(() => Boolean(navigator.serviceWorker.controller)).catch(() => false),
+                caches.match('./index.html').then(response => Boolean(response)).catch(() => false),
+            ]);
+
+            setOfflineStatus(controller && cachedIndex ? 'ready' : 'not_ready');
+        } catch (error) {
+            console.error('Failed to check offline status:', error);
+            setOfflineStatus('not_ready');
+        }
+    }, []);
+
+    useEffect(() => {
+        if (activeTab === 'general') {
+            checkOfflineStatus();
+        }
+    }, [activeTab, checkOfflineStatus]);
+
     // Load Dropbox Usage when connected
     useEffect(() => {
         if (isDropboxConnected && activeTab === 'cloud') {
@@ -141,58 +164,6 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
         setSettings(prev => prev ? updater(prev) : null);
     };
 
-    // --- Offline Cache Logic ---
-    const handleDownloadOfflineAssets = async () => {
-        setIsCaching(true);
-        addToast('Memindai dan mengunduh pustaka (library)...', 'info');
-
-        try {
-            const urlsToFetch: string[] = [];
-            document.querySelectorAll('script[src]').forEach((el) => {
-                const src = (el as HTMLScriptElement).src;
-                if (src) urlsToFetch.push(src);
-            });
-            document.querySelectorAll('link[rel="stylesheet"]').forEach((el) => {
-                const href = (el as HTMLLinkElement).href;
-                if (href) urlsToFetch.push(href);
-            });
-            const importMap = document.querySelector('script[type="importmap"]');
-            if (importMap && importMap.textContent) {
-                try {
-                    const map = JSON.parse(importMap.textContent);
-                    if (map.imports) {
-                        Object.values(map.imports).forEach((url) => {
-                            if (typeof url === 'string') urlsToFetch.push(url);
-                        });
-                    }
-                } catch (e) {
-                    console.error("Failed to parse importmap", e);
-                }
-            }
-            
-            let successCount = 0;
-            const total = urlsToFetch.length;
-            const promises = urlsToFetch.map(async (url) => {
-                try {
-                    await fetch(url, { mode: 'no-cors' });
-                    successCount++;
-                } catch (e: any) {
-                    console.warn(`Gagal unduh ${url}`, e);
-                }
-            });
-
-            await Promise.all(promises);
-            setIsOfflineReady(true);
-            addToast(`Berhasil mengunduh ${successCount} dari ${total} pustaka untuk offline.`, 'success');
-
-        } catch (error: any) {
-            console.error(error);
-            addToast('Terjadi kesalahan saat mengunduh aset offline.', 'error');
-        } finally {
-            setIsCaching(false);
-        }
-    };
-
     const handleHeaderChange = (id: string, newText: string) => {
         updateSettings(s => ({...s, examHeaderLines: s.examHeaderLines.map(line => line.id === id ? {...line, text: newText} : line)}));
     };
@@ -237,6 +208,46 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
         const { name, value } = e.target;
         updateSettings(s => ({...s, margins: {...s.margins, [name as keyof Settings['margins']]: Number(value) }}));
     };
+
+    const handleRefreshOfflineCache = useCallback(async () => {
+        setIsRefreshingOfflineCache(true);
+        try {
+            if ('serviceWorker' in navigator) {
+                const registration = await navigator.serviceWorker.ready;
+                await registration.update();
+            }
+
+            const urlsToWarm = new Set<string>([
+                './',
+                './index.html',
+                './manifest.json',
+                './icon.svg',
+            ]);
+
+            document.querySelectorAll('script[src], link[rel="stylesheet"]').forEach((element) => {
+                const source = element instanceof HTMLScriptElement ? element.src : (element as HTMLLinkElement).href;
+                if (source && source.startsWith(window.location.origin)) {
+                    urlsToWarm.add(source);
+                }
+            });
+
+            await Promise.all(
+                Array.from(urlsToWarm).map((url) =>
+                    fetch(url, { cache: 'reload' }).catch((error) => {
+                        console.warn('Failed to refresh offline asset:', url, error);
+                    })
+                )
+            );
+
+            await checkOfflineStatus();
+            addToast('Aset aplikasi dicoba diperbarui untuk penggunaan offline.', 'success');
+        } catch (error) {
+            console.error('Failed to refresh offline cache:', error);
+            addToast('Gagal memperbarui aset offline.', 'error');
+        } finally {
+            setIsRefreshingOfflineCache(false);
+        }
+    }, [addToast, checkOfflineStatus]);
     
     // --- Local Backup & Restore ---
     const handleLocalBackup = useCallback(async () => {
@@ -682,7 +693,7 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
     );
 
     if (!settings) {
-        return <div className="text-center py-16">Memuat pengaturan...</div>;
+        return <div className="app-loading-state">Memuat pengaturan...</div>;
     }
 
     const tabs: { id: SettingsTab; label: string; icon: React.ElementType }[] = [
@@ -708,7 +719,7 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
     const dropboxPercent = dropboxUsage ? Math.min(100, (dropboxUsage.used / dropboxUsage.allocation.allocated) * 100) : 0;
 
     return (
-        <div className="space-y-6 flex flex-col h-[calc(100vh-140px)]">
+        <div className="space-y-4 flex flex-col h-[calc(100vh-140px)]">
             <input type="file" ref={restoreInputRef} onChange={handleFileRestore} className="hidden" accept="application/json" />
 
             {/* QR Scanner Modal */}
@@ -726,17 +737,17 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
             )}
 
             <div className="flex-shrink-0">
-                <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-4">Pengaturan</h2>
+                <h2 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] mb-3">Pengaturan</h2>
 
-                <div className="md:hidden app-surface p-4 rounded-[var(--radius-card)] space-y-3">
+                <div className="md:hidden app-tab-shell p-3 space-y-3">
                     <div className="flex items-start gap-3">
-                        <div className="w-11 h-11 rounded-2xl bg-[var(--bg-tertiary)] border border-[var(--border-primary)] flex items-center justify-center text-[var(--text-accent)]">
+                        <div className="w-10 h-10 rounded-[var(--radius-control)] bg-[var(--bg-tertiary)] border border-[var(--border-primary)] flex items-center justify-center text-[var(--text-accent)]">
                             <ActiveTabIcon className="text-lg" />
                         </div>
                         <div className="min-w-0">
                             <p className="text-xs uppercase tracking-[0.14em] text-[var(--text-muted)]">Section Aktif</p>
-                            <h3 className="text-lg font-bold text-[var(--text-primary)]">{activeTabMeta.label}</h3>
-                            <p className="text-sm text-[var(--text-secondary)]">{tabDescriptions[activeTab]}</p>
+                            <h3 className="text-base font-bold text-[var(--text-primary)]">{activeTabMeta.label}</h3>
+                            <p className="text-xs text-[var(--text-secondary)]">{tabDescriptions[activeTab]}</p>
                         </div>
                     </div>
 
@@ -748,7 +759,7 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
                             id="settings-tab-select"
                             value={activeTab}
                             onChange={(e) => setActiveTab(e.target.value as SettingsTab)}
-                            className="w-full p-3 border border-[var(--border-secondary)] rounded-[var(--radius-control)] bg-[var(--bg-secondary)] text-[var(--text-primary)]"
+                            className="w-full p-2.5 border border-[var(--border-secondary)] rounded-[var(--radius-control)] bg-[var(--bg-secondary)] text-[var(--text-primary)]"
                         >
                             {tabs.map((tab) => (
                                 <option key={tab.id} value={tab.id}>
@@ -760,15 +771,15 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
                 </div>
 
                 {/* Tab Navigation */}
-                <div className="hidden md:flex space-x-1 bg-[var(--bg-secondary)] p-1 rounded-xl shadow-sm border border-[var(--border-primary)] overflow-x-auto">
+                <div className="hidden md:flex space-x-1 app-tab-shell p-1 overflow-x-auto">
                     {tabs.map((tab) => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap flex-1 justify-center ${
+                            className={`app-tab-button flex items-center space-x-2 px-3 py-2 text-sm font-semibold whitespace-nowrap flex-1 justify-center ${
                                 activeTab === tab.id
-                                    ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 shadow-sm'
-                                    : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
+                                    ? 'app-tab-button-active'
+                                    : ''
                             }`}
                         >
                             <tab.icon className="text-lg" />
@@ -782,8 +793,8 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
                 {/* General Tab */}
                 {activeTab === 'general' && (
                     <div className="space-y-6 animate-fade-in">
-                        <div className="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-md">
-                            <h3 className="text-xl font-bold text-[var(--text-primary)] mb-4 border-b border-[var(--border-primary)] pb-2">Tampilan Aplikasi</h3>
+                        <div className="app-surface p-4 sm:p-5">
+                            <h3 className="text-lg font-bold text-[var(--text-primary)] mb-3 border-b border-[var(--border-primary)] pb-2">Tampilan Aplikasi</h3>
                             <div className="flex items-center justify-between">
                                 <label className="text-sm font-medium text-[var(--text-secondary)]">Mode Tema</label>
                                 <div className="flex items-center rounded-xl bg-[var(--bg-muted)] p-0.5">
@@ -804,36 +815,57 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
                         </div>
 
                         {/* Offline Mode Section */}
-                        <div className="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-md border border-[var(--border-primary)]">
-                            <h3 className="text-xl font-bold text-[var(--text-primary)] mb-4 border-b border-[var(--border-primary)] pb-2">Mode Offline</h3>
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                <div className="text-sm text-[var(--text-secondary)]">
-                                    <p>Jika Anda ingin menggunakan aplikasi ini sepenuhnya tanpa internet, silakan klik tombol di unduh untuk mengunduh semua pustaka ke dalam memori browser Anda.</p>
+                        <div className="app-surface p-4 sm:p-5">
+                            <h3 className="text-lg font-bold text-[var(--text-primary)] mb-3 border-b border-[var(--border-primary)] pb-2">Mode Offline</h3>
+                            <div className="space-y-4">
+                                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                                    <div className="space-y-2">
+                                        <p className="text-sm text-[var(--text-secondary)]">Status kesiapan aplikasi untuk dipakai tanpa internet.</p>
+                                        <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold ${
+                                            offlineStatus === 'ready'
+                                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                                                : offlineStatus === 'checking'
+                                                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+                                                    : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                                        }`}>
+                                            {offlineStatus === 'ready' ? <CheckIcon /> : <InfoIcon />}
+                                            <span>
+                                                {offlineStatus === 'ready'
+                                                    ? 'Aplikasi siap offline'
+                                                    : offlineStatus === 'checking'
+                                                        ? 'Memeriksa status offline...'
+                                                        : 'Aplikasi belum siap offline'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={handleRefreshOfflineCache}
+                                        disabled={isRefreshingOfflineCache}
+                                        className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold shadow-sm whitespace-nowrap bg-green-600 hover:bg-green-700 text-white disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        {isRefreshingOfflineCache ? (
+                                            <>
+                                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                <span>Menyegarkan...</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <CloudDownloadIcon />
+                                                <span>Refresh Cache</span>
+                                            </>
+                                        )}
+                                    </button>
                                 </div>
-                                <button 
-                                    onClick={handleDownloadOfflineAssets} 
-                                    disabled={isCaching || isOfflineReady}
-                                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold shadow-sm whitespace-nowrap disabled:opacity-100 transition-colors ${
-                                        isOfflineReady 
-                                        ? 'bg-green-600 text-white cursor-default' 
-                                        : 'bg-green-600 hover:bg-green-700 text-white'
-                                    }`}
-                                >
-                                    {isCaching ? (
-                                        <>
-                                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                            <span>Mengunduh...</span>
-                                        </>
-                                    ) : isOfflineReady ? (
-                                        <>
-                                            <CheckIcon /> <span>Siap Offline</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <CloudDownloadIcon /> <span>Unduh Aset Offline</span>
-                                        </>
-                                    )}
-                                </button>
+                                <div className="app-surface-muted rounded-[var(--radius-control)] p-4 text-sm text-[var(--text-secondary)]">
+                                    <div className="flex items-start gap-3">
+                                        <InfoIcon className="mt-0.5 text-blue-600" />
+                                        <div className="space-y-1">
+                                            <p className="font-semibold text-[var(--text-primary)]">Cara pakai sederhana</p>
+                                            <p>Jika status belum siap, tekan <strong>Refresh Cache</strong> saat internet aktif.</p>
+                                            <p>Setelah status siap, aplikasi bisa dibuka lagi saat offline untuk data dan aset yang sudah tersimpan.</p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -841,14 +873,14 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
 
                 {/* AI Tab */}
                 {activeTab === 'ai' && (
-                    <div className="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-md animate-fade-in">
+                    <div className="app-surface p-4 sm:p-5 animate-fade-in">
                         <div className="flex items-center gap-3 mb-4 border-b border-[var(--border-primary)] pb-2">
-                            <RobotIcon className="text-2xl text-purple-600" />
-                            <h3 className="text-xl font-bold text-[var(--text-primary)]">Konfigurasi Kecerdasan Buatan (AI)</h3>
+                            <RobotIcon className="text-xl text-purple-600" />
+                            <h3 className="text-lg font-bold text-[var(--text-primary)]">Konfigurasi Kecerdasan Buatan (AI)</h3>
                         </div>
                         
                         <div className="space-y-6">
-                            <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg border border-purple-100 dark:border-purple-800">
+                            <div className="bg-purple-50 dark:bg-purple-900/20 p-3.5 rounded-[var(--radius-control)] border border-purple-100 dark:border-purple-800">
                                 <h4 className="font-semibold text-purple-800 dark:text-purple-300 mb-2">Google Gemini API (Opsional)</h4>
                                 <p className="text-sm text-[var(--text-secondary)] mb-4">
                                     Masukkan API Key Anda untuk menggunakan model Gemini yang lebih canggih dan akurat dalam membuat soal.
@@ -877,8 +909,8 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
 
                 {/* Header Tab */}
                 {activeTab === 'header' && (
-                    <div className="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-md animate-fade-in">
-                        <h3 className="text-xl font-bold text-[var(--text-primary)] mb-4 border-b border-[var(--border-primary)] pb-2">Kop Surat</h3>
+                    <div className="app-surface p-4 sm:p-5 animate-fade-in">
+                        <h3 className="text-lg font-bold text-[var(--text-primary)] mb-3 border-b border-[var(--border-primary)] pb-2">Kop Surat</h3>
                         
                         <div className="space-y-4 mb-6">
                             <label className="block text-sm font-medium text-[var(--text-secondary)]">Teks Kop (Baris demi Baris)</label>
@@ -893,7 +925,7 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
                             <button onClick={addHeaderLine} className="text-blue-600 font-semibold text-sm flex items-center space-x-1 pt-2"><PlusIcon /> <span>Tambah Baris</span></button>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {[0, 1].map((index) => (
                                 <div key={index} className="space-y-2">
                                     <label className="block text-sm font-medium text-[var(--text-secondary)]">Logo {index === 0 ? 'Kiri' : 'Kanan'}</label>
@@ -917,8 +949,8 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
 
                 {/* Format Tab */}
                 {activeTab === 'format' && (
-                    <div className="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-md animate-fade-in space-y-6">
-                        <h3 className="text-xl font-bold text-[var(--text-primary)] mb-4 border-b border-[var(--border-primary)] pb-2">Format Kertas & Huruf</h3>
+                    <div className="app-surface p-4 sm:p-5 animate-fade-in space-y-5">
+                        <h3 className="text-lg font-bold text-[var(--text-primary)] mb-3 border-b border-[var(--border-primary)] pb-2">Format Kertas & Huruf</h3>
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
@@ -990,11 +1022,11 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
                                 </div>
                                 
                                 <div className="space-y-6">
-                                    <div className="border border-[var(--border-secondary)] rounded-lg overflow-hidden">
-                                        <div className="bg-[var(--bg-tertiary)] px-4 py-3 border-b border-[var(--border-secondary)] flex items-center justify-between gap-3">
-                                            <div className="flex items-center gap-3">
+                                    <div className="app-surface overflow-hidden">
+                                        <div className="px-4 py-3 border-b border-[var(--border-primary)] flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+                                            <div className="flex items-start gap-3 min-w-0">
                                                 <div className="w-7 h-7 rounded-full bg-blue-600 text-white text-sm font-bold flex items-center justify-center">1</div>
-                                                <div>
+                                                <div className="min-w-0">
                                                     <h4 className="font-semibold text-[var(--text-primary)]">Setup Perangkat Utama</h4>
                                                     <p className="text-xs text-[var(--text-secondary)]">Lakukan ini terlebih dahulu di perangkat utama Anda.</p>
                                                 </div>
@@ -1006,11 +1038,11 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 <div>
                                                     <label className="block text-sm font-medium text-[var(--text-secondary)]">App Key</label>
-                                                    <input type="text" value={dropboxAppKey} onChange={e => setDropboxAppKey(e.target.value)} className="w-full p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]" placeholder="Masukkan Dropbox App Key" />
+                                                    <input type="text" value={dropboxAppKey} onChange={e => setDropboxAppKey(e.target.value)} className="w-full min-w-0 p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]" placeholder="Masukkan Dropbox App Key" />
                                                 </div>
                                                 <div>
                                                     <label className="block text-sm font-medium text-[var(--text-secondary)]">App Secret</label>
-                                                    <input type="password" value={dropboxAppSecret} onChange={e => setDropboxAppSecret(e.target.value)} className="w-full p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]" placeholder="Masukkan Dropbox App Secret" />
+                                                    <input type="password" value={dropboxAppSecret} onChange={e => setDropboxAppSecret(e.target.value)} className="w-full min-w-0 p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]" placeholder="Masukkan Dropbox App Secret" />
                                                 </div>
                                             </div>
                                             <div className="flex flex-col gap-2">
@@ -1019,9 +1051,9 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
                                             </div>
                                             <div className="flex flex-col gap-2">
                                                 <p className="text-sm font-bold text-[var(--text-primary)]">Langkah 2: Masukkan Kode</p>
-                                                <div className="flex gap-2">
-                                                    <input type="text" value={dropboxAuthCode} onChange={e => setDropboxAuthCode(e.target.value)} className="flex-grow p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]" placeholder="Tempel kode di sini..." />
-                                                    <button onClick={handleConnectWithCode} disabled={isExchangingCode} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-semibold text-sm disabled:opacity-50">
+                                                <div className="flex flex-col gap-2 sm:flex-row">
+                                                    <input type="text" value={dropboxAuthCode} onChange={e => setDropboxAuthCode(e.target.value)} className="flex-grow min-w-0 p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]" placeholder="Tempel kode di sini..." />
+                                                    <button onClick={handleConnectWithCode} disabled={isExchangingCode} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-semibold text-sm disabled:opacity-50">
                                                         {isExchangingCode ? 'Menghubungkan...' : 'Hubungkan'}
                                                     </button>
                                                 </div>
@@ -1029,22 +1061,22 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
                                         </div>
                                     </div>
 
-                                    <div className="border border-dashed border-[var(--border-secondary)] rounded-lg overflow-hidden bg-[var(--bg-tertiary)]/35">
-                                        <div className="bg-[var(--bg-tertiary)] px-4 py-3 border-b border-[var(--border-secondary)] flex items-center justify-between gap-3">
-                                            <div className="flex items-center gap-3">
+                                    <div className="app-surface-muted overflow-hidden">
+                                        <div className="px-4 py-3 border-b border-[var(--border-primary)] flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+                                            <div className="flex items-start gap-3 min-w-0">
                                                 <div className="w-7 h-7 rounded-full bg-purple-600 text-white text-sm font-bold flex items-center justify-center">2</div>
-                                                <div>
+                                                <div className="min-w-0">
                                                     <h4 className="font-semibold text-[var(--text-primary)]">Pairing Perangkat Kedua</h4>
                                                     <p className="text-xs text-[var(--text-secondary)]">Gunakan setelah perangkat utama sudah berhasil terhubung.</p>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex flex-wrap items-center gap-2">
                                                 <span className="text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded-full bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-200">Butuh perangkat utama aktif</span>
                                                 <span className="text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-200">Opsional</span>
                                             </div>
                                         </div>
                                         <div className="p-4 space-y-4">
-                                            <div className="flex items-start gap-3 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-primary)] p-3">
+                                            <div className="flex items-start gap-3 rounded-[var(--radius-control)] bg-[var(--bg-secondary)] border border-[var(--border-primary)] p-3">
                                                 <div className="mt-0.5 text-green-600 dark:text-green-400">
                                                     <CheckIcon className="text-base" />
                                                 </div>
@@ -1054,27 +1086,27 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
                                                 </div>
                                             </div>
                                             <p className="text-sm text-[var(--text-secondary)]">Jika Anda sudah punya perangkat utama yang aktif, gunakan pairing cepat ini untuk menyalin akses ke perangkat kedua milik Anda tanpa setup ulang dari nol.</p>
-                                            <div className="text-xs rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 p-3 text-purple-900 dark:text-purple-100">
+                                            <div className="text-xs rounded-[var(--radius-control)] bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 p-3 text-purple-900 dark:text-purple-100">
                                                 Pairing cepat paling cocok antar perangkat pribadi yang sama-sama Anda percaya. Hindari memakai alur ini pada perangkat publik atau bersama.
                                             </div>
                                             
                                             <div className="flex gap-2 flex-wrap">
-                                                <button onClick={startScanner} className="flex-1 flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm">
+                                                <button onClick={startScanner} className="w-full sm:flex-1 flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm">
                                                     <ScanIcon className="text-lg" /> Scan QR Code
                                                 </button>
                                             </div>
 
                                             <div className="text-center text-xs text-[var(--text-muted)]">- ATAU -</div>
 
-                                            <div className="flex gap-2">
+                                            <div className="flex flex-col gap-2 sm:flex-row">
                                                 <input 
                                                     type="text" 
                                                     value={inputPairingCode} 
                                                     onChange={(e) => setInputPairingCode(e.target.value)} 
-                                                    className="flex-grow p-2 text-sm border border-[var(--border-secondary)] rounded bg-[var(--bg-secondary)]"
+                                                    className="flex-grow min-w-0 p-2 text-sm border border-[var(--border-secondary)] rounded bg-[var(--bg-secondary)]"
                                                     placeholder="Tempel kode teks pairing..."
                                                 />
-                                                <button onClick={handleApplyPairingCode} className="bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] border border-[var(--border-secondary)] px-3 py-2 rounded text-sm font-bold">Masuk dengan Kode</button>
+                                                <button onClick={handleApplyPairingCode} className="w-full sm:w-auto bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] border border-[var(--border-secondary)] px-3 py-2 rounded text-sm font-bold">Masuk dengan Kode</button>
                                             </div>
                                         </div>
                                     </div>
@@ -1083,25 +1115,25 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
                         ) : (
                             <div className="space-y-6">
                                 {/* Connected Status & Storage Indicator */}
-                                <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
-                                    <div className="flex justify-between items-start mb-3">
-                                        <div className="flex items-center gap-3">
-                                            <div className="bg-green-100 dark:bg-green-800 p-2 rounded-full text-green-600 dark:text-green-300"><CheckIcon className="text-xl" /></div>
-                                            <div>
-                                                <p className="font-bold text-green-800 dark:text-green-300">Terhubung ke Dropbox</p>
-                                                <p className="text-xs text-green-700 dark:text-green-400">Akun Anda siap untuk sinkronisasi.</p>
+                                <div className="app-surface-muted p-4">
+                                    <div className="flex flex-col gap-3 mb-3 sm:flex-row sm:justify-between sm:items-start">
+                                        <div className="flex items-start gap-3 min-w-0">
+                                            <div className="bg-green-100 dark:bg-green-800 p-2 rounded-full text-green-600 dark:text-green-300"><CheckIcon className="text-lg" /></div>
+                                            <div className="min-w-0">
+                                                <p className="font-bold text-[var(--text-primary)]">Terhubung ke Dropbox</p>
+                                                <p className="text-xs text-[var(--text-secondary)]">Akun Anda siap untuk sinkronisasi.</p>
                                             </div>
                                         </div>
-                                        <button onClick={handleDisconnectDropbox} className="text-red-500 hover:text-red-700 text-sm font-semibold hover:underline">Putuskan</button>
+                                        <button onClick={handleDisconnectDropbox} className="self-start text-red-500 hover:text-red-700 text-sm font-semibold hover:underline">Putuskan</button>
                                     </div>
                                     
                                     {dropboxUsage && (
                                         <div className="mt-2">
-                                            <div className="flex justify-between text-xs mb-1 font-medium text-green-800 dark:text-green-300">
+                                            <div className="flex justify-between text-xs mb-1 font-medium text-[var(--text-secondary)]">
                                                 <span>Penyimpanan: {formatBytes(dropboxUsage.used)} terpakai</span>
                                                 <span>Total: {formatBytes(dropboxUsage.allocation.allocated)}</span>
                                             </div>
-                                            <div className="w-full bg-green-200 dark:bg-green-800 rounded-full h-2.5">
+                                            <div className="w-full bg-[var(--bg-muted)] rounded-full h-2.5">
                                                 <div 
                                                     className={`h-2.5 rounded-full ${dropboxPercent > 90 ? 'bg-red-500' : 'bg-green-600'}`} 
                                                     style={{ width: `${dropboxPercent}%` }}
@@ -1111,7 +1143,7 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
                                     )}
                                 </div>
 
-                                <div className="bg-slate-50 dark:bg-slate-900/30 p-4 rounded-lg border border-[var(--border-primary)]">
+                                <div className="app-surface-muted p-4">
                                     <div className="flex items-start gap-3">
                                         <InfoIcon className="text-slate-600 dark:text-slate-300 text-lg mt-0.5 flex-shrink-0" />
                                         <div className="space-y-2 text-sm text-[var(--text-secondary)]">
@@ -1123,14 +1155,14 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
                                 </div>
 
                                 {/* Host Pairing Section */}
-                                <div className="border border-[var(--border-secondary)] rounded-lg p-4 bg-[var(--bg-tertiary)]">
+                                <div className="app-surface-muted p-4">
                                     <h4 className="font-semibold text-[var(--text-primary)] mb-2 flex items-center gap-2"><QrCodeIcon /> Pairing Cepat Antar Perangkat</h4>
                                     <p className="text-sm text-[var(--text-secondary)] mb-3">Gunakan ini untuk menghubungkan perangkat lain tanpa memasukkan App Key manual. Rekomendasi: hanya untuk perangkat Anda sendiri.</p>
                                     
                                     {!showPairingHost ? (
-                                        <button onClick={handleGeneratePairingCode} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">Tampilkan Kode Pairing Cepat</button>
+                                        <button onClick={handleGeneratePairingCode} className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">Tampilkan Kode Pairing Cepat</button>
                                     ) : (
-                                        <div className="space-y-4 animate-fade-in bg-[var(--bg-secondary)] p-4 rounded-lg border border-[var(--border-primary)]">
+                                        <div className="space-y-4 animate-fade-in bg-[var(--bg-secondary)] p-4 rounded-[var(--radius-control)] border border-[var(--border-primary)]">
                                             <div className="flex flex-col items-center gap-3">
                                                 <div className="bg-white p-2 rounded-lg shadow-sm border border-[var(--border-secondary)]">
                                                     {/* External API for QR Code display */}
@@ -1141,9 +1173,9 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
                                             
                                             <div className="space-y-2 pt-2 border-t border-[var(--border-primary)]">
                                                 <label className="text-xs text-[var(--text-muted)] font-bold uppercase">Atau salin kode teks</label>
-                                                <div className="flex gap-2">
-                                                    <input readOnly value={generatedPairingCode} className="flex-grow p-2 text-xs font-mono border rounded bg-[var(--bg-primary)]" />
-                                                    <button onClick={handleCopyPairingCode} className="p-2 bg-[var(--bg-hover)] rounded hover:bg-gray-300 dark:hover:bg-gray-600"><CopyIcon /></button>
+                                                <div className="flex flex-col gap-2 sm:flex-row">
+                                                    <input readOnly value={generatedPairingCode} className="flex-grow min-w-0 p-2 text-xs font-mono border rounded bg-[var(--bg-primary)]" />
+                                                    <button onClick={handleCopyPairingCode} className="w-full sm:w-auto p-2 bg-[var(--bg-hover)] rounded hover:bg-gray-300 dark:hover:bg-gray-600"><CopyIcon /></button>
                                                 </div>
                                             </div>
                                             <div className="text-xs rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 p-3 text-amber-900 dark:text-amber-100">
@@ -1154,17 +1186,17 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
                                     )}
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <button onClick={handleUploadToCloud} disabled={isSyncing} className="flex items-center justify-center gap-3 p-4 border border-[var(--border-secondary)] rounded-lg hover:bg-[var(--bg-hover)] transition-all group">
-                                        <div className="bg-blue-100 dark:bg-blue-900/50 p-3 rounded-full text-blue-600 dark:text-blue-300 group-hover:bg-blue-200 dark:group-hover:bg-blue-800"><CloudUploadIcon className="text-2xl" /></div>
-                                        <div className="text-left">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <button onClick={handleUploadToCloud} disabled={isSyncing} className="flex items-center justify-center gap-3 p-3.5 border border-[var(--border-secondary)] rounded-[var(--radius-control)] hover:bg-[var(--bg-hover)] transition-all group">
+                                        <div className="bg-blue-100 dark:bg-blue-900/50 p-2.5 rounded-full text-blue-600 dark:text-blue-300 group-hover:bg-blue-200 dark:group-hover:bg-blue-800"><CloudUploadIcon className="text-xl" /></div>
+                                        <div className="min-w-0 text-left">
                                             <p className="font-bold text-[var(--text-primary)]">Upload ke Cloud</p>
                                             <p className="text-xs text-[var(--text-secondary)]">Simpan data lokal ke Dropbox</p>
                                         </div>
                                     </button>
-                                    <button onClick={handleDownloadFromCloud} disabled={isSyncing} className="flex items-center justify-center gap-3 p-4 border border-[var(--border-secondary)] rounded-lg hover:bg-[var(--bg-hover)] transition-all group">
-                                        <div className="bg-green-100 dark:bg-green-900/50 p-3 rounded-full text-green-600 dark:text-green-300 group-hover:bg-green-200 dark:group-hover:bg-green-800"><CloudDownloadIcon className="text-2xl" /></div>
-                                        <div className="text-left">
+                                    <button onClick={handleDownloadFromCloud} disabled={isSyncing} className="flex items-center justify-center gap-3 p-3.5 border border-[var(--border-secondary)] rounded-[var(--radius-control)] hover:bg-[var(--bg-hover)] transition-all group">
+                                        <div className="bg-green-100 dark:bg-green-900/50 p-2.5 rounded-full text-green-600 dark:text-green-300 group-hover:bg-green-200 dark:group-hover:bg-green-800"><CloudDownloadIcon className="text-xl" /></div>
+                                        <div className="min-w-0 text-left">
                                             <p className="font-bold text-[var(--text-primary)]">Download dari Cloud</p>
                                             <p className="text-xs text-[var(--text-secondary)]">Timpa data lokal dari Dropbox</p>
                                         </div>

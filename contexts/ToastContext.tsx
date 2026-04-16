@@ -39,9 +39,9 @@ const Toast: React.FC<{ toast: ToastMessage; onDismiss: (id: string) => void }> 
     }, [handleDismiss]);
 
     const typeClasses = {
-        success: 'border-green-500 dark:border-green-400',
-        error: 'border-red-500 dark:border-red-400',
-        info: 'border-blue-500 dark:border-blue-400',
+        success: 'border-green-200 dark:border-green-900/50',
+        error: 'border-red-200 dark:border-red-900/50',
+        info: 'border-blue-200 dark:border-blue-900/50',
     };
 
     const icons = {
@@ -52,7 +52,7 @@ const Toast: React.FC<{ toast: ToastMessage; onDismiss: (id: string) => void }> 
 
     return (
         <div
-            className={`flex items-center bg-[var(--bg-secondary)]/80 backdrop-blur-sm text-[var(--text-primary)] p-4 rounded-lg shadow-lg border-b-4 ${typeClasses[toast.type]} transform transition-all duration-300 ease-in-out pointer-events-auto ${isExiting ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}
+            className={`flex items-center bg-[var(--bg-secondary)]/88 backdrop-blur-md text-[var(--text-primary)] p-4 rounded-[18px] shadow-[var(--shadow-soft)] border ${typeClasses[toast.type]} transform transition-all duration-300 ease-in-out pointer-events-auto ${isExiting ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}
             role="alert"
         >
             <div className="flex-shrink-0 mr-3">{icons[toast.type]}</div>
