@@ -12,30 +12,30 @@
 
 ## 👋 Tentang SoalGenius
 
-SoalGenius adalah aplikasi web modern yang dirancang khusus untuk para pendidik, guru, dan dosen. Lupakan kerumitan pemformatan dokumen—fokuslah pada pembuatan soal berkualitas. Dengan SoalGenius, Anda dapat membuat naskah soal ujian yang rapi dan profesional dalam hitungan menit.
+SoalGenius adalah aplikasi web yang dirancang khusus untuk para pendidik / pengajar. Lupakan kerumitan pemformatan dokumen—fokuslah pada pembuatan soal. Dengan SoalGenius, Anda dapat membuat naskah soal ujian yang rapi dan profesional dalam hitungan menit.
 
-Aplikasi ini dapat bekerja **100% offline** setelah dimuat pertama kali, dan semua data Anda disimpan dengan aman **hanya di browser Anda**, menjamin privasi dan aksesibilitas penuh bahkan tanpa koneksi internet.
+Aplikasi ini dapat bekerja **offline** setelah dimuat pertama kali, dan semua data Anda disimpan dengan aman **hanya di browser Anda**, menjamin privasi dan aksesibilitas penuh bahkan tanpa koneksi internet.
 
 ### Kolaborasi Unik AI dan Manusia
 
-SoalGenius bukan hanya aplikasi biasa; ini adalah hasil dari **kolaborasi erat antara kecerdasan buatan (AI) dan pengembang manusia (AI Projek)**. Proses pengembangan ini menunjukkan sinergi yang kuat di mana setiap pihak memainkan peran penting:
+SoalGenius adalah hasil dari **kolaborasi erat antara kecerdasan buatan (AI) dan pengembang manusia** di mana setiap pihak memainkan peran penting:
 
 -   **Peran AI sebagai Partner Koding**:
     -   **Generator Kode**: Menulis sebagian besar kode boilerplate, komponen UI, dan logika fungsional berdasarkan instruksi yang detail.
     -   **Problem Solver**: Memberikan solusi cepat untuk tantangan teknis dan algoritma yang kompleks.
     -   **Refactor & Optimasi**: Membantu merapikan dan mengoptimalkan kode untuk performa yang lebih baik.
 
--   **Peran Manusia (AI Projek) sebagai Sutradara & Kurator**:
+-   **Peran Manusia sebagai Sutradara & Kurator**:
     -   **Arsitek & Visioner**: Merancang konsep awal, arsitektur aplikasi, dan pengalaman pengguna (UI/UX) secara keseluruhan.
     -   **Prompt Engineer**: Memberikan arahan yang presisi dan kreatif kepada AI untuk menghasilkan kode yang sesuai dengan visi.
     -   **Quality Control**: Melakukan review, debugging, dan integrasi terhadap kode yang dihasilkan AI, memastikan kualitas, keamanan, dan kohesi aplikasi.
     -   **Sentuhan Akhir**: Menambahkan nuansa, kreativitas, dan solusi untuk kasus-kasus unik yang hanya dapat dipahami oleh intuisi manusia.
 
-Kolaborasi ini memungkinkan SoalGenius dikembangkan dengan kecepatan luar biasa sambil tetap menjaga kualitas dan desain yang berpusat pada pengguna. Ini adalah bukti nyata bagaimana kemitraan antara AI dan manusia dapat menciptakan produk yang inovatif dan bermanfaat.
+Kolaborasi ini adalah bukti bagaimana kemitraan antara AI dan manusia dapat menciptakan produk yang inovatif dan bermanfaat.
 
-## ✨ Fitur Unggulan
+## ✨ Fitur
 
--   **✍️ Editor Canggih**: Format teks (bold, italic), sisipkan gambar, atur perataan, dan gunakan superskrip/subskrip dengan mudah.
+-   **✍️ Editor**: Format teks (bold, italic), sisipkan gambar, atur perataan, dan gunakan superskrip/subskrip dengan mudah.
 -   **📚 Berbagai Jenis Soal**: Mendukung Pilihan Ganda (termasuk kompleks), Esai, Isian Singkat, Menjodohkan, Benar-Salah, hingga Tabel Isian.
 -   **👁️ Pratinau Langsung**: Lihat tampilan akhir soal atau kunci jawaban secara real-time saat Anda mengedit.
 -   **🌍 Dukungan Teks Arab (RTL)**: Tulis soal berbahasa Arab dengan mudah. Arah teks, penomoran, dan tata letak otomatis menyesuaikan.
