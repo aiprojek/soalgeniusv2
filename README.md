@@ -1,4 +1,4 @@
-# SoalGenius v2.0
+# SoalGenius
 
 ![Logo SoalGenius](icon.svg)
 

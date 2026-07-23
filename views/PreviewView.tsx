@@ -22,6 +22,7 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
     const [iframeHeight, setIframeHeight] = useState<string | number>('297mm');
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const actionsMenuRef = useRef<HTMLDivElement>(null);
+    const mobileActionsMenuRef = useRef<HTMLDivElement>(null);
     const actionsButtonRef = useRef<HTMLButtonElement>(null);
     const mainContainerRef = useRef<HTMLElement>(null);
     const { addToast } = useToast();
@@ -70,7 +71,7 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
             const target = event.target as Node | null;
             if (!target) return;
 
-            const clickedMenu = actionsMenuRef.current?.contains(target);
+            const clickedMenu = actionsMenuRef.current?.contains(target) || mobileActionsMenuRef.current?.contains(target);
             const clickedButton = actionsButtonRef.current?.contains(target);
             if (!clickedMenu && !clickedButton) {
                 setActionsMenuOpen(false);
@@ -340,7 +341,7 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
 
             {isActionsMenuOpen && (
                 <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/45 p-0 md:hidden" onClick={() => setActionsMenuOpen(false)}>
-                    <div className="w-full rounded-t-[28px] bg-[var(--bg-secondary)] border-t border-[var(--border-primary)] shadow-2xl animate-scale-in md:mt-16 md:w-[22rem] md:rounded-[22px] md:border md:border-[var(--border-primary)]" onClick={(e) => e.stopPropagation()}>
+                    <div ref={mobileActionsMenuRef} className="w-full rounded-t-[28px] bg-[var(--bg-secondary)] border-t border-[var(--border-primary)] shadow-2xl animate-scale-in md:mt-16 md:w-[22rem] md:rounded-[22px] md:border md:border-[var(--border-primary)]" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-center py-3 md:hidden">
                             <div className="h-1.5 w-14 rounded-full bg-[var(--border-secondary)]"></div>
                         </div>

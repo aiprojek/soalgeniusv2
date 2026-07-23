@@ -43,7 +43,7 @@ const AiGeneratorModal: React.FC<AiGeneratorModalProps> = ({ isOpen, onClose, on
         }
         
         setIsLoading(true);
-        setStatus(provider === 'pollinations' ? 'Menghubungi AI (Default)...' : 'Menghubungi Gemini...');
+        setStatus(provider === 'pollinations' ? 'Menghubungi Pollinations AI...' : 'Menghubungi Gemini AI...');
 
         try {
             const result: GeneratedQuestion[] = await generateQuestions(
@@ -130,15 +130,17 @@ const AiGeneratorModal: React.FC<AiGeneratorModalProps> = ({ isOpen, onClose, on
                     <div className="flex p-1 bg-[var(--bg-muted)] rounded-[var(--radius-control)]">
                         <button 
                             onClick={() => setProvider('pollinations')}
-                            className={`flex-1 py-2 text-sm font-medium rounded-[var(--radius-control)] transition-all ${provider === 'pollinations' ? 'bg-[var(--bg-secondary)] text-blue-600 shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+                            className={`flex-1 py-2 text-sm font-medium rounded-[var(--radius-control)] transition-all flex items-center justify-center gap-1.5 ${provider === 'pollinations' ? 'bg-[var(--bg-secondary)] text-blue-600 shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
                         >
-                            Default (Gratis)
+                            Pollinations
+                            <span className="text-[10px] font-bold bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 px-1.5 py-0.5 rounded-full uppercase tracking-wide">GRATIS</span>
                         </button>
                         <button 
                             onClick={() => setProvider('gemini')}
-                            className={`flex-1 py-2 text-sm font-medium rounded-[var(--radius-control)] transition-all ${provider === 'gemini' ? 'bg-[var(--bg-secondary)] text-purple-600 shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+                            className={`flex-1 py-2 text-sm font-medium rounded-[var(--radius-control)] transition-all flex items-center justify-center gap-1.5 ${provider === 'gemini' ? 'bg-[var(--bg-secondary)] text-purple-600 shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
                         >
-                            Advance (Gemini)
+                            Gemini
+                            <span className="text-[10px] font-bold bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-400 px-1.5 py-0.5 rounded-full uppercase tracking-wide">API KEY</span>
                         </button>
                     </div>
 

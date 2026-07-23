@@ -843,6 +843,7 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
           // Reset inline styles to correctly recalculate on resize
           p.style.fontSize = ''; 
           p.style.lineHeight = '';
+          p.style.whiteSpace = 'nowrap';
           
           const parentContainer = p.parentElement;
           if (!parentContainer) return;
@@ -855,11 +856,21 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
             const ratio = containerWidth / textWidth;
             // Use a safety margin (0.98) to avoid text touching the edges
             const newSize = currentFontSize * ratio * 0.98;
-            // Set a minimum font size for readability
-            const finalSize = Math.max(newSize, 8); // 8px minimum
-            p.style.fontSize = finalSize + 'px';
+            
+            // 10pt in pixels (10 * 96 / 72 = 13.333px)
+            const minSizePx = 13.333;
+            
+            if (newSize >= minSizePx) {
+              p.style.fontSize = newSize + 'px';
+              p.style.whiteSpace = 'nowrap';
+            } else {
+              p.style.fontSize = minSizePx + 'px';
+              p.style.whiteSpace = 'normal';
+            }
             // Adjust line height to prevent overlap if font size changes significantly
             p.style.lineHeight = '1.2';
+          } else {
+            p.style.whiteSpace = 'nowrap';
           }
         });
       }

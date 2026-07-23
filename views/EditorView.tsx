@@ -10,6 +10,7 @@ import { generateHtmlContent } from '../lib/htmlGenerator';
 import QuestionBankView from './QuestionBankView';
 import AiGeneratorModal from '../components/AiGeneratorModal';
 import SmartImportModal from '../components/SmartImportModal';
+import MathModal from '../components/MathModal';
 import { useHistoryState } from '../hooks/useHistoryState';
 import ReactQuill from 'react-quill';
 import Quill from 'quill';
@@ -310,6 +311,7 @@ const RichTextEditor: React.FC<{
 }> = ({ value, onChange, placeholder, isOption = false, direction = 'ltr' }) => {
     const quillRef = useRef<ReactQuill>(null);
     const { addToast } = useToast();
+    const [isMathModalOpen, setIsMathModalOpen] = useState(false);
 
     // Handler for "AI Image" button
     const aiImageHandler = useCallback(() => {
@@ -384,23 +386,14 @@ const RichTextEditor: React.FC<{
     }, [addToast]);
 
     const mathHandler = useCallback(() => {
-        const latex = window.prompt(
-            'Masukkan rumus LaTeX.\nContoh: x^2+1 atau \\frac{a}{b}'
-        );
-        if (!latex?.trim()) return;
+        setIsMathModalOpen(true);
+    }, []);
 
-        const isDisplayMode = window.confirm(
-            'Tampilkan sebagai rumus blok besar?\nPilih "OK" untuk blok, "Cancel" untuk inline.'
-        );
-
+    const handleMathInsert = useCallback((latex: string, isDisplayMode: boolean) => {
         const editor = quillRef.current?.getEditor();
         if (!editor) return;
-
         const range = editor.getSelection(true);
-        const wrappedFormula = isDisplayMode
-            ? `$$${latex.trim()}$$`
-            : `$${latex.trim()}$`;
-
+        const wrappedFormula = isDisplayMode ? `$$${latex}$$` : `$${latex}$`;
         editor.insertText(range.index, wrappedFormula, 'user');
         editor.setSelection(range.index + wrappedFormula.length, 0, 'user');
     }, []);
@@ -447,19 +440,26 @@ const RichTextEditor: React.FC<{
     }, [direction]);
     
     return (
-        <div
-            className={`so-genius-quill-wrapper ${isOption ? 'so-genius-quill-option-wrapper' : ''} ${direction === 'rtl' ? 'so-genius-quill-rtl' : 'so-genius-quill-ltr'}`}
-            dir={direction}
-        >
-            <ReactQuillComponent
-                ref={quillRef}
-                value={value}
-                onChange={handleChange}
-                placeholder={placeholder}
-                theme="snow"
-                modules={modules}
+        <>
+            <div
+                className={`so-genius-quill-wrapper ${isOption ? 'so-genius-quill-option-wrapper' : ''} ${direction === 'rtl' ? 'so-genius-quill-rtl' : 'so-genius-quill-ltr'}`}
+                dir={direction}
+            >
+                <ReactQuillComponent
+                    ref={quillRef}
+                    value={value}
+                    onChange={handleChange}
+                    placeholder={placeholder}
+                    theme="snow"
+                    modules={modules}
+                />
+            </div>
+            <MathModal
+                isOpen={isMathModalOpen}
+                onClose={() => setIsMathModalOpen(false)}
+                onInsert={handleMathInsert}
             />
-        </div>
+        </>
     );
 };
 

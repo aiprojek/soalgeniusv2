@@ -80,9 +80,9 @@ const SmartImportModal: React.FC<SmartImportModalProps> = ({ isOpen, onClose, on
                 </div>
 
                 {/* Content - Split View */}
-                <div className="flex-grow flex flex-col md:flex-row overflow-hidden">
+                <div className="flex-grow flex flex-col md:flex-row overflow-auto" style={{minHeight: 0}}>
                     {/* Left: Input */}
-                    <div className="w-full md:w-1/2 p-3.5 sm:p-4 flex flex-col border-b md:border-b-0 md:border-r border-[var(--border-primary)]">
+                    <div className="w-full md:w-1/2 p-3.5 sm:p-4 flex flex-col border-b md:border-b-0 md:border-r border-[var(--border-primary)] overflow-y-auto" style={{maxHeight: '45vh'}}>
                         <div className="mb-3 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 text-xs p-2.5 rounded-[var(--radius-control)] border border-blue-200 dark:border-blue-800 flex gap-2 items-start">
                             <InfoIcon className="text-sm mt-0.5 shrink-0" />
                             <p>
@@ -108,7 +108,7 @@ const SmartImportModal: React.FC<SmartImportModalProps> = ({ isOpen, onClose, on
                     </div>
 
                     {/* Right: Preview */}
-                    <div className="w-full md:w-1/2 p-3.5 sm:p-4 flex flex-col bg-[var(--bg-muted)]">
+                    <div className="w-full md:w-1/2 p-3.5 sm:p-4 flex flex-col bg-[var(--bg-muted)] overflow-y-auto" style={{maxHeight: '45vh'}}>
                         <div className="flex justify-between items-center mb-2">
                             <label className="text-sm font-semibold text-[var(--text-secondary)]">Pratinjau Hasil ({parsedQuestions.length})</label>
                             {parsedQuestions.length > 0 && <span className="app-status-pill app-status-success !tracking-[0.08em]">Siap Impor</span>}
