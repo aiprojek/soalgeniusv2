@@ -30,7 +30,7 @@ const GuideTab: React.FC = () => {
                     <p>
                         Fitur <strong>Smart Import</strong> memungkinkan Anda memindahkan puluhan soal sekaligus dari file Word (.docx), PDF, atau Notepad dengan cara menyalin (copy) teks mentahnya lalu menempelkannya (paste) ke kotak import.
                     </p>
-                    
+
                     <div className="space-y-2">
                         <p className="font-bold text-[var(--text-primary)] text-xs sm:text-sm">Aturan Sintaks Penulisan Soal:</p>
                         <div className="rounded-xl border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-3 text-xs font-mono text-[var(--text-primary)] overflow-x-auto space-y-3 leading-relaxed">
@@ -80,10 +80,6 @@ const GuideTab: React.FC = () => {
             badgeColor: "bg-fuchsia-100 dark:bg-fuchsia-900/30 text-fuchsia-600 dark:text-fuchsia-300",
             content: (
                 <div className="space-y-4">
-                    <p>
-                        Tidak. SoalGenius berstatus <strong>100% gratis dan Open Source</strong> di bawah lisensi GNU GPL v3. Siapa pun (guru maupun sekolah) dapat memanfaatkannya secara gratis tanpa batasan fitur.
-                    </p>
-                    
                     <div className="space-y-2.5">
                         <p className="font-bold text-[var(--text-primary)] text-sm">Langkah 1: Setup Kunci API Gemini (Sekali Saja)</p>
                         <ol className="list-decimal list-inside space-y-1.5 text-xs sm:text-sm text-[var(--text-secondary)]">
@@ -248,7 +244,7 @@ const GuideTab: React.FC = () => {
                         const isOpen = openIndex === index;
                         return (
                             <div key={index} className="border border-[var(--border-primary)] rounded-[20px] bg-[var(--bg-secondary)] overflow-hidden transition-all duration-300 shadow-sm hover:border-[var(--border-secondary)]">
-                                <button 
+                                <button
                                     onClick={() => toggleAccordion(index)}
                                     className="w-full flex items-center justify-between gap-4 p-4 text-left hover:bg-[var(--bg-tertiary)]/50 transition-colors duration-200"
                                 >

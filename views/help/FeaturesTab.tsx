@@ -117,27 +117,27 @@ const FeaturesTab: React.FC = () => {
             <div className="text-center">
                 <h2 className="text-2xl sm:text-3xl font-extrabold text-[var(--text-primary)]">Fitur Unggulan</h2>
                 <p className="text-xs sm:text-sm text-[var(--text-secondary)] max-w-2xl mx-auto mt-1.5">
-                    SoalGenius dirancang dengan berbagai alat produktivitas tinggi untuk membantu guru menghemat ratusan jam waktu administratif.
+                    SoalGenius dirancang dengan berbagai alat produktivitas untuk membantu guru menghemat waktu administratif.
                 </p>
             </div>
-            
+
             <div className="space-y-6">
-                <FeatureCategory 
-                    title="Penyusunan & Format Ujian" 
+                <FeatureCategory
+                    title="Penyusunan & Format Ujian"
                     description="Alat penyuntingan canggih untuk mempermudah pengaturan estetika naskah soal."
-                    items={editingFeatures} 
-                />
-                
-                <FeatureCategory 
-                    title="Kecerdasan Buatan & Otomasi" 
-                    description="Manfaatkan generator otomatis dan parser AI untuk memicu alur kerja super cepat."
-                    items={aiFeatures} 
+                    items={editingFeatures}
                 />
 
-                <FeatureCategory 
-                    title="Penyimpanan & Portabilitas" 
+                <FeatureCategory
+                    title="Kecerdasan Buatan & Otomasi"
+                    description="Manfaatkan generator otomatis dan parser AI untuk memicu alur kerja super cepat."
+                    items={aiFeatures}
+                />
+
+                <FeatureCategory
+                    title="Penyimpanan & Portabilitas"
                     description="Jaga keamanan naskah ujian Anda dan bagikan ke berbagai media ekspor."
-                    items={storageFeatures} 
+                    items={storageFeatures}
                 />
             </div>
         </div>

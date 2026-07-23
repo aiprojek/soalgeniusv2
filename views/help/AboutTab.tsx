@@ -19,10 +19,10 @@ const ValuePoint: React.FC<{ title: string; description: string }> = ({ title, d
 );
 
 const SocialButton: React.FC<{ href: string; icon: React.ElementType; label: string; subLabel: string; colorClass: string }> = ({ href, icon: Icon, label, subLabel, colorClass }) => (
-    <a 
-        href={href} 
-        target="_blank" 
-        rel="noopener noreferrer" 
+    <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
         className={`flex items-center gap-3.5 p-4 rounded-[20px] transition-all duration-300 transform hover:-translate-y-0.5 border border-transparent ${colorClass} group shadow-sm`}
     >
         <div className="p-2.5 bg-white/20 rounded-[16px]">
@@ -39,7 +39,7 @@ const FaqItem: React.FC<{ question: string; answer: React.ReactNode }> = ({ ques
     const [isOpen, setIsOpen] = useState(false);
     return (
         <div className="border border-[var(--border-primary)] rounded-[var(--radius-card)] bg-[var(--bg-secondary)] overflow-hidden transition-all duration-200">
-            <button 
+            <button
                 onClick={() => setIsOpen(!isOpen)}
                 className="w-full flex items-center justify-between gap-4 px-4 py-3.5 text-left font-bold text-sm sm:text-base text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors duration-150"
             >
@@ -56,9 +56,9 @@ const FaqItem: React.FC<{ question: string; answer: React.ReactNode }> = ({ ques
 };
 
 const AppLogo = ({ className }: { className?: string }) => (
-    <svg 
-        viewBox="0 0 512 512" 
-        className={className} 
+    <svg
+        viewBox="0 0 512 512"
+        className={className}
         xmlns="http://www.w3.org/2000/svg"
         fill="none"
     >
@@ -102,7 +102,7 @@ const AboutTab: React.FC = () => {
                                 Soal<span className="text-transparent bg-clip-text bg-gradient-to-r from-[#2457d6] to-[#5f86ec]">Genius</span>
                             </h2>
                             <p className="max-w-xl text-sm leading-relaxed text-[var(--text-secondary)]">
-                                Aplikasi pembuat soal yang dirancang agar guru dapat fokus sepenuhnya pada penyusunan butir soal berkualitas, tanpa terganggu oleh masalah format, tata letak halaman, atau penomoran yang rumit.
+                                Aplikasi pembuat soal yang dibuat agar guru dapat fokus pada penyusunan butir soal berkualitas, tanpa terganggu oleh masalah format, tata letak halaman, atau penomoran yang rumit.
                             </p>
                         </div>
                         <div className="flex flex-wrap gap-2">
@@ -146,7 +146,7 @@ const AboutTab: React.FC = () => {
             <section className="app-surface rounded-[var(--radius-card)] p-5 sm:p-6 space-y-4">
                 <h3 className="font-bold text-[var(--text-primary)] text-lg sm:text-xl border-b border-[var(--border-primary)] pb-3">Pertanyaan Umum (FAQ)</h3>
                 <div className="space-y-2">
-                    <FaqItem 
+                    <FaqItem
                         question="Di mana file soal dan data ujian saya disimpan?"
                         answer={
                             <p>
@@ -154,7 +154,7 @@ const AboutTab: React.FC = () => {
                             </p>
                         }
                     />
-                    <FaqItem 
+                    <FaqItem
                         question="Apakah data saya bisa terhapus dengan sendirinya?"
                         answer={
                             <div className="space-y-2">
@@ -171,7 +171,7 @@ const AboutTab: React.FC = () => {
                             </div>
                         }
                     />
-                    <FaqItem 
+                    <FaqItem
                         question="Bagaimana cara kerja mode offline?"
                         answer={
                             <p>
@@ -179,11 +179,11 @@ const AboutTab: React.FC = () => {
                             </p>
                         }
                     />
-                    <FaqItem 
+                    <FaqItem
                         question="Apakah aplikasi ini berbayar?"
                         answer={
                             <p>
-                                 Tidak. SoalGenius berstatus <strong>100% gratis dan Open Source</strong> di bawah lisensi GNU GPL v3. Siapa pun (guru maupun sekolah) dapat memanfaatkannya secara gratis tanpa batasan fitur.
+                                Tidak. SoalGenius berstatus <strong>100% gratis dan Open Source</strong> di bawah lisensi GNU GPL v3. Siapa pun (guru maupun sekolah) dapat memanfaatkannya secara gratis tanpa batasan fitur.
                             </p>
                         }
                     />
@@ -197,24 +197,24 @@ const AboutTab: React.FC = () => {
                     <p className="text-xs sm:text-sm text-[var(--text-secondary)]">Kembangkan ekosistem SoalGenius bersama komunitas pendidik dan pengembang lainnya.</p>
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                    <SocialButton 
-                        href="https://lynk.id/aiprojek/s/bvBJvdA" 
-                        icon={CoffeeIcon} 
-                        label="Traktir Kopi" 
+                    <SocialButton
+                        href="https://lynk.id/aiprojek/s/bvBJvdA"
+                        icon={CoffeeIcon}
+                        label="Traktir Kopi"
                         subLabel="Dukung pengembangan"
                         colorClass="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600"
                     />
-                    <SocialButton 
-                        href="https://github.com/aiprojek/soalgeniusv2" 
-                        icon={GithubIcon} 
-                        label="GitHub" 
+                    <SocialButton
+                        href="https://github.com/aiprojek/soalgeniusv2"
+                        icon={GithubIcon}
+                        label="GitHub"
                         subLabel="Beri Bintang & Kontribusi"
                         colorClass="bg-gradient-to-r from-gray-700 to-gray-900 hover:from-gray-800 hover:to-black"
                     />
-                    <SocialButton 
-                        href="https://t.me/aiprojek_community/32" 
-                        icon={DiscussionIcon} 
-                        label="Telegram" 
+                    <SocialButton
+                        href="https://t.me/aiprojek_community/32"
+                        icon={DiscussionIcon}
+                        label="Telegram"
                         subLabel="Komunitas & Diskusi"
                         colorClass="bg-gradient-to-r from-blue-400 to-blue-600 hover:from-blue-500 hover:to-blue-700"
                     />
