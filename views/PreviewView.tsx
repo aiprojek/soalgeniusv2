@@ -130,7 +130,7 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
 
     const handleExportHtml = useCallback(() => {
         if (!exam || !settings) return;
-        
+
         const now = new Date();
         const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
         const sanitize = (str: string) => (str || '').replace(/[^a-z0-9_.-]/gi, '_').replace(/_+/g, '_');
@@ -146,7 +146,7 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        
+
         showDonationPrompt();
     }, [exam, settings, showAnswerKey, showDonationPrompt]);
 
@@ -154,14 +154,14 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
         if (!exam || !settings) return;
         setIsExportingWord(true);
         addToast('Menyiapkan dokumen Word...', 'info');
-        
+
         try {
             const blob = await generateDocx(exam, settings);
             const now = new Date();
             const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
             const sanitize = (str: string) => (str || '').replace(/[^a-z0-9_.-]/gi, '_');
             const fileName = `${sanitize(exam.title)}_${timestamp}.docx`;
-            
+
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -171,7 +171,7 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
             addToast('Dokumen Word berhasil diunduh.', 'success');
-            
+
             showDonationPrompt();
         } catch (error) {
             console.error("Export Word failed", error);
@@ -196,7 +196,7 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
             addToast('File Moodle XML berhasil diunduh.', 'success');
-            
+
             showDonationPrompt();
         } catch (error) {
             console.error("Export Moodle failed", error);
@@ -238,7 +238,7 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
         frameWindow?.addEventListener('soalgenius-preview-paginated', resize);
         frameWindow?.addEventListener('resize', resize);
     }, []);
-    
+
     if (isLoading || !exam || !settings) {
         return <div className="fixed inset-0 app-shell-page flex items-center justify-center text-[var(--text-secondary)]">Memuat Pratinjau...</div>;
     }
@@ -265,7 +265,7 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
                             <button onClick={() => setShowAnswerKey(true)} className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${showAnswerKey ? 'bg-[var(--bg-secondary)] text-blue-600 dark:text-slate-100 shadow-sm' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'}`}>Kunci Jawaban</button>
                         </div>
                     </div>
-                    
+
                     <div className="flex-1 flex justify-end">
                         <div className="hidden md:block">
                             <div className="relative inline-flex">
@@ -274,30 +274,30 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
                                     <span>Aksi</span>
                                 </button>
                                 {isActionsMenuOpen && (
-                                <div ref={actionsMenuRef} className="animate-fade-in absolute right-0 top-[calc(100%+0.65rem)] z-[120] w-[22rem] rounded-[18px] border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-2 shadow-[var(--shadow-card)]">
-                                    <div className="px-3 pb-2 pt-1">
-                                        <p className="text-sm font-semibold text-[var(--text-primary)]">Aksi Dokumen</p>
-                                        <p className="text-xs text-[var(--text-secondary)]">Export atau cetak dokumen dari sini</p>
+                                    <div ref={actionsMenuRef} className="animate-fade-in absolute right-0 top-[calc(100%+0.65rem)] z-[120] w-[22rem] rounded-[18px] border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-2 shadow-[var(--shadow-card)]">
+                                        <div className="px-3 pb-2 pt-1">
+                                            <p className="text-sm font-semibold text-[var(--text-primary)]">Aksi Dokumen</p>
+                                            <p className="text-xs text-[var(--text-secondary)]">Export atau cetak dokumen dari sini</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <button onClick={(e) => { e.stopPropagation(); handleExportWord(); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--bg-hover)] text-blue-600 dark:text-blue-400">
+                                                {isExportingWord ? <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></div> : <WordIcon />}
+                                                <span className="font-medium">Ekspor Word (.docx)</span>
+                                            </button>
+                                            <button onClick={(e) => { e.stopPropagation(); handleExportHtml(); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--bg-hover)] text-[var(--text-primary)]">
+                                                <DownloadIcon />
+                                                <span className="font-medium">Ekspor HTML</span>
+                                            </button>
+                                            <button onClick={(e) => { e.stopPropagation(); handleExportMoodle(); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--bg-hover)] text-orange-600 dark:text-orange-400">
+                                                <ServerIcon />
+                                                <span className="font-medium">Ekspor Moodle XML</span>
+                                            </button>
+                                            <button onClick={() => { handlePrint(); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--bg-hover)] text-[var(--text-primary)]">
+                                                <PrinterIcon />
+                                                <span className="font-medium">Cetak / Simpan PDF</span>
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div className="space-y-1">
-                                        <button onClick={() => { handleExportWord(); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--bg-hover)] text-blue-600 dark:text-blue-400">
-                                            {isExportingWord ? <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></div> : <WordIcon />}
-                                            <span className="font-medium">Ekspor Word (.docx)</span>
-                                        </button>
-                                        <button onClick={() => { handleExportHtml(); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--bg-hover)] text-[var(--text-primary)]">
-                                            <DownloadIcon />
-                                            <span className="font-medium">Ekspor HTML</span>
-                                        </button>
-                                        <button onClick={() => { handleExportMoodle(); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--bg-hover)] text-orange-600 dark:text-orange-400">
-                                            <ServerIcon />
-                                            <span className="font-medium">Ekspor Moodle XML</span>
-                                        </button>
-                                        <button onClick={() => { handlePrint(); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--bg-hover)] text-[var(--text-primary)]">
-                                            <PrinterIcon />
-                                            <span className="font-medium">Cetak / Simpan PDF</span>
-                                        </button>
-                                    </div>
-                                </div>
                                 )}
                             </div>
                         </div>
@@ -333,7 +333,7 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
                 </div>
             </header>
             <main ref={mainContainerRef} className="flex-grow overflow-auto px-2 py-3 sm:p-8 flex justify-center app-bottom-safe" style={{ scrollbarWidth: 'thin', scrollbarColor: '#94a3b8 #e2e8f0' }}>
-                 <div className="my-1 sm:my-8 origin-top transition-transform duration-200 ease-in-out flex-shrink-0 rounded-[14px] border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-1 shadow-[var(--shadow-card)] sm:rounded-[24px] sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none" style={{ transform: `scale(${zoom})`, width: settings.paperSize === 'A4' ? '210mm' : settings.paperSize === 'F4' ? '215mm' : '216mm' }}>
+                <div className="my-1 sm:my-8 origin-top transition-transform duration-200 ease-in-out flex-shrink-0 rounded-[14px] border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-1 shadow-[var(--shadow-card)] sm:rounded-[24px] sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none" style={{ transform: `scale(${zoom})`, width: settings.paperSize === 'A4' ? '210mm' : settings.paperSize === 'F4' ? '215mm' : '216mm' }}>
                     <iframe ref={iframeRef} onLoad={syncIframeHeight} sandbox="allow-modals allow-same-origin allow-scripts" srcDoc={showAnswerKey ? answerKeyHtml : examHtml} title="Pratinjau Ujian" className="w-full rounded-[12px] sm:rounded-none shadow-lg sm:shadow-2xl" style={{ height: iframeHeight }} />
                 </div>
             </main>
@@ -349,15 +349,15 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
                             <p className="text-sm text-[var(--text-secondary)]">Pilih aksi export atau cetak</p>
                         </div>
                         <div className="px-3 pb-5 space-y-1">
-                            <button onClick={() => { handleExportWord(); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--bg-hover)] text-blue-600 dark:text-blue-400">
+                            <button onClick={(e) => { e.stopPropagation(); handleExportWord(); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--bg-hover)] text-blue-600 dark:text-blue-400">
                                 {isExportingWord ? <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></div> : <WordIcon />}
                                 <span className="font-medium">Ekspor Word (.docx)</span>
                             </button>
-                            <button onClick={() => { handleExportHtml(); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--bg-hover)] text-[var(--text-primary)]">
+                            <button onClick={(e) => { e.stopPropagation(); handleExportHtml(); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--bg-hover)] text-[var(--text-primary)]">
                                 <DownloadIcon />
                                 <span className="font-medium">Ekspor HTML</span>
                             </button>
-                            <button onClick={() => { handleExportMoodle(); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--bg-hover)] text-orange-600 dark:text-orange-400">
+                            <button onClick={(e) => { e.stopPropagation(); handleExportMoodle(); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--bg-hover)] text-orange-600 dark:text-orange-400">
                                 <ServerIcon />
                                 <span className="font-medium">Ekspor Moodle XML</span>
                             </button>
