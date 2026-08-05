@@ -250,9 +250,9 @@ const GuideTab: React.FC = () => {
     return (
         <div className="max-w-4xl mx-auto pb-8 animate-fade-in px-1 space-y-5">
             <div className="text-center">
-                <h2 className="text-2xl sm:text-3xl font-extrabold text-[var(--text-primary)]">Pusat Bantuan & Panduan</h2>
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-[var(--text-primary)]">Bantuan & Panduan</h2>
                 <p className="text-xs sm:text-sm text-[var(--text-secondary)] max-w-2xl mx-auto mt-1.5">
-                    Pelajari langkah-langkah detail penggunaan fitur untuk memaksimalkan seluruh kemampuan aplikasi SoalGenius.
+                    Pelajari langkah-langkah penggunaan fitur untuk memaksimalkan seluruh kemampuan aplikasi SoalGenius.
                 </p>
             </div>
 
@@ -264,8 +264,8 @@ const GuideTab: React.FC = () => {
                     </div>
                     <div>
                         <h4 className="font-bold text-xs uppercase tracking-wider text-[var(--text-muted)]">Langkah 1</h4>
-                        <p className="text-xs sm:text-sm font-semibold text-[var(--text-primary)] mt-0.5">Buat Arsip & Folder</p>
-                        <p className="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed">Buka menu <strong>Arsip</strong>, buat folder (misal: "UAS IPA 2025") lalu buat dokumen ujian baru di dalamnya dan beri judul.</p>
+                        <p className="text-xs sm:text-sm font-semibold text-[var(--text-primary)] mt-0.5">Buat Kategori, Arsip & Folder</p>
+                        <p className="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed">Buka menu <strong>Arsip</strong>, buat folder (misal: "UAS 1 2025") lalu buat dokumen ujian baru di dalamnya dan beri judul atau anda juga bisa memindahkan soal yang sudah dibuat ke dalam folder yang diinginkan. Tambahkan kategori untuk semakin memudahkan pengarsipan.</p>
                     </div>
                 </div>
                 <div className="app-surface p-4 rounded-[var(--radius-card)] text-left flex items-start gap-3">
@@ -294,7 +294,7 @@ const GuideTab: React.FC = () => {
             <div className="space-y-3.5 pt-2">
                 <div className="border-l-4 border-[var(--bg-accent)] pl-3.5 py-0.5">
                     <h3 className="font-extrabold text-[var(--text-primary)] text-base sm:text-lg">Daftar Panduan Lengkap</h3>
-                    <p className="text-xs text-[var(--text-secondary)] mt-0.5">Klik salah satu topik di bawah untuk melihat instruksi penggunaan yang mendalam.</p>
+                    <p className="text-xs text-[var(--text-secondary)] mt-0.5">Klik salah satu topik di bawah untuk melihat instruksi penggunaan.</p>
                 </div>
 
                 <div className="space-y-2.5">
