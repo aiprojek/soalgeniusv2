@@ -62,7 +62,7 @@ const SmartImportModal: React.FC<SmartImportModalProps> = ({ isOpen, onClose, on
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <div className="app-modal-panel w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden animate-scale-in">
+        <div className="app-modal-panel w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden animate-scale-in">
                 {/* Header */}
                 <div className="app-modal-header flex justify-between items-center p-3.5 sm:p-4">
                     <div className="flex items-center gap-2">
@@ -79,10 +79,10 @@ const SmartImportModal: React.FC<SmartImportModalProps> = ({ isOpen, onClose, on
                     </button>
                 </div>
 
-                {/* Content - Split View */}
-                <div className="flex-grow flex flex-col md:flex-row overflow-auto" style={{minHeight: 0}}>
+                {/* Content - Split View: on mobile stacks vertically and scrolls, on desktop side-by-side */}
+                <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden" style={{minHeight: 0}}>
                     {/* Left: Input */}
-                    <div className="w-full md:w-1/2 p-3.5 sm:p-4 flex flex-col border-b md:border-b-0 md:border-r border-[var(--border-primary)] overflow-y-auto" style={{maxHeight: '45vh'}}>
+                    <div className="w-full md:w-1/2 p-3.5 sm:p-4 flex flex-col border-b md:border-b-0 md:border-r border-[var(--border-primary)] md:overflow-y-auto">
                         <div className="mb-3 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 text-xs p-2.5 rounded-[var(--radius-control)] border border-blue-200 dark:border-blue-800 flex gap-2 items-start">
                             <InfoIcon className="text-sm mt-0.5 shrink-0" />
                             <p>
@@ -100,7 +100,7 @@ const SmartImportModal: React.FC<SmartImportModalProps> = ({ isOpen, onClose, on
                         </label>
                         <textarea
                             dir={detectedDirection}
-                            className="flex-grow w-full p-3 border border-[var(--border-secondary)] rounded-[var(--radius-control)] bg-[var(--bg-primary)] font-mono text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                            className="w-full min-h-[180px] md:flex-grow p-3 border border-[var(--border-secondary)] rounded-[var(--radius-control)] bg-[var(--bg-primary)] font-mono text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none"
                             placeholder={`Contoh Format:\n\n1. Siapa presiden pertama Indonesia?\nA. Soeharto\nB. Soekarno\nC. Habibie\nD. Gus Dur\nKunci: B\n\n١. من هو أول رئيس لإندونيسيا؟\nأ. سوهارتو\nب. سوكارنو\nج. حبيبي\nد. عبد الرحمن وحيد\nالإجابة: ب`}
                             value={rawText}
                             onChange={(e) => setRawText(e.target.value)}
@@ -108,7 +108,7 @@ const SmartImportModal: React.FC<SmartImportModalProps> = ({ isOpen, onClose, on
                     </div>
 
                     {/* Right: Preview */}
-                    <div className="w-full md:w-1/2 p-3.5 sm:p-4 flex flex-col bg-[var(--bg-muted)] overflow-y-auto" style={{maxHeight: '45vh'}}>
+                    <div className="w-full md:w-1/2 p-3.5 sm:p-4 flex flex-col bg-[var(--bg-muted)] md:overflow-y-auto min-h-[250px] md:min-h-0">
                         <div className="flex justify-between items-center mb-2">
                             <label className="text-sm font-semibold text-[var(--text-secondary)]">Pratinjau Hasil ({parsedQuestions.length})</label>
                             {parsedQuestions.length > 0 && <span className="app-status-pill app-status-success !tracking-[0.08em]">Siap Impor</span>}

@@ -11,6 +11,7 @@ import QuestionBankView from './QuestionBankView';
 import AiGeneratorModal from '../components/AiGeneratorModal';
 import SmartImportModal from '../components/SmartImportModal';
 import MathModal from '../components/MathModal';
+import AiImagePromptModal from '../components/AiImagePromptModal';
 import { useHistoryState } from '../hooks/useHistoryState';
 import ReactQuill from 'react-quill';
 import Quill from 'quill';
@@ -29,7 +30,7 @@ icons['strike'] = '<i class="bi bi-type-strikethrough" aria-hidden="true"></i>';
 icons['color'] = '<i class="bi bi-palette-fill" aria-hidden="true"></i>';
 icons['background'] = '<i class="bi bi-highlighter" aria-hidden="true"></i>';
 icons['image'] = '<i class="bi bi-image-fill" aria-hidden="true"></i>';
-icons['math'] = '<i class="bi bi-calculator-fill" aria-hidden="true"></i>';
+icons['math'] = '<svg viewBox="0 0 16 16" class="ql-fill" fill="currentColor"><path d="M12 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h8zM4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H4z"/><path d="M4 2.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5v-2zm0 4a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zm0 3a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zm0 3a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zm3-6a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zm0 3a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zm0 3a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zm3-6a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zm0 3a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-4z"/></svg>';
 icons['direction'] = '<i class="bi bi-text-right" aria-hidden="true"></i>';
 icons['script'] = {
   'sub': '<i class="bi bi-subscript" aria-hidden="true"></i>',
@@ -37,7 +38,7 @@ icons['script'] = {
 };
 icons['clean'] = '<i class="bi bi-eraser-fill" aria-hidden="true"></i>';
 // Custom AI Image Icon
-icons['aiImage'] = '<i class="bi bi-stars text-purple-600" aria-hidden="true"></i>';
+icons['aiImage'] = '<svg viewBox="0 0 16 16" class="ql-fill" fill="#9333ea"><path d="M3 2.5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-.5.5h-4a.5.5 0 0 1-.5-.5v-4zm.5 1v2h3v-2h-3z"/><path d="M8 2.5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-.5.5h-4a.5.5 0 0 1-.5-.5v-4zm.5 1v2h3v-2h-3z"/><path d="M3 8.5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-.5.5h-4a.5.5 0 0 1-.5-.5v-4zm.5 1v2h3v-2h-3z"/><path d="M8 8.5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-.5.5h-4a.5.5 0 0 1-.5-.5v-4zm.5 1v2h3v-2h-3z"/><path d="M14.5 1a.5.5 0 0 1 .5.5v13a.5.5 0 0 1-.5.5h-13a.5.5 0 0 1-.5-.5v-13a.5.5 0 0 1 .5-.5h13zm-13-1A1.5 1.5 0 0 0 0 1.5v13A1.5 1.5 0 0 0 1.5 16h13a1.5 1.5 0 0 0 1.5-1.5v-13A1.5 1.5 0 0 0 14.5 0h-13z"/></svg>';
 
 if (icons['align']) {
     icons['align'][''] = '<i class="bi bi-text-left" aria-hidden="true"></i>';
@@ -312,40 +313,42 @@ const RichTextEditor: React.FC<{
     const quillRef = useRef<ReactQuill>(null);
     const { addToast } = useToast();
     const [isMathModalOpen, setIsMathModalOpen] = useState(false);
+    const [isAiImageModalOpen, setIsAiImageModalOpen] = useState(false);
 
     // Handler for "AI Image" button
     const aiImageHandler = useCallback(() => {
-        const prompt = window.prompt("Masukkan deskripsi gambar yang ingin dibuat (Contoh: Kucing membaca buku):");
-        if (prompt) {
-            const editor = quillRef.current?.getEditor();
-            if (editor) {
-                const range = editor.getSelection(true);
-                addToast('Membuat gambar dengan AI...', 'info');
-                
-                // Construct Pollinations URL
-                const encodedPrompt = encodeURIComponent(prompt);
-                const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=800&height=600&nologo=true&seed=${Math.floor(Math.random() * 1000)}`;
-                
-                // For better compatibility (offline saving), try to fetch and convert to base64
-                // Note: Pollinations allows CORS, so we can fetch
-                fetch(imageUrl)
-                    .then(res => res.blob())
-                    .then(blob => {
-                        const reader = new FileReader();
-                        reader.onloadend = () => {
-                            const base64data = reader.result;
-                            editor.insertEmbed(range.index, 'image', base64data);
-                            addToast('Gambar berhasil dibuat!', 'success');
-                        };
-                        reader.readAsDataURL(blob);
-                    })
-                    .catch(err => {
-                        console.error("Failed to fetch Pollinations image for base64 conversion", err);
-                        // Fallback: Just insert the URL
-                        editor.insertEmbed(range.index, 'image', imageUrl);
-                        addToast('Gambar disisipkan (URL).', 'success');
-                    });
-            }
+        setIsAiImageModalOpen(true);
+    }, []);
+
+    const handleAiImageInsert = useCallback((prompt: string) => {
+        const editor = quillRef.current?.getEditor();
+        if (editor) {
+            const range = editor.getSelection(true);
+            addToast('Membuat gambar dengan AI...', 'info');
+            
+            // Construct Pollinations URL
+            const encodedPrompt = encodeURIComponent(prompt);
+            const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=800&height=600&nologo=true&seed=${Math.floor(Math.random() * 1000)}`;
+            
+            // For better compatibility (offline saving), try to fetch and convert to base64
+            // Note: Pollinations allows CORS, so we can fetch
+            fetch(imageUrl)
+                .then(res => res.blob())
+                .then(blob => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        const base64data = reader.result;
+                        editor.insertEmbed(range.index, 'image', base64data);
+                        addToast('Gambar berhasil dibuat!', 'success');
+                    };
+                    reader.readAsDataURL(blob);
+                })
+                .catch(err => {
+                    console.error("Failed to fetch Pollinations image for base64 conversion", err);
+                    // Fallback: Just insert the URL
+                    editor.insertEmbed(range.index, 'image', imageUrl);
+                    addToast('Gambar disisipkan (URL).', 'success');
+                });
         }
     }, [addToast]);
 
@@ -458,6 +461,11 @@ const RichTextEditor: React.FC<{
                 isOpen={isMathModalOpen}
                 onClose={() => setIsMathModalOpen(false)}
                 onInsert={handleMathInsert}
+            />
+            <AiImagePromptModal
+                isOpen={isAiImageModalOpen}
+                onClose={() => setIsAiImageModalOpen(false)}
+                onSubmit={handleAiImageInsert}
             />
         </>
     );

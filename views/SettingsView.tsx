@@ -195,7 +195,7 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
         updateSettings(s => ({...s, examHeaderLines: s.examHeaderLines.map(line => line.id === id ? {...line, text: newText} : line)}));
     };
     const addHeaderLine = () => {
-        updateSettings(s => ({...s, examHeaderLines: [...s.examHeaderLines, {id: crypto.randomUUID(), text: ''}]}));
+        updateSettings(s => ({...s, examHeaderLines: [...s.examHeaderLines, {id: crypto.randomUUID(), text: '', sizeMode: 'auto', sizePt: 12}]}));
     };
     const removeHeaderLine = (id: string) => {
         updateSettings(s => ({...s, examHeaderLines: s.examHeaderLines.filter(line => line.id !== id)}));
@@ -939,16 +939,41 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
                         
                         <div className="space-y-4 mb-6">
                             <label className="block text-sm font-medium text-[var(--text-secondary)]">Teks Kop (Baris demi Baris)</label>
-                            <div className="space-y-2">
+                            <div className="space-y-3">
                                 {settings.examHeaderLines.map((line) => (
-                                    <div key={line.id} className="flex items-center gap-2">
-                                        <input type="text" value={line.text} onChange={(e) => handleHeaderChange(line.id, e.target.value)} placeholder="Teks baris kop" className="flex-grow p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]" />
-                                        <button onClick={() => removeHeaderLine(line.id)} className="text-[var(--text-muted)] hover:text-red-500 p-2" disabled={settings.examHeaderLines.length <= 1}><TrashIcon /></button>
+                                    <div key={line.id} className="flex flex-col gap-2 p-3 border border-[var(--border-primary)] rounded-lg bg-[var(--bg-tertiary)]">
+                                        <div className="flex items-center gap-2">
+                                            <input type="text" value={line.text} onChange={(e) => handleHeaderChange(line.id, e.target.value)} placeholder="Teks baris kop" className="flex-grow p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]" />
+                                            <button onClick={() => removeHeaderLine(line.id)} className="text-[var(--text-muted)] hover:text-red-500 p-2" disabled={settings.examHeaderLines.length <= 1}><TrashIcon /></button>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <label className="text-xs font-medium text-[var(--text-secondary)]">Mode Ukuran:</label>
+                                            <select 
+                                                value={line.sizeMode || 'auto'} 
+                                                onChange={(e) => updateSettings(s => ({...s, examHeaderLines: s.examHeaderLines.map(l => l.id === line.id ? {...l, sizeMode: e.target.value as 'auto'|'fixed'} : l)}))} 
+                                                className="text-xs p-1 border border-[var(--border-secondary)] rounded bg-[var(--bg-secondary)] text-[var(--text-primary)]"
+                                            >
+                                                <option value="auto">Auto (Dinamis)</option>
+                                                <option value="fixed">Fixed (Tetap)</option>
+                                            </select>
+                                            {line.sizeMode === 'fixed' && (
+                                                <>
+                                                    <input 
+                                                        type="number" min={6} max={24} step={0.5} 
+                                                        value={line.sizePt ?? 12} 
+                                                        onChange={(e) => updateSettings(s => ({...s, examHeaderLines: s.examHeaderLines.map(l => l.id === line.id ? {...l, sizePt: parseFloat(e.target.value) || 12} : l)}))} 
+                                                        className="w-16 text-xs p-1 border border-[var(--border-secondary)] rounded bg-[var(--bg-secondary)] text-center text-[var(--text-primary)]" 
+                                                    />
+                                                    <span className="text-xs text-[var(--text-muted)]">pt</span>
+                                                </>
+                                            )}
+                                        </div>
                                     </div>
                                 ))}
                             </div>
                             <button onClick={addHeaderLine} className="text-blue-600 font-semibold text-sm flex items-center space-x-1 pt-2"><PlusIcon /> <span>Tambah Baris</span></button>
                         </div>
+
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {[0, 1].map((index) => (

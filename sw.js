@@ -1,15 +1,13 @@
 // Nama cache baru untuk memicu pembaruan
-const CACHE_NAME = 'soalgenius-cache-v8-local-bundle';
+const CACHE_NAME = 'soalgenius-cache-v9-offline-first';
 
-// Daftar URL statis aplikasi
+// Daftar URL statis aplikasi yang pasti ada
 const appShellFiles = [
-  '/',
+  './',
   './index.html',
   './manifest.json',
   './icon.svg',
 ];
-
-const urlsToCache = [...appShellFiles];
 
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
@@ -19,22 +17,20 @@ self.addEventListener('message', (event) => {
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      console.log('SW: Membuka cache dan memulai caching aset...');
-      
-      const cachePromises = urlsToCache.map(async (url) => {
+    caches.open(CACHE_NAME).then(async (cache) => {
+      console.log('SW: Install — pre-caching app shell...');
+      // Pre-cache setiap file satu per satu agar kegagalan satu tidak membatalkan yang lain
+      for (const url of appShellFiles) {
         try {
-          const response = await fetch(url);
-          if (!response.ok) {
-            throw new Error(`Status ${response.status}`);
+          const response = await fetch(url, { cache: 'reload' });
+          if (response.ok || response.type === 'opaque') {
+            await cache.put(url, response);
           }
-          return await cache.put(url, response);
         } catch (err) {
-          console.warn(`SW: Gagal cache ${url}:`, err);
+          console.warn(`SW: Gagal pre-cache ${url}:`, err);
         }
-      });
-
-      return Promise.all(cachePromises);
+      }
+      console.log('SW: Pre-caching selesai.');
     })
   );
 });
@@ -45,7 +41,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
+          if (!cacheWhitelist.includes(cacheName)) {
             console.log('SW: Menghapus cache lama:', cacheName);
             return caches.delete(cacheName);
           }
@@ -56,35 +52,52 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Hanya tangani GET request
+  // Hanya tangani GET request dari origin yang sama
   if (event.request.method !== 'GET') return;
-  if (new URL(event.request.url).origin !== self.location.origin) return;
 
-  // Strategi: Stale-While-Revalidate
-  // 1. Ambil dari Cache dulu (cepat)
-  // 2. Jika tidak ada, ambil dari Network
-  // 3. Update Cache dengan data terbaru dari Network (untuk kunjungan berikutnya)
+  const url = new URL(event.request.url);
+
+  // Lewati request ke API eksternal (Dropbox, Gemini, Pollinations) — biarkan network handle
+  if (url.hostname !== self.location.hostname) return;
+
   event.respondWith(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.match(event.request).then((cachedResponse) => {
-        const fetchPromise = fetch(event.request)
-          .then((networkResponse) => {
-            // Validasi response sebelum disimpan
-            if (networkResponse && (networkResponse.status === 200 || networkResponse.type === 'opaque')) {
-              cache.put(event.request, networkResponse.clone());
-            }
-            return networkResponse;
-          })
-          .catch(() => {
-            if (cachedResponse) return cachedResponse;
-            if (event.request.mode === 'navigate') {
-              return cache.match('./index.html');
-            }
-            return Response.error();
-          });
+    caches.open(CACHE_NAME).then(async (cache) => {
+      // Coba ambil dari cache terlebih dahulu (cache-first)
+      const cachedResponse = await cache.match(event.request);
 
-        return cachedResponse || fetchPromise;
-      });
+      // Mulai network request di background untuk update cache (stale-while-revalidate)
+      const networkFetch = fetch(event.request)
+        .then((networkResponse) => {
+          // Hanya cache response yang valid (status 200 atau opaque cross-origin)
+          if (
+            networkResponse &&
+            (networkResponse.status === 200 || networkResponse.type === 'opaque')
+          ) {
+            cache.put(event.request, networkResponse.clone());
+          }
+          return networkResponse;
+        })
+        .catch(() => {
+          // Network gagal (offline) — kembalikan dari cache jika ada
+          if (cachedResponse) {
+            console.log('SW: Offline, melayani dari cache:', event.request.url);
+            return cachedResponse;
+          }
+          // Jika ini adalah navigation request (halaman baru), sajikan index.html
+          if (event.request.mode === 'navigate') {
+            return cache.match('./index.html') || cache.match('/');
+          }
+          // Untuk aset lain yang tidak di-cache, return error response
+          return new Response('Offline — Resource not cached', {
+            status: 503,
+            statusText: 'Service Unavailable',
+            headers: { 'Content-Type': 'text/plain' },
+          });
+        });
+
+      // Jika ada di cache, sajikan sekarang dan update di background
+      // Jika tidak ada di cache, tunggu network
+      return cachedResponse || networkFetch;
     })
   );
 });

@@ -71,9 +71,9 @@ export const initialExam: Exam = {
 
 export const defaultSettings: Settings = {
     examHeaderLines: [
-        { id: crypto.randomUUID(), text: 'PEMERINTAH KOTA CONTOH' },
-        { id: crypto.randomUUID(), text: 'DINAS PENDIDIKAN DAN KEBUDAYAAN' },
-        { id: crypto.randomUUID(), text: 'SEKOLAH MENENGAH PERTAMA HARAPAN BANGSA' },
+        { id: crypto.randomUUID(), text: 'PEMERINTAH KOTA CONTOH', sizeMode: 'auto', sizePt: 12 },
+        { id: crypto.randomUUID(), text: 'DINAS PENDIDIKAN DAN KEBUDAYAAN', sizeMode: 'auto', sizePt: 12 },
+        { id: crypto.randomUUID(), text: 'SEKOLAH MENENGAH PERTAMA HARAPAN BANGSA', sizeMode: 'auto', sizePt: 12 },
     ],
     logos: [null, null],
     paperSize: 'A4',

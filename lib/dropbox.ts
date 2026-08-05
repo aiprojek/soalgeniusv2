@@ -48,7 +48,7 @@ export const getDropboxAuthCodeUrl = (appKey: string): string => {
     // Kita tidak mengirim redirect_uri spesifik agar user bisa meng-copy code
     // atau user harus mengatur redirect_uri di console Dropbox ke sembarang tempat (misal: http://localhost)
     // dan mengambil code dari URL bar.
-    return `https://www.dropbox.com/oauth2/authorize?client_id=${appKey}&response_type=code`;
+    return `https://www.dropbox.com/oauth2/authorize?client_id=${appKey}&response_type=code&token_access_type=offline`;
 };
 
 /**
@@ -235,7 +235,6 @@ export const uploadToDropbox = async (): Promise<void> => {
     if (meta.server_modified) {
         setLastCloudSync(meta.server_modified);
         localStorage.setItem(LOCAL_CHANGE_TIMESTAMP_KEY, new Date().toISOString()); 
-        setLastCloudSync(new Date().toISOString());
     } else {
         const now = new Date().toISOString();
         setLastCloudSync(now);

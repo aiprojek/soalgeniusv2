@@ -96,7 +96,12 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
             <header class="exam-header">
                 <div class="logo-container logo-left ${!leftLogo ? 'is-empty' : ''}">${leftLogoContent}</div>
                 <div class="header-text">
-                    ${examHeaderLines.map(line => `<p>${escapeHtml(line.text)}</p>`).join('')}
+                    ${examHeaderLines.map(line => {
+                        if (line.sizeMode === 'fixed') {
+                            return `<p data-size-mode="fixed" style="font-size: ${line.sizePt || 12}pt; white-space: normal;">${escapeHtml(line.text)}</p>`;
+                        }
+                        return `<p data-size-mode="auto">${escapeHtml(line.text)}</p>`;
+                    }).join('')}
                 </div>
                 <div class="logo-container logo-right ${!rightLogo ? 'is-empty' : ''}">${rightLogoContent}</div>
             </header>
@@ -647,7 +652,7 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
             line-height: 1.2; 
             margin: 0; 
             text-transform: uppercase;
-            /* This rule is essential for the script to measure the full text width */
+            /* Default for auto mode. Fixed mode will override this inline */
             white-space: nowrap;
         }
         
@@ -836,7 +841,7 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
       }
 
       function adjustHeaderTextSize() {
-        const headerParagraphs = document.querySelectorAll('.exam-header .header-text p');
+        const headerParagraphs = document.querySelectorAll('.exam-header .header-text p[data-size-mode="auto"]');
         if (!headerParagraphs.length) return;
 
         headerParagraphs.forEach(p => {

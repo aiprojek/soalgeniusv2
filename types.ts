@@ -94,7 +94,7 @@ export interface Folder {
 }
 
 export interface Settings {
-  examHeaderLines: { id: string; text: string }[];
+  examHeaderLines: { id: string; text: string; sizeMode?: 'auto' | 'fixed'; sizePt?: number }[];
   logos: [string | null, string | null]; // [leftLogo, rightLogo]
   paperSize: 'A4' | 'F4' | 'Legal' | 'Letter';
   margins: { top: number; right: number; bottom: number; left: number }; // in mm

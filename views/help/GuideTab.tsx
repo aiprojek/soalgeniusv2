@@ -189,6 +189,61 @@ const GuideTab: React.FC = () => {
                     </div>
                 </div>
             )
+        },
+        {
+            title: "Panduan Jenis-Jenis Soal",
+            icon: StackIcon,
+            badge: "Format Soal",
+            badgeColor: "bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-300",
+            content: (
+                <div className="space-y-4">
+                    <p>SoalGenius mendukung berbagai format soal untuk menyesuaikan kebutuhan evaluasi Anda:</p>
+                    <ul className="list-disc list-inside space-y-1 text-xs sm:text-sm text-[var(--text-secondary)]">
+                        <li><strong>Pilihan Ganda:</strong> Format standar dengan 1 jawaban benar. (Dapat diatur jumlah opsi: A, B, C, D, E).</li>
+                        <li><strong>Pilihan Ganda Kompleks:</strong> Memungkinkan siswa memilih lebih dari 1 jawaban yang benar.</li>
+                        <li><strong>Esai / Uraian:</strong> Soal dengan tempat kosong untuk jawaban panjang.</li>
+                        <li><strong>Isian Singkat:</strong> Soal dengan jawaban pendek yang pasti.</li>
+                        <li><strong>Menjodohkan:</strong> Menghubungkan pernyataan di Kolom A dengan jawaban di Kolom B.</li>
+                        <li><strong>Benar/Salah:</strong> Menilai kebenaran suatu pernyataan (True/False).</li>
+                        <li><strong>Tabel:</strong> Menyajikan data dalam bentuk tabel isian, tabel pilihan ganda, atau pilihan ganda kompleks.</li>
+                        <li><strong>Stimulus / Wacana:</strong> Teks bacaan, gambar, atau grafik yang digunakan sebagai referensi untuk beberapa butir soal di bawahnya.</li>
+                    </ul>
+                </div>
+            )
+        },
+        {
+            title: "Panduan Singkat Penulisan Rumus (KaTeX)",
+            icon: BookIcon,
+            badge: "Matematika",
+            badgeColor: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-300",
+            content: (
+                <div className="space-y-4">
+                    <p>
+                        Aplikasi ini terintegrasi dengan <strong>KaTeX</strong> untuk merender rumus matematika dengan cepat dan rapi. Anda bisa mengeklik ikon Kalkulator (Matematika) di toolbar untuk membuka jendela asisten rumus, atau mengetik sintaks secara langsung.
+                    </p>
+                    <div className="space-y-2">
+                        <p className="font-bold text-[var(--text-primary)] text-xs sm:text-sm">Contoh Sintaks KaTeX:</p>
+                        <div className="rounded-xl border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-3 text-xs font-mono text-[var(--text-primary)] overflow-x-auto space-y-3 leading-relaxed">
+                            <div>
+                                <span className="text-gray-400"># Pecahan:</span><br />
+                                {"\\frac{a}{b}"}
+                            </div>
+                            <hr className="border-[var(--border-primary)]" />
+                            <div>
+                                <span className="text-gray-400"># Pangkat dan Akar:</span><br />
+                                {"x^2 + y^2 = r^2"}<br />
+                                {"\\sqrt{x} atau \\sqrt[3]{x}"}
+                            </div>
+                            <hr className="border-[var(--border-primary)]" />
+                            <div>
+                                <span className="text-gray-400"># Mode Inline vs Blok:</span><br />
+                                <code>$x^2$</code> (Inline - menyatu dengan baris teks)<br />
+                                <code>$$x^2$$</code> (Blok - berada di tengah baris baru)
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )
         }
     ];
 
@@ -210,6 +265,7 @@ const GuideTab: React.FC = () => {
                     <div>
                         <h4 className="font-bold text-xs uppercase tracking-wider text-[var(--text-muted)]">Langkah 1</h4>
                         <p className="text-xs sm:text-sm font-semibold text-[var(--text-primary)] mt-0.5">Buat Arsip & Folder</p>
+                        <p className="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed">Buka menu <strong>Arsip</strong>, buat folder (misal: "UAS IPA 2025") lalu buat dokumen ujian baru di dalamnya dan beri judul.</p>
                     </div>
                 </div>
                 <div className="app-surface p-4 rounded-[var(--radius-card)] text-left flex items-start gap-3">
@@ -219,6 +275,7 @@ const GuideTab: React.FC = () => {
                     <div>
                         <h4 className="font-bold text-xs uppercase tracking-wider text-[var(--text-muted)]">Langkah 2</h4>
                         <p className="text-xs sm:text-sm font-semibold text-[var(--text-primary)] mt-0.5">Tulis / Import di Editor</p>
+                        <p className="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed">Ketik soal langsung di editor, tempel massal dari Word/PDF via <strong>Smart Import</strong>, atau bangkitkan soal otomatis dengan <strong>Generator AI</strong>.</p>
                     </div>
                 </div>
                 <div className="app-surface p-4 rounded-[var(--radius-card)] text-left flex items-start gap-3">
@@ -228,6 +285,7 @@ const GuideTab: React.FC = () => {
                     <div>
                         <h4 className="font-bold text-xs uppercase tracking-wider text-[var(--text-muted)]">Langkah 3</h4>
                         <p className="text-xs sm:text-sm font-semibold text-[var(--text-primary)] mt-0.5">Preview & Ekspor Word/PDF</p>
+                        <p className="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed">Buka halaman <strong>Preview</strong> untuk melihat tata letak akhir, lalu ekspor ke file <strong>.docx Word</strong> atau cetak sebagai <strong>PDF</strong> via tombol cetak browser.</p>
                     </div>
                 </div>
             </div>
