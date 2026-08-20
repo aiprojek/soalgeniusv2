@@ -239,38 +239,76 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
     const handleRefreshOfflineCache = useCallback(async () => {
         setIsRefreshingOfflineCache(true);
         try {
+            // 1. Minta SW untuk update ke versi terbaru
             if ('serviceWorker' in navigator) {
                 const registration = await navigator.serviceWorker.ready;
                 await registration.update();
             }
 
-            const urlsToWarm = new Set<string>([
+            // 2. Kumpulkan semua URL yang perlu di-cache
+            const urlsToCache = new Set<string>([
+                // App shell
                 './',
                 './index.html',
                 './manifest.json',
                 './icon.svg',
             ]);
 
-            document.querySelectorAll('script[src], link[rel="stylesheet"]').forEach((element) => {
-                const source = element instanceof HTMLScriptElement ? element.src : (element as HTMLLinkElement).href;
-                if (source && source.startsWith(window.location.origin)) {
-                    urlsToWarm.add(source);
+            // Tambahkan semua JS & CSS lokal yang sudah di-load oleh Vite
+            document.querySelectorAll('script[src], link[rel="stylesheet"]').forEach((el) => {
+                const src = el instanceof HTMLScriptElement ? el.src : (el as HTMLLinkElement).href;
+                if (src && src.startsWith(window.location.origin)) {
+                    urlsToCache.add(src);
                 }
             });
 
-            await Promise.all(
-                Array.from(urlsToWarm).map((url) =>
-                    fetch(url, { cache: 'reload' }).catch((error) => {
-                        console.warn('Failed to refresh offline asset:', url, error);
-                    })
-                )
-            );
+            // Tambahkan semua external CDN resources (Google Fonts CSS, Bootstrap Icons CSS)
+            document.querySelectorAll('link[rel="stylesheet"]').forEach((el) => {
+                const href = (el as HTMLLinkElement).href;
+                // Sertakan Google Fonts dan CDN Bootstrap Icons
+                if (href && (href.includes('fonts.googleapis.com') || href.includes('fonts.gstatic.com') || href.includes('cdn.jsdelivr.net') || href.includes('unpkg.com'))) {
+                    urlsToCache.add(href);
+                }
+            });
+
+            const allUrls = Array.from(urlsToCache);
+
+            // 3. Kirim daftar URL ke Service Worker untuk di-cache secara resmi via Cache API
+            //    SW akan menjawab dengan pesan CACHE_URLS_DONE
+            const swReady = 'serviceWorker' in navigator && navigator.serviceWorker.controller;
+            if (swReady) {
+                await new Promise<void>((resolve, reject) => {
+                    const timeout = setTimeout(() => reject(new Error('SW cache timeout')), 60000);
+
+                    const handler = (event: MessageEvent) => {
+                        if (event.data?.type === 'CACHE_URLS_DONE') {
+                            clearTimeout(timeout);
+                            navigator.serviceWorker.removeEventListener('message', handler);
+                            resolve();
+                        }
+                    };
+                    navigator.serviceWorker.addEventListener('message', handler);
+                    navigator.serviceWorker.controller!.postMessage({
+                        type: 'CACHE_URLS',
+                        urls: allUrls,
+                    });
+                });
+            } else {
+                // Fallback: fetch biasa agar terdeteksi SW lewat stale-while-revalidate
+                await Promise.all(
+                    allUrls.map((url) =>
+                        fetch(url, { cache: 'reload' }).catch((err) =>
+                            console.warn('Failed to refresh offline asset:', url, err)
+                        )
+                    )
+                );
+            }
 
             await checkOfflineStatus();
-            addToast('Aset aplikasi dicoba diperbarui untuk penggunaan offline.', 'success');
+            addToast('Unduh library selesai! Aplikasi siap digunakan offline.', 'success');
         } catch (error) {
             console.error('Failed to refresh offline cache:', error);
-            addToast('Gagal memperbarui aset offline.', 'error');
+            addToast('Gagal mengunduh library. Pastikan internet aktif dan coba lagi.', 'error');
         } finally {
             setIsRefreshingOfflineCache(false);
         }
@@ -871,12 +909,12 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
                                         {isRefreshingOfflineCache ? (
                                             <>
                                                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                                <span>Menyegarkan...</span>
+                                                <span>Mengunduh Library...</span>
                                             </>
                                         ) : (
                                             <>
                                                 <CloudDownloadIcon />
-                                                <span>Refresh Cache</span>
+                                                <span>Unduh Library</span>
                                             </>
                                         )}
                                     </button>
@@ -886,8 +924,8 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
                                         <InfoIcon className="mt-0.5 text-blue-600" />
                                         <div className="space-y-1">
                                             <p className="font-semibold text-[var(--text-primary)]">Cara pakai sederhana</p>
-                                            <p>Jika status belum siap, tekan <strong>Refresh Cache</strong> saat internet aktif.</p>
-                                            <p>Setelah status siap, aplikasi bisa dibuka lagi saat offline untuk data dan aset yang sudah tersimpan.</p>
+                                            <p>Klik <strong>Unduh Library</strong> saat internet aktif. Semua aset aplikasi (JS, CSS, font, ikon) akan disimpan ke cache browser.</p>
+                                            <p>Setelah status <strong>Aplikasi siap offline</strong>, tutup internet — aplikasi tetap dapat dibuka dan digunakan secara penuh.</p>
                                         </div>
                                     </div>
                                 </div>
@@ -1015,8 +1053,8 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
                             <div>
                                 <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Jenis Huruf (Font)</label>
                                 <select value={settings.fontFamily} onChange={(e) => updateSettings(s => ({...s, fontFamily: e.target.value as Settings['fontFamily']}))} className="w-full p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]">
-                                    <option value="Liberation Serif">Times New Roman (Serif)</option>
-                                    <option value="Liberation Sans">Arial (Sans-Serif)</option>
+                                    <option value="Liberation Serif">Liberation Serif (Serif)</option>
+                                    <option value="Liberation Sans">Liberation Sans (Sans-Serif)</option>
                                     <option value="Amiri">Amiri (Arabic Serif)</option>
                                     <option value="Areef Ruqaa">Areef Ruqaa (Arabic Handwriting)</option>
                                 </select>

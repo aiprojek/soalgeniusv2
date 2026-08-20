@@ -1,10 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { CloseIcon } from './Icons';
 
+import { getTranslations } from '../lib/translations';
+
 interface MathModalProps {
     isOpen: boolean;
     onClose: () => void;
     onInsert: (latex: string, displayMode: boolean) => void;
+    direction?: 'ltr' | 'rtl';
 }
 
 const TEMPLATES = [
@@ -25,10 +28,11 @@ const TEMPLATES = [
     { label: 'α β γ', latex: '\\alpha, \\beta, \\gamma' },
 ];
 
-const MathModal: React.FC<MathModalProps> = ({ isOpen, onClose, onInsert }) => {
+const MathModal: React.FC<MathModalProps> = ({ isOpen, onClose, onInsert, direction = 'ltr' }) => {
     const [latex, setLatex] = useState('');
     const [displayMode, setDisplayMode] = useState(false);
     const inputRef = useRef<HTMLTextAreaElement>(null);
+    const T = getTranslations(direction);
 
     useEffect(() => {
         if (isOpen) {
@@ -61,7 +65,7 @@ const MathModal: React.FC<MathModalProps> = ({ isOpen, onClose, onInsert }) => {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 bg-black/50 backdrop-blur-sm animate-fade-in" dir={direction} onClick={onClose}>
             <div
                 className="app-modal-panel w-full max-w-lg overflow-hidden animate-scale-in"
                 onClick={e => e.stopPropagation()}
@@ -128,24 +132,24 @@ const MathModal: React.FC<MathModalProps> = ({ isOpen, onClose, onInsert }) => {
                             <div className="w-9 h-5 bg-[var(--border-secondary)] peer-checked:bg-blue-500 rounded-full peer transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-4" />
                         </label>
                         <div>
-                            <p className="text-sm font-medium text-[var(--text-primary)]">Mode Blok (Display)</p>
+                            <p className="text-sm font-medium text-[var(--text-primary)]">{T.blockMode}</p>
                             <p className="text-xs text-[var(--text-secondary)]">
-                                {displayMode ? 'Rumus ditampilkan sebagai blok tersendiri ($$...$$)' : 'Rumus inline dalam teks ($...$)'}
+                                {displayMode ? T.blockModeDesc1 : T.blockModeDesc2}
                             </p>
                         </div>
                     </div>
 
                     {/* KaTeX docs link */}
                     <p className="text-xs text-[var(--text-muted)]">
-                        Butuh referensi? Lihat{' '}
+                        {T.needRef}
                         <a
                             href="https://katex.org/docs/supported.html"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-blue-500 hover:underline"
                         >
-                            dokumentasi KaTeX
-                        </a>.
+                            {T.katexDocs}
+                        </a>
                     </p>
                 </div>
 
@@ -155,7 +159,7 @@ const MathModal: React.FC<MathModalProps> = ({ isOpen, onClose, onInsert }) => {
                         onClick={onClose}
                         className="px-4 py-2 rounded-[var(--radius-control)] text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors"
                     >
-                        Batal
+                        {T.cancel}
                     </button>
                     <button
                         onClick={handleInsert}
@@ -163,7 +167,7 @@ const MathModal: React.FC<MathModalProps> = ({ isOpen, onClose, onInsert }) => {
                         className="px-4 py-2 rounded-[var(--radius-control)] text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all"
                     >
                         <i className="bi bi-plus-lg" />
-                        Sisipkan Rumus
+                        {T.insertFormula}
                     </button>
                 </div>
             </div>

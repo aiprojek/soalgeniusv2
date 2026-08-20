@@ -341,7 +341,98 @@ export const generateDocx = async (exam: Exam, settings: Settings): Promise<Blob
                     width: { size: 100, type: WidthType.PERCENTAGE },
                     borders: INVISIBLE_BORDER
                 }));
+            }
+            // Menjodohkan
+            else if (question.type === QuestionType.MATCHING) {
+                const prompts = question.matchingPrompts || [];
+                const answers = question.matchingAnswers || [];
+                const rowCount = Math.max(prompts.length, answers.length);
+                const tableRows = [];
+                // Add header row
+                tableRows.push(new TableRow({
+                    children: [
+                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Kolom A", bold: true, font: mainFont, size: 24 })], alignment: AlignmentType.CENTER })], borders: SOLID_BORDER, width: { size: 50, type: WidthType.PERCENTAGE }, verticalAlign: VerticalAlign.CENTER }),
+                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Kolom B", bold: true, font: mainFont, size: 24 })], alignment: AlignmentType.CENTER })], borders: SOLID_BORDER, width: { size: 50, type: WidthType.PERCENTAGE }, verticalAlign: VerticalAlign.CENTER }),
+                    ]
+                }));
+                // Add data rows
+                for (let i = 0; i < rowCount; i++) {
+                    const prompt = prompts[i];
+                    const answer = answers[i];
+                    tableRows.push(new TableRow({
+                        children: [
+                            new TableCell({
+                                children: [
+                                    new Paragraph({
+                                        children: prompt ? [new TextRun({ text: `${i + 1}. `, bold: true, font: mainFont, size: 24 }), ...parseHtmlToRuns(prompt.text, mainFont)] : [],
+                                        spacing: { after: 120 }
+                                    })
+                                ],
+                                borders: SOLID_BORDER,
+                                margins: { left: 100, right: 100, top: 100, bottom: 100 },
+                                verticalAlign: VerticalAlign.CENTER
+                            }),
+                            new TableCell({
+                                children: [
+                                    new Paragraph({
+                                        children: answer ? [new TextRun({ text: `${String.fromCharCode(65 + i)}. `, bold: true, font: mainFont, size: 24 }), ...parseHtmlToRuns(answer.text, mainFont)] : [],
+                                        spacing: { after: 120 }
+                                    })
+                                ],
+                                borders: SOLID_BORDER,
+                                margins: { left: 100, right: 100, top: 100, bottom: 100 },
+                                verticalAlign: VerticalAlign.CENTER
+                            })
+                        ]
+                    }));
+                }
+                docChildren.push(new Table({
+                    rows: tableRows,
+                    width: { size: 100, type: WidthType.PERCENTAGE },
+                }));
                 docChildren.push(new Paragraph({ text: "", spacing: { after: 100 } }));
+            }
+            // Table-based Questions
+            else if (question.type === QuestionType.TABLE || question.type === QuestionType.TABLE_MULTIPLE_CHOICE || question.type === QuestionType.TABLE_COMPLEX_MULTIPLE_CHOICE) {
+                if (question.tableData && question.tableData.rows.length > 0) {
+                    const tableRows = question.tableData.rows.map(row => {
+                        const cells = row.cells.filter(cell => !cell.isMerged).map(cell => {
+                            return new TableCell({
+                                children: [new Paragraph({ children: parseHtmlToRuns(cell.content, mainFont) })],
+                                columnSpan: cell.colspan || 1,
+                                rowSpan: cell.rowspan || 1,
+                                borders: SOLID_BORDER,
+                                margins: { left: 100, right: 100, top: 100, bottom: 100 },
+                                verticalAlign: cell.verticalAlign === 'top' ? VerticalAlign.TOP : cell.verticalAlign === 'bottom' ? VerticalAlign.BOTTOM : VerticalAlign.CENTER
+                            });
+                        });
+                        return new TableRow({ children: cells });
+                    });
+                    
+                    docChildren.push(new Table({
+                        rows: tableRows,
+                        width: { size: 100, type: WidthType.PERCENTAGE }
+                    }));
+                    docChildren.push(new Paragraph({ text: "", spacing: { after: 100 } }));
+                }
+
+                // Append choices for TABLE_MULTIPLE_CHOICE or TABLE_COMPLEX_MULTIPLE_CHOICE
+                if (question.type === QuestionType.TABLE_MULTIPLE_CHOICE || question.type === QuestionType.TABLE_COMPLEX_MULTIPLE_CHOICE) {
+                    if (question.choices) {
+                        question.choices.forEach((choice, idx) => {
+                            const letter = String.fromCharCode(65 + idx) + "."; 
+                            const choiceRuns = parseHtmlToRuns(choice.text, mainFont);
+                            docChildren.push(new Paragraph({
+                                children: [
+                                    new TextRun({ text: `${letter}\t`, font: mainFont, size: 24 }),
+                                    ...choiceRuns
+                                ],
+                                indent: { left: 720, hanging: 360 },
+                                spacing: { after: 60 }
+                            }));
+                        });
+                    }
+                }
             }
             
             // Spacer antar soal

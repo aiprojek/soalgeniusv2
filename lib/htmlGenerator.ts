@@ -997,18 +997,23 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
         const pages = [];
         const createEmptyPage = () => {
           const page = sgCreatePage(originalSheet);
+          const wrapper = paginateRoot.cloneNode(false);
+          page.inner.appendChild(wrapper);
+          page.wrapper = wrapper;
           container.appendChild(page.sheet);
           pages.push(page);
           return page;
         };
 
         let currentPage = createEmptyPage();
-        sgCloneChildren(firstPageFixedNodes).forEach(node => currentPage.inner.appendChild(node));
+        sgCloneChildren(firstPageFixedNodes).forEach(node => {
+          currentPage.inner.insertBefore(node, currentPage.wrapper);
+        });
 
         const appendBlock = (block) => {
-          currentPage.inner.appendChild(block);
+          currentPage.wrapper.appendChild(block);
           if (sgPageFits(currentPage.sheet)) return true;
-          currentPage.inner.removeChild(block);
+          currentPage.wrapper.removeChild(block);
           return false;
         };
 
@@ -1016,7 +1021,7 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
           const list = section.querySelector(listSelector);
           const items = list ? Array.from(list.children) : [];
           if (!list || items.length === 0) {
-            currentPage.inner.appendChild(section.cloneNode(true));
+            currentPage.wrapper.appendChild(section.cloneNode(true));
             return;
           }
 
@@ -1025,13 +1030,13 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
             const attempt = sgBuildSectionFragment(section, listSelector, items, index);
             const fragment = attempt.section;
 
-            currentPage.inner.appendChild(fragment);
+            currentPage.wrapper.appendChild(fragment);
             if (sgPageFits(currentPage.sheet)) {
               index = attempt.nextIndex;
               continue;
             }
 
-            currentPage.inner.removeChild(fragment);
+            currentPage.wrapper.removeChild(fragment);
 
             let localIndex = index;
             const chunk = section.cloneNode(false);
@@ -1042,9 +1047,9 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
             const listClone = list.cloneNode(false);
             chunk.appendChild(listClone);
 
-            currentPage.inner.appendChild(chunk);
+            currentPage.wrapper.appendChild(chunk);
             if (!sgPageFits(currentPage.sheet)) {
-              currentPage.inner.removeChild(chunk);
+              currentPage.wrapper.removeChild(chunk);
               currentPage = createEmptyPage();
               continue;
             }
@@ -1055,17 +1060,16 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
               if (!sgPageFits(currentPage.sheet)) {
                 listClone.removeChild(itemClone);
                 if (listClone.children.length === 0) {
-                  const reservedCount = sgReservedNodeCountForPage(currentPage, pages, firstPageFixedNodes.length);
-                  const pageHasContentBeforeChunk = currentPage.inner.children.length > reservedCount + 1;
+                  const pageHasContentBeforeChunk = currentPage.wrapper.children.length > 1; // chunk itself is 1
 
-                  currentPage.inner.removeChild(chunk);
+                  currentPage.wrapper.removeChild(chunk);
 
                   if (pageHasContentBeforeChunk) {
                     currentPage = createEmptyPage();
                     continue;
                   }
 
-                  currentPage.inner.appendChild(chunk);
+                  currentPage.wrapper.appendChild(chunk);
                   listClone.appendChild(itemClone);
                   localIndex += 1;
                 }
@@ -1091,7 +1095,7 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
           }
 
           currentPage = createEmptyPage();
-          currentPage.inner.appendChild(block.cloneNode(true));
+          currentPage.wrapper.appendChild(block.cloneNode(true));
         });
 
         window.__soalGeniusPreviewPageCount = pages.length;

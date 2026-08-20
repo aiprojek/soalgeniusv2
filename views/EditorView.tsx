@@ -13,6 +13,7 @@ import SmartImportModal from '../components/SmartImportModal';
 import MathModal from '../components/MathModal';
 import AiImagePromptModal from '../components/AiImagePromptModal';
 import { useHistoryState } from '../hooks/useHistoryState';
+import { getTranslations } from '../lib/translations';
 import ReactQuill from 'react-quill';
 import Quill from 'quill';
 import { 
@@ -93,214 +94,6 @@ const compressImage = (base64Str: string, maxWidth = 1280, maxHeight = 1280, qua
     });
 };
 // --- End Image Compression Utility ---
-
-// --- Start Translations ---
-const ltrTranslations = {
-  save: 'Simpan',
-  saving: 'Menyimpan...',
-  savedAt: 'Tersimpan',
-  backToArchive: 'Arsip',
-  editTitle: 'Edit',
-  statusDraft: 'Draf',
-  statusPublished: 'Selesai',
-  tabEditor: 'Editor',
-  tabPreview: 'Pratinjau',
-  tabAnswerKey: 'Kunci Jawaban',
-  examInfo: 'Informasi Ujian',
-  examTitle: 'Judul Ujian',
-  subject: 'Mata Pelajaran',
-  class: 'Kelas / Jenjang',
-  date: 'Hari/Tanggal',
-  examTime: 'Waktu Ujian',
-  description: 'Keterangan',
-  descriptionPlaceholder: 'Keterangan (misal: Kurikulum, Tujuan, dll.)',
-  generalInstructions: 'Petunjuk Umum',
-  generalInstructionsPlaceholder: 'Petunjuk Umum Pengerjaan...',
-  directionLabel: 'Arah Tulis:',
-  directionLtr: 'LTR (Latin)',
-  directionRtl: 'RTL (Arab)',
-  previewLayoutLabel: 'Tata Letak Pratinjau:',
-  layout1Col: '1 Kolom',
-  layout2Col: '2 Kolom',
-  addSection: 'Tambah Bagian Soal',
-  instructionPlaceholder: 'Instruksi untuk bagian ini...',
-  sectionNumberAria: 'Nomor Bagian Soal',
-  sectionInstructionAria: 'Teks Instruksi Bagian Soal',
-  deleteSectionAria: 'Hapus Bagian Soal',
-  addQuestion: 'Tambah Soal',
-  getFromBank: 'Ambil dari Bank Soal',
-  createWithAi: 'Buat dengan AI',
-  smartImport: 'Import Teks (Smart)',
-  questionPlaceholder: 'Tulis pertanyaan di sini...',
-  stimulusTextPlaceholder: 'Tulis wacana, bacaan, atau sisipkan gambar stimulus di sini...',
-  questionNumberAria: 'Nomor soal {number}',
-  saveToBank: 'Simpan ke Bank Soal',
-  deleteQuestion: 'Hapus Soal',
-  deleteOptionAria: 'Hapus opsi {letter}',
-  deleteMatchingPromptAria: 'Hapus pernyataan {index}',
-  deleteMatchingAnswerAria: 'Hapus jawaban {letter}',
-  addOption: 'Tambah Opsi',
-  twoColumnLayout: 'Tampilkan opsi dalam 2 kolom untuk menghemat kertas',
-  provideAnswerSpace: 'Sediakan tempat jawaban di lembar soal',
-  matchingColumnA: 'Kolom A (Pernyataan)',
-  matchingColumnB: 'Kolom B (Jawaban)',
-  statementPlaceholder: 'Tulis pernyataan...',
-  answerPlaceholder: 'Tulis jawaban...',
-  addStatement: 'Tambah Pernyataan',
-  addAnswer: 'Tambah Jawaban',
-  answerKeyTitle: 'Kunci Jawaban',
-  trueLabel: 'Benar',
-  falseLabel: 'Salah',
-  selectAnswerPlaceholder: '-- Pilih Jawaban --',
-  answerKeyPlaceholder: 'Kunci Jawaban / Jawaban Model',
-  optionPlaceholder: 'Opsi',
-  emptyOptionPlaceholder: 'Opsi {letter}',
-  tableCellContentLabel: 'Isi Sel {index}',
-  tableEditorTitle: 'Editor Tabel',
-  addRow: 'Tambah Baris',
-  removeRow: 'Hapus Baris',
-  addCol: 'Tambah Kolom',
-  removeCol: 'Hapus Kolom',
-  mergeCells: 'Gabung Sel',
-  splitCell: 'Pisah Sel',
-  selectionPrompt: 'Pilih sel untuk digabungkan atau dipisahkan.',
-  tableDisplaySettings: 'Pengaturan Tampilan',
-  columnWidthsLabel: 'Lebar Kolom (px)',
-  rowHeightsLabel: 'Tinggi Baris (px)',
-  verticalAlignLabel: 'Perataan Vertikal Sel',
-  autoPlaceholder: 'Auto',
-  cannotDeleteRowWarning: 'Tidak dapat menghapus baris yang merupakan bagian dari sel gabungan',
-  cannotDeleteColWarning: 'Tidak dapat menghapus kolom yang merupakan bagian dari sel gabungan',
-  tableSelectCellAria: 'Pilih sel baris {row} kolom {col}',
-  alignTop: 'Rata Atas',
-  alignMiddle: 'Rata Tengah',
-  alignBottom: 'Rata Bawah',
-  questionTypes: {
-    [QuestionType.MULTIPLE_CHOICE]: 'Pilihan Ganda',
-    [QuestionType.COMPLEX_MULTIPLE_CHOICE]: 'Pilihan Ganda Kompleks',
-    [QuestionType.TRUE_FALSE]: 'Benar-Salah',
-    [QuestionType.SHORT_ANSWER]: 'Isian Singkat',
-    [QuestionType.ESSAY]: 'Esai / Uraian',
-    [QuestionType.MATCHING]: 'Menjodohkan',
-    [QuestionType.TABLE]: 'Tabel Isian',
-    [QuestionType.TABLE_MULTIPLE_CHOICE]: 'Tabel Pilihan Ganda',
-    [QuestionType.TABLE_COMPLEX_MULTIPLE_CHOICE]: 'Tabel Pilihan Ganda Kompleks',
-    [QuestionType.STIMULUS]: 'Informasi / Stimulus',
-  },
-  instructionMap: {
-    [QuestionType.MULTIPLE_CHOICE]: 'Berilah tanda silang (X) pada pilihan jawaban yang benar!',
-    [QuestionType.COMPLEX_MULTIPLE_CHOICE]: 'Pilihlah jawaban yang benar dengan memberi tanda centang (✓). Jawaban benar bisa lebih dari satu.',
-    [QuestionType.SHORT_ANSWER]: 'Isilah titik-titik di bawah ini dengan jawaban yang benar dan tepat!',
-    [QuestionType.ESSAY]: 'Jawablah pertanyaan di bawah ini dengan benar!',
-    [QuestionType.MATCHING]: 'Jodohkan pernyataan di kolom A dengan jawaban yang sesuai di kolom B!',
-    [QuestionType.TRUE_FALSE]: 'Tentukan apakah pernyataan berikut Benar atau Salah!',
-    [QuestionType.TABLE]: 'Lengkapilah tabel isian berikut dengan jawaban yang tepat!',
-    [QuestionType.TABLE_MULTIPLE_CHOICE]: 'Lengkapilah tabel berikut dengan memilih jawaban yang paling tepat!',
-    [QuestionType.TABLE_COMPLEX_MULTIPLE_CHOICE]: 'Lengkapilah tabel berikut. Jawaban benar bisa lebih dari satu untuk setiap baris.',
-  },
-};
-const rtlTranslations: typeof ltrTranslations = {
-  ...ltrTranslations,
-  save: 'حفظ',
-  saving: 'جار الحفظ...',
-  savedAt: 'تم الحفظ',
-  statusDraft: 'مسودة',
-  statusPublished: 'منشور',
-  examInfo: 'معلومات الاختبار',
-  examTitle: 'عنوان الاختبار',
-  subject: 'المادة الدراسية',
-  class: 'الصف / المستوى',
-  date: 'اليوم / التاريخ',
-  examTime: 'وقت الاختبار',
-  description: 'الوصف',
-  descriptionPlaceholder: 'وصف (مثال: المنهج، الأهداف، إلخ)',
-  generalInstructions: 'التعليمات العامة',
-  generalInstructionsPlaceholder: 'تعليمات عامة للإجابة...',
-  directionLabel: 'اتجاه الكتابة:',
-  directionLtr: 'LTR (لاتيني)',
-  directionRtl: 'RTL (عربي)',
-  previewLayoutLabel: 'تخطيط المعاينة:',
-  layout1Col: 'عمود واحد',
-  layout2Col: 'عمودان',
-  addSection: 'إضافة قسم الأسئلة',
-  instructionPlaceholder: 'تعليمات لهذا القسم...',
-  sectionNumberAria: 'رقم قسم السؤال',
-  sectionInstructionAria: 'نص تعليمات قسم السؤال',
-  deleteSectionAria: 'حذف قسم السؤال',
-  addQuestion: 'إضافة سؤال',
-  getFromBank: 'جلب من بنك الأسئلة',
-  createWithAi: 'إنشاء باستخدام الذكاء الاصطناعي',
-  smartImport: 'استيراد النص (ذكي)',
-  questionPlaceholder: 'اكتب السؤال هنا...',
-  stimulusTextPlaceholder: 'اكتب النص أو أضف صورة هنا...',
-  questionNumberAria: 'رقم السؤال {number}',
-  saveToBank: 'حفظ في بنك الأسئلة',
-  deleteQuestion: 'حذف السؤال',
-  deleteOptionAria: 'حذف الخيار {letter}',
-  deleteMatchingPromptAria: 'حذف العبارة {index}',
-  deleteMatchingAnswerAria: 'حذف الإجابة {letter}',
-  addOption: 'إضافة خيار',
-  twoColumnLayout: 'عرض الخيارات في عمودين لتوفير الورق',
-  provideAnswerSpace: 'توفير مساحة للإجابة في ورقة الأسئلة',
-  matchingColumnA: 'العمود أ (العبارات)',
-  matchingColumnB: 'العمود ب (الإجابات)',
-  statementPlaceholder: 'اكتب العبارة...',
-  answerPlaceholder: 'اكتب الإجابة...',
-  addStatement: 'إضافة عبارة',
-  addAnswer: 'إضافة إجابة',
-  answerKeyTitle: 'مفتاح الإجابة',
-  trueLabel: 'صح',
-  falseLabel: 'خطأ',
-  selectAnswerPlaceholder: '-- اختر إجابة --',
-  answerKeyPlaceholder: 'مفتاح الإجابة / الإجابة النموذجية',
-  optionPlaceholder: 'خيار',
-  emptyOptionPlaceholder: 'الخيار {letter}',
-  tableCellContentLabel: 'محتوى الخلية {index}',
-  tableEditorTitle: 'محرر الجدول',
-  addRow: 'إضافة صف',
-  removeRow: 'حذف صف',
-  addCol: 'إضافة عمود',
-  removeCol: 'حذف عمود',
-  mergeCells: 'دمج الخلايا',
-  splitCell: 'فصل الخلية',
-  selectionPrompt: 'حدد خلايا للدمج أو الفصل.',
-  tableDisplaySettings: 'إعدادات العرض',
-  columnWidthsLabel: 'عرض الأعمدة (بكسل)',
-  rowHeightsLabel: 'ارتفاع الصفوف (بكسل)',
-  verticalAlignLabel: 'محاذاة الخلية العمودية',
-  autoPlaceholder: 'تلقائي',
-  cannotDeleteRowWarning: 'لا يمكن حذف الصف لأنه جزء من خلية مدمجة',
-  cannotDeleteColWarning: 'لا يمكن حذف العمود لأنه جزء من خلية مدمجة',
-  tableSelectCellAria: 'حدد الخلية صف {row} عمود {col}',
-  alignTop: 'محاذاة للأعلى',
-  alignMiddle: 'محاذاة للوسط',
-  alignBottom: 'محاذاة للأسفل',
-  questionTypes: {
-    [QuestionType.MULTIPLE_CHOICE]: 'الاختيار من متعدد',
-    [QuestionType.COMPLEX_MULTIPLE_CHOICE]: 'الاختيار من متعدد المركب',
-    [QuestionType.TRUE_FALSE]: 'صح / خطأ',
-    [QuestionType.SHORT_ANSWER]: 'إجابة قصيرة',
-    [QuestionType.ESSAY]: 'مقالي',
-    [QuestionType.MATCHING]: 'المطابقة',
-    [QuestionType.TABLE]: 'تعبئة الجدول',
-    [QuestionType.TABLE_MULTIPLE_CHOICE]: 'جدول الاختيار من متعدد',
-    [QuestionType.TABLE_COMPLEX_MULTIPLE_CHOICE]: 'جدول الاختيار من متعدد المركب',
-    [QuestionType.STIMULUS]: 'معلومات / نص',
-  },
-  instructionMap: {
-    [QuestionType.MULTIPLE_CHOICE]: 'اختر الإجابة الصحيحة بوضع علامة (X)!',
-    [QuestionType.COMPLEX_MULTIPLE_CHOICE]: 'اختر الإجابات الصحيحة بوضع علامة (✓). يمكن أن تكون هناك أكثر من إجابة صحيحة.',
-    [QuestionType.SHORT_ANSWER]: 'املأ الفراغات التالية بالإجابات الصحيحة!',
-    [QuestionType.ESSAY]: 'أجب عن الأسئلة التالية بشكل صحيح!',
-    [QuestionType.MATCHING]: 'طابق بين العبارات في العمود أ والإجابات المناسبة في العمود ب!',
-    [QuestionType.TRUE_FALSE]: 'حدد ما إذا كانت العبارات التالية صحيحة أم خاطئة!',
-    [QuestionType.TABLE]: 'املأ الجدول التالي بالإجابات الصحيحة!',
-    [QuestionType.TABLE_MULTIPLE_CHOICE]: 'أكمل الجدول التالي باختيار الإجابة الأنسب!',
-    [QuestionType.TABLE_COMPLEX_MULTIPLE_CHOICE]: 'أكمل الجدول التالي. يمكن أن تكون هناك أكثر من إجابة صحيحة لكل صف.',
-  },
-};
-const translations = { ltr: ltrTranslations, rtl: rtlTranslations };
-// --- End Translations ---
 
 // --- Start Editor Components ---
 const RichTextEditor: React.FC<{ 
@@ -461,11 +254,13 @@ const RichTextEditor: React.FC<{
                 isOpen={isMathModalOpen}
                 onClose={() => setIsMathModalOpen(false)}
                 onInsert={handleMathInsert}
+                direction={direction}
             />
             <AiImagePromptModal
                 isOpen={isAiImageModalOpen}
                 onClose={() => setIsAiImageModalOpen(false)}
                 onSubmit={handleAiImageInsert}
+                direction={direction}
             />
         </>
     );
@@ -1067,7 +862,7 @@ const SectionEditor: React.FC<{
             <div ref={addQuestionRef} className="relative inline-block text-center">
                  <button onClick={() => setAddQuestionOpen(p => !p)} aria-haspopup="true" aria-expanded={isAddQuestionOpen} className="flex items-center space-x-2 rounded-full bg-blue-100 px-4 py-2.5 font-semibold text-blue-800 transition-all duration-200 hover:bg-blue-200 dark:bg-blue-900/50 dark:text-blue-300 dark:hover:bg-blue-900"><PlusIcon /><span>{T.addQuestion}</span></button>
                 {isAddQuestionOpen && (
-                    <div className="absolute start-0 z-10 mt-2 max-h-80 w-64 overflow-y-auto rounded-[20px] border border-[var(--border-secondary)] bg-[var(--bg-secondary)] text-start shadow-lg">
+                    <div className="absolute start-0 z-20 mt-2 w-[min(320px,calc(100vw-2rem))] overflow-y-auto rounded-[20px] border border-[var(--border-secondary)] bg-[var(--bg-secondary)] text-start shadow-lg">
                         <ul className="py-1">
                             <li><a href="#" onClick={(e) => { e.preventDefault(); addFromBankAndClose(); }} className="flex items-center space-x-2 block px-4 py-2 text-sm font-semibold text-blue-600 dark:text-blue-300 hover:bg-[var(--bg-hover)]"><BankIcon /> <span>{T.getFromBank}</span></a></li>
                             <li><a href="#" onClick={(e) => { e.preventDefault(); openSmartImportAndClose(); }} className="flex items-center space-x-2 block px-4 py-2 text-sm font-semibold text-yellow-600 dark:text-yellow-400 hover:bg-[var(--bg-hover)]"><LightningIcon /> <span>{T.smartImport}</span></a></li>
@@ -1185,7 +980,7 @@ const EditorView: React.FC<{ examId: string; onBack: () => void }> = ({ examId, 
     
     // Fix: use exam.direction instead of settings.direction as direction is a property of Exam, not Settings.
     // Also using optional chaining for exam as it might be null during initial load, defaulting to LTR.
-    const T = exam?.direction === 'rtl' ? translations.rtl : translations.ltr;
+    const T = getTranslations(exam?.direction);
 
     const handleUpdateExam = (field: keyof Exam, value: any) => {
         setExam((prev) => prev ? ({ ...prev, [field]: value }) : null);

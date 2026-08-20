@@ -1,5 +1,5 @@
-// Nama cache baru untuk memicu pembaruan
-const CACHE_NAME = 'soalgenius-cache-v9-offline-first';
+// Nama cache — naikkan versi jika ada perubahan besar pada aset
+const CACHE_NAME = 'soalgenius-cache-v10-offline-first';
 
 // Daftar URL statis aplikasi yang pasti ada
 const appShellFiles = [
@@ -10,8 +10,41 @@ const appShellFiles = [
 ];
 
 self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
+  if (!event.data) return;
+
+  // Perintah dari UI untuk skip waiting (update SW)
+  if (event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
+  }
+
+  // Perintah dari UI untuk pre-cache daftar URL (unduh library untuk offline)
+  if (event.data.type === 'CACHE_URLS') {
+    const urls = event.data.urls || [];
+    event.waitUntil(
+      caches.open(CACHE_NAME).then(async (cache) => {
+        let cached = 0;
+        let failed = 0;
+        for (const url of urls) {
+          try {
+            const response = await fetch(url, { cache: 'reload' });
+            if (response.ok || response.type === 'opaque') {
+              await cache.put(url, response);
+              cached++;
+            }
+          } catch (err) {
+            failed++;
+            console.warn(`SW: Gagal cache ${url}:`, err);
+          }
+        }
+        console.log(`SW: CACHE_URLS selesai. Berhasil: ${cached}, Gagal: ${failed}`);
+
+        // Beritahu client bahwa proses selesai
+        const clients = await self.clients.matchAll({ includeUncontrolled: true });
+        for (const client of clients) {
+          client.postMessage({ type: 'CACHE_URLS_DONE', cached, failed });
+        }
+      })
+    );
   }
 });
 
@@ -52,12 +85,13 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Hanya tangani GET request dari origin yang sama
+  // Hanya tangani GET request
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
 
-  // Lewati request ke API eksternal (Dropbox, Gemini, Pollinations) — biarkan network handle
+  // Lewati request ke API eksternal (Dropbox, Gemini, Pollinations, Google Fonts API)
+  // Google Fonts CSS bisa dilewati — font file-nya tetap di-cache lewat CACHE_URLS
   if (url.hostname !== self.location.hostname) return;
 
   event.respondWith(

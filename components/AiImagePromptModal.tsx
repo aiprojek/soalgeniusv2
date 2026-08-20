@@ -1,15 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { CloseIcon, StarsIcon } from './Icons';
 
+import { getTranslations } from '../lib/translations';
+
 interface AiImagePromptModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSubmit: (prompt: string) => void;
+    direction?: 'ltr' | 'rtl';
 }
 
-const AiImagePromptModal: React.FC<AiImagePromptModalProps> = ({ isOpen, onClose, onSubmit }) => {
+const AiImagePromptModal: React.FC<AiImagePromptModalProps> = ({ isOpen, onClose, onSubmit, direction = 'ltr' }) => {
     const [prompt, setPrompt] = useState('');
     const inputRef = useRef<HTMLTextAreaElement>(null);
+    const T = getTranslations(direction);
 
     useEffect(() => {
         if (isOpen) {
@@ -27,7 +31,7 @@ const AiImagePromptModal: React.FC<AiImagePromptModalProps> = ({ isOpen, onClose
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in" dir={direction}>
             <div className="bg-[var(--bg-primary)] rounded-2xl shadow-xl w-full max-w-lg overflow-hidden border border-[var(--border-primary)] flex flex-col max-h-[90vh]">
                 <div className="flex items-center justify-between p-4 border-b border-[var(--border-primary)] bg-[var(--bg-secondary)]">
                     <h3 className="font-bold text-[var(--text-primary)] flex items-center gap-2">
@@ -42,7 +46,7 @@ const AiImagePromptModal: React.FC<AiImagePromptModalProps> = ({ isOpen, onClose
                 <div className="p-5 flex flex-col gap-4 overflow-y-auto">
                     <div>
                         <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
-                            Deskripsi Gambar
+                            {T.aiImageDesc}
                         </label>
                         <textarea
                             ref={inputRef}
@@ -54,7 +58,7 @@ const AiImagePromptModal: React.FC<AiImagePromptModalProps> = ({ isOpen, onClose
                                     handleSubmit();
                                 }
                             }}
-                            placeholder="Contoh: Seekor kucing pintar memakai kacamata dan sedang membaca buku fisika..."
+                            placeholder={T.aiImagePlaceholder}
                             className="w-full p-3 border border-[var(--border-secondary)] rounded-xl bg-[var(--bg-tertiary)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-purple-500/50 min-h-[100px] resize-y"
                         />
                     </div>
@@ -62,14 +66,14 @@ const AiImagePromptModal: React.FC<AiImagePromptModalProps> = ({ isOpen, onClose
 
                 <div className="p-4 border-t border-[var(--border-primary)] bg-[var(--bg-secondary)] flex justify-end gap-2 shrink-0">
                     <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors">
-                        Batal
+                        {T.cancel}
                     </button>
-                    <button
-                        onClick={handleSubmit}
+                    <button 
+                        onClick={handleSubmit} 
                         disabled={!prompt.trim()}
                         className="px-4 py-2 text-sm font-bold text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg shadow-sm transition-colors flex items-center gap-2"
                     >
-                        <StarsIcon className="w-4 h-4" /> Buat Gambar
+                        <StarsIcon className="w-4 h-4" /> {T.createImage}
                     </button>
                 </div>
             </div>
