@@ -275,7 +275,7 @@ const GuideTab: React.FC = () => {
                     <div>
                         <h4 className="font-bold text-xs uppercase tracking-wider text-[var(--text-muted)]">Langkah 2</h4>
                         <p className="text-xs sm:text-sm font-semibold text-[var(--text-primary)] mt-0.5">Tulis / Import di Editor</p>
-                        <p className="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed">Ketik soal langsung di editor, tempel massal dari Word/PDF via <strong>Smart Import</strong>, atau bangkitkan soal otomatis dengan <strong>Generator AI</strong>.</p>
+                        <p className="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed">Ketik soal langsung di editor dengan pilih jenis soal yang diinginkan, tempel massal dari Word/PDF via <strong>Smart Import</strong>, atau bangkitkan soal otomatis dengan <strong>Generator AI</strong>.</p>
                     </div>
                 </div>
                 <div className="app-surface p-4 rounded-[var(--radius-card)] text-left flex items-start gap-3">
@@ -285,7 +285,7 @@ const GuideTab: React.FC = () => {
                     <div>
                         <h4 className="font-bold text-xs uppercase tracking-wider text-[var(--text-muted)]">Langkah 3</h4>
                         <p className="text-xs sm:text-sm font-semibold text-[var(--text-primary)] mt-0.5">Preview & Ekspor Word/PDF</p>
-                        <p className="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed">Buka halaman <strong>Preview</strong> untuk melihat tata letak akhir, lalu ekspor ke file <strong>.docx Word</strong> atau cetak sebagai <strong>PDF</strong> via tombol cetak browser.</p>
+                        <p className="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed">Buka halaman <strong>Preview</strong> untuk melihat tata letak akhir, lalu ekspor ke file <strong>.docx Word, html,</strong> atau cetak sebagai <strong>PDF</strong> via tombol cetak browser.</p>
                     </div>
                 </div>
             </div>
