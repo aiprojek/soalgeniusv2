@@ -13,39 +13,27 @@ import SmartImportModal from '../components/SmartImportModal';
 import MathModal from '../components/MathModal';
 import AiImagePromptModal from '../components/AiImagePromptModal';
 import { useHistoryState } from '../hooks/useHistoryState';
-import { getTranslations } from '../lib/translations';
+import { getTranslations, translations, type Translations } from '../lib/translations';
 import ReactQuill from 'react-quill';
 import Quill from 'quill';
+import { validateExam } from '../lib/examValidator';
+import ExamValidationModal from '../components/ExamValidationModal';
 import { 
     PlusIcon, TrashIcon, PrinterIcon, EditIcon, ChevronLeftIcon, SaveIcon, CheckIcon, BookmarkPlusIcon, CloseIcon,
     ZoomInIcon, ZoomOutIcon, BankIcon, UndoIcon, RedoIcon, CardTextIcon, LayoutSplitIcon, StarsIcon,
-    CloudUploadIcon, CloudCheckIcon, CardTextIcon as StimulusIcon, CloudDownloadIcon, LightningIcon
+    CloudUploadIcon, CloudCheckIcon, CardTextIcon as StimulusIcon, CloudDownloadIcon, LightningIcon,
+    ShieldCheckIcon, EyeIcon
 } from '../components/Icons';
 
 // --- Start Custom Quill Icons ---
-const icons = Quill.import('ui/icons');
-icons['bold'] = '<i class="bi bi-type-bold" aria-hidden="true"></i>';
-icons['italic'] = '<i class="bi bi-type-italic" aria-hidden="true"></i>';
-icons['underline'] = '<i class="bi bi-type-underline" aria-hidden="true"></i>';
-icons['strike'] = '<i class="bi bi-type-strikethrough" aria-hidden="true"></i>';
-icons['color'] = '<i class="bi bi-palette-fill" aria-hidden="true"></i>';
-icons['background'] = '<i class="bi bi-highlighter" aria-hidden="true"></i>';
-icons['image'] = '<i class="bi bi-image-fill" aria-hidden="true"></i>';
-icons['math'] = '<svg viewBox="0 0 16 16" class="ql-fill" fill="currentColor"><path d="M12 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h8zM4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H4z"/><path d="M4 2.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5v-2zm0 4a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zm0 3a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zm0 3a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zm3-6a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zm0 3a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zm0 3a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zm3-6a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zm0 3a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-4z"/></svg>';
-icons['direction'] = '<i class="bi bi-text-right" aria-hidden="true"></i>';
-icons['script'] = {
-  'sub': '<i class="bi bi-subscript" aria-hidden="true"></i>',
-  'super': '<i class="bi bi-superscript" aria-hidden="true"></i>'
-};
-icons['clean'] = '<i class="bi bi-eraser-fill" aria-hidden="true"></i>';
-// Custom AI Image Icon
-icons['aiImage'] = '<svg viewBox="0 0 16 16" class="ql-fill" fill="#9333ea"><path d="M3 2.5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-.5.5h-4a.5.5 0 0 1-.5-.5v-4zm.5 1v2h3v-2h-3z"/><path d="M8 2.5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-.5.5h-4a.5.5 0 0 1-.5-.5v-4zm.5 1v2h3v-2h-3z"/><path d="M3 8.5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-.5.5h-4a.5.5 0 0 1-.5-.5v-4zm.5 1v2h3v-2h-3z"/><path d="M8 8.5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-.5.5h-4a.5.5 0 0 1-.5-.5v-4zm.5 1v2h3v-2h-3z"/><path d="M14.5 1a.5.5 0 0 1 .5.5v13a.5.5 0 0 1-.5.5h-13a.5.5 0 0 1-.5-.5v-13a.5.5 0 0 1 .5-.5h13zm-13-1A1.5 1.5 0 0 0 0 1.5v13A1.5 1.5 0 0 0 1.5 16h13a1.5 1.5 0 0 0 1.5-1.5v-13A1.5 1.5 0 0 0 14.5 0h-13z"/></svg>';
+const MATH_SVG_ICON = `<svg viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path stroke-width="1.8" d="M2.5 10.5h2l2.5 5 3.5-12h5.5"/><path stroke-width="1.6" d="M12.5 8l3 3m0-3l-3 3"/></svg>`;
 
-if (icons['align']) {
-    icons['align'][''] = '<i class="bi bi-text-left" aria-hidden="true"></i>';
-    icons['align']['center'] = '<i class="bi bi-text-center" aria-hidden="true"></i>';
-    icons['align']['right'] = '<i class="bi bi-text-right" aria-hidden="true"></i>';
-    icons['align']['justify'] = '<i class="bi bi-justify" aria-hidden="true"></i>';
+const AI_IMAGE_SVG_ICON = `<svg viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor"><rect x="2" y="4.5" width="10" height="9.5" rx="1.5" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 11.5l3-3 2.5 2.5 2-2 2.5 2.5" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="5" cy="7.5" r="1" fill="currentColor" stroke="none"/><path d="M14.5 1.5l.6 1.8 1.8.6-1.8.6-.6 1.8-.6-1.8-1.8-.6 1.8-.6.6-1.8z" fill="currentColor" stroke="none"/><path d="M16 8l.3.9.9.3-.9.3-.3.9-.3-.9-.9-.3.9-.3.3-.9z" fill="currentColor" stroke="none"/></svg>`;
+
+const icons = Quill.import('ui/icons') as any;
+if (icons) {
+    icons['math'] = MATH_SVG_ICON;
+    icons['aiImage'] = AI_IMAGE_SVG_ICON;
 }
 // --- End Custom Quill Icons ---
 
@@ -233,7 +221,32 @@ const RichTextEditor: React.FC<{
         root.setAttribute('dir', direction);
         root.style.direction = direction;
         root.style.textAlign = direction === 'rtl' ? 'right' : 'left';
-    }, [direction]);
+
+        // Add tooltips and inject SVGs into toolbar buttons
+        const toolbar = editor.getModule('toolbar') as any;
+        if (toolbar?.container) {
+            const mathBtn = toolbar.container.querySelector('.ql-math') as HTMLElement | null;
+            if (mathBtn) {
+                mathBtn.setAttribute('title', direction === 'rtl' ? 'إدراج معادلة رياضية (LaTeX / KaTeX)' : 'Sisipkan Rumus Matematika (LaTeX / KaTeX)');
+                mathBtn.setAttribute('aria-label', 'KaTeX Math Formula');
+                if (!mathBtn.querySelector('svg')) {
+                    mathBtn.innerHTML = MATH_SVG_ICON;
+                }
+            }
+            const aiImgBtn = toolbar.container.querySelector('.ql-aiImage') as HTMLElement | null;
+            if (aiImgBtn) {
+                aiImgBtn.setAttribute('title', direction === 'rtl' ? 'إنشاء صورة بالذكاء الاصطناعي' : 'Generate Gambar dengan AI (Gemini)');
+                aiImgBtn.setAttribute('aria-label', 'AI Image Generator');
+                if (!aiImgBtn.querySelector('svg')) {
+                    aiImgBtn.innerHTML = AI_IMAGE_SVG_ICON;
+                }
+            }
+            const imgBtn = toolbar.container.querySelector('.ql-image') as HTMLElement | null;
+            if (imgBtn) {
+                imgBtn.setAttribute('title', direction === 'rtl' ? 'إدراج صورة' : 'Sisipkan Gambar');
+            }
+        }
+    }, [direction, isOption]);
     
     return (
         <>
@@ -679,7 +692,7 @@ const QuestionEditor: React.FC<{
         : "bg-[var(--bg-secondary)] border-[var(--border-primary)]";
 
     return (
-        <div className={`${cardBgClass} rounded-[22px] border shadow-[var(--shadow-soft)] overflow-hidden`}>
+        <div id={`question-${question.id}`} className={`${cardBgClass} rounded-[22px] border shadow-[var(--shadow-soft)] overflow-hidden transition-all duration-300`}>
             <div className="border-b border-[var(--border-primary)] bg-[color:color-mix(in_srgb,var(--bg-tertiary)_72%,transparent)] px-4 py-3 sm:px-5">
             <div className="flex justify-between items-start gap-3">
                  <div className="min-w-0 flex items-center">
@@ -878,13 +891,14 @@ const SectionEditor: React.FC<{
     );
 };
 
-const EditorView: React.FC<{ examId: string; onBack: () => void }> = ({ examId, onBack }) => {
+const EditorView: React.FC<{ examId: string; onBack: () => void; onPreview?: () => void }> = ({ examId, onBack, onPreview }) => {
     const [exam, setExam, undo, redo, canUndo, canRedo] = useHistoryState<Exam | null>(null);
     const [settings, setSettings] = useState<Settings | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isAiModalOpen, setAiModalOpen] = useState(false);
     const [isBankModalOpen, setBankModalOpen] = useState(false);
     const [isSmartImportOpen, setSmartImportOpen] = useState(false);
+    const [isValidationModalOpen, setValidationModalOpen] = useState(false);
     const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
     const [lastSaved, setLastSaved] = useState<Date | null>(null);
     const [isSaving, setIsSaving] = useState(false); // State for auto-save indicator
@@ -898,6 +912,8 @@ const EditorView: React.FC<{ examId: string; onBack: () => void }> = ({ examId, 
 
     const { addToast } = useToast();
     const { showConfirm } = useModal();
+
+    const validation = useMemo(() => exam ? validateExam(exam) : null, [exam]);
 
     useEffect(() => {
         const load = async () => {
@@ -1191,6 +1207,24 @@ const EditorView: React.FC<{ examId: string; onBack: () => void }> = ({ examId, 
         setActiveSectionId(null);
     };
 
+    const handleToolbarOpenBank = () => {
+        const targetSectionId = activeSectionId || exam?.sections[0]?.id || null;
+        if (targetSectionId) setActiveSectionId(targetSectionId);
+        setBankModalOpen(true);
+    };
+
+    const handleToolbarOpenAi = () => {
+        const targetSectionId = activeSectionId || exam?.sections[0]?.id || null;
+        if (targetSectionId) setActiveSectionId(targetSectionId);
+        setAiModalOpen(true);
+    };
+
+    const handleToolbarOpenSmartImport = () => {
+        const targetSectionId = activeSectionId || exam?.sections[0]?.id || null;
+        if (targetSectionId) setActiveSectionId(targetSectionId);
+        setSmartImportOpen(true);
+    };
+
     const totalQuestions = useMemo(() => {
         if (!exam) return 0;
         return exam.sections.reduce((total, section) => total + section.questions.length, 0);
@@ -1207,77 +1241,201 @@ const EditorView: React.FC<{ examId: string; onBack: () => void }> = ({ examId, 
     const examInfoLabelClass = "mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]";
 
     return (
-            <div className="flex flex-col h-screen bg-[var(--bg-primary)]">
-             <div className="sticky top-0 z-20 border-b border-[var(--border-primary)] bg-[color:color-mix(in_srgb,var(--bg-secondary)_92%,transparent)] px-2.5 py-2 backdrop-blur-md sm:px-4 sm:py-3">
-                <div className="flex items-center justify-between gap-2">
-                <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
-                    <button onClick={onBack} className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] sm:h-10 sm:w-10"><ChevronLeftIcon /></button>
-                    <div className="min-w-0">
-                        <h1 className="text-[15px] sm:text-xl font-bold text-[var(--text-primary)] truncate" title={exam.title}>{exam.title}</h1>
-                        <div className="mt-0.5 flex items-center gap-2 text-[9px] uppercase tracking-[0.12em] text-[var(--text-muted)] sm:text-[11px]">
-                            <span className="hidden min-[361px]:inline truncate">{exam.subject?.trim() || 'Editor Ujian'}</span>
+        <div className="flex flex-col h-screen bg-[var(--bg-primary)]">
+            {/* Sticky Header & Toolbar Container */}
+            <div className="sticky top-0 z-20 bg-[var(--bg-secondary)] border-b border-[var(--border-primary)] shadow-xs">
+                {/* Row 1: Primary Identity & Navigation Bar */}
+                <div className="px-3 py-2.5 sm:px-5 sm:py-3 flex items-center justify-between gap-3">
+                    <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3.5">
+                        <button 
+                            onClick={onBack} 
+                            className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl border border-[var(--border-primary)] bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors sm:h-10 sm:w-10"
+                            title={T.back}
+                            aria-label={T.back}
+                        >
+                            <ChevronLeftIcon className="text-base sm:text-lg" />
+                        </button>
+                        <div className="min-w-0 flex-1">
+                            <h1 className="text-sm sm:text-base md:text-lg font-bold text-[var(--text-primary)] truncate" title={exam.title}>
+                                {exam.title || 'Naskah Ujian'}
+                            </h1>
+                            <div className="mt-0.5 flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-[var(--text-muted)] truncate">
+                                <span className="font-medium text-[var(--text-secondary)] truncate">{exam.subject?.trim() || 'Tanpa Mapel'}</span>
+                                <span>•</span>
+                                <span className="truncate">{exam.class?.trim() || 'Semua Kelas'}</span>
+                                <span>•</span>
+                                <span className="font-semibold text-[var(--text-primary)]">{totalQuestions} Butir Soal</span>
+                            </div>
                         </div>
                     </div>
-                </div>
-                
-                <div className="flex flex-shrink-0 items-center gap-1 sm:gap-2">
-                    <div className="hidden md:flex items-center bg-[var(--bg-tertiary)] rounded-lg p-1 mr-2">
-                        <button onClick={undo} disabled={!canUndo} className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-30"><UndoIcon /></button>
-                        <button onClick={redo} disabled={!canRedo} className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-30"><RedoIcon /></button>
-                    </div>
-                    
-                    {/* Auto-save Indicator */}
-                    <div className="flex flex-col items-end mr-2 hidden sm:flex">
-                         <span className="text-[10px] text-[var(--text-muted)] font-mono transition-opacity duration-300">
-                            {isSaving ? T.saving : lastSaved ? `${T.savedAt} ${lastSaved.toLocaleTimeString()}` : ''}
-                         </span>
-                    </div>
 
-                    {/* Status Dropdown Button */}
-                    <div className="relative" ref={statusMenuRef}>
-                        <button
-                            onClick={() => setStatusMenuOpen(!isStatusMenuOpen)}
-                            className={`flex items-center gap-1.5 rounded-xl border px-2 py-1.5 font-bold text-[11px] uppercase transition-colors sm:gap-2 sm:px-3 sm:py-2 sm:text-xs ${
-                                exam.status === 'published'
-                                    ? 'app-status-success border-green-200 dark:border-green-900/50 hover:bg-green-200/60 dark:hover:bg-green-900/40'
-                                    : 'app-status-warning border-amber-200 dark:border-amber-900/50 hover:bg-amber-200/60 dark:hover:bg-amber-900/40'
-                            }`}
-                            aria-haspopup="true"
-                            aria-expanded={isStatusMenuOpen}
+                    {/* Right: Autosave Status, Status Dropdown, Preview & Save Buttons */}
+                    <div className="flex flex-shrink-0 items-center gap-1.5 sm:gap-2.5">
+                        {/* Auto-save Indicator */}
+                        <div className="hidden lg:flex items-center gap-1.5 text-[11px] text-[var(--text-muted)] font-mono mr-1">
+                            <span className={`w-2 h-2 rounded-full ${isSaving ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`}></span>
+                            <span>{isSaving ? T.saving : lastSaved ? `${T.savedAt} ${lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}</span>
+                        </div>
+
+                        {/* Status Dropdown Button (In main header without overflow clipping) */}
+                        <div className="relative" ref={statusMenuRef}>
+                            <button
+                                onClick={() => setStatusMenuOpen(!isStatusMenuOpen)}
+                                className={`flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 font-bold text-[11px] sm:text-xs uppercase transition-all shadow-2xs ${
+                                    exam.status === 'published'
+                                        ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/50'
+                                        : 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/50'
+                                }`}
+                                aria-haspopup="true"
+                                aria-expanded={isStatusMenuOpen}
+                                title="Ubah Status Naskah (Draft / Terbit)"
+                            >
+                                {exam.status === 'published' ? <CheckIcon className="text-sm" /> : <EditIcon className="text-sm" />}
+                                <span className="hidden min-[420px]:inline">{exam.status === 'published' ? T.statusPublished : T.statusDraft}</span>
+                                <i className={`bi bi-chevron-down text-[9px] transition-transform ${isStatusMenuOpen ? 'rotate-180' : ''}`}></i>
+                            </button>
+
+                            {isStatusMenuOpen && (
+                                <div className="absolute top-full right-0 mt-1.5 w-48 bg-[var(--bg-secondary)] rounded-xl shadow-xl border border-[var(--border-primary)] z-50 overflow-hidden animate-scale-in origin-top-right">
+                                    <button
+                                        onClick={() => { handleUpdateExam('status', 'draft'); setStatusMenuOpen(false); }}
+                                        className={`w-full text-left px-3.5 py-2.5 hover:bg-[var(--bg-hover)] flex items-center gap-2.5 transition-colors ${exam.status === 'draft' ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 font-semibold' : 'text-[var(--text-secondary)]'}`}
+                                    >
+                                        <div className="p-1 rounded-lg bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400"><EditIcon className="text-xs" /></div>
+                                        <span className="text-xs">{T.statusDraft}</span>
+                                    </button>
+                                    <button
+                                        onClick={() => { handleUpdateExam('status', 'published'); setStatusMenuOpen(false); }}
+                                        className={`w-full text-left px-3.5 py-2.5 hover:bg-[var(--bg-hover)] flex items-center gap-2.5 transition-colors ${exam.status === 'published' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 font-semibold' : 'text-[var(--text-secondary)]'}`}
+                                    >
+                                        <div className="p-1 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400"><CheckIcon className="text-xs" /></div>
+                                        <span className="text-xs">{T.statusPublished}</span>
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+                        {onPreview && (
+                            <button
+                                onClick={onPreview}
+                                className="flex items-center gap-1.5 rounded-xl border border-[var(--border-primary)] bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] font-semibold px-2.5 py-1.5 text-xs sm:px-3.5 sm:py-2 sm:text-sm transition-colors shadow-2xs"
+                                title="Pratinjau & Cetak Dokumen"
+                            >
+                                <EyeIcon className="text-sm text-blue-600 dark:text-blue-400" />
+                                <span className="hidden sm:inline">Pratinjau</span>
+                            </button>
+                        )}
+
+                        <button 
+                            onClick={handleManualSave} 
+                            className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-1.5 font-bold text-xs sm:text-sm text-white shadow-sm transition-all hover:bg-blue-700 active:scale-95 sm:px-4 sm:py-2" 
+                            title={T.save} 
+                            aria-label={T.save}
                         >
-                            {exam.status === 'published' ? <CheckIcon className="text-lg" /> : <EditIcon className="text-lg" />}
-                            <span className="hidden md:inline">
-                                {exam.status === 'published' ? T.statusPublished : T.statusDraft}
-                            </span>
-                            <i className={`bi bi-chevron-down ml-1 text-[10px] transition-transform ${isStatusMenuOpen ? 'rotate-180' : ''}`}></i>
+                            <SaveIcon className="text-sm" />
+                            <span>{T.save}</span>
                         </button>
+                    </div>
+                </div>
 
-                        {isStatusMenuOpen && (
-                            <div className="absolute top-full right-0 mt-2 w-48 bg-[var(--bg-secondary)] rounded-lg shadow-xl border border-[var(--border-primary)] z-50 overflow-hidden animate-scale-in origin-top-right">
-                                <button
-                                    onClick={() => { handleUpdateExam('status', 'draft'); setStatusMenuOpen(false); }}
-                                    className={`w-full text-left px-4 py-3 hover:bg-[var(--bg-hover)] flex items-center gap-3 transition-colors ${exam.status === 'draft' ? 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400' : 'text-[var(--text-secondary)]'}`}
-                                >
-                                    <div className="p-1 rounded bg-yellow-100 dark:bg-yellow-900/50 text-yellow-600 dark:text-yellow-400"><EditIcon className="text-sm" /></div>
-                                    <span className="font-medium text-sm">{T.statusDraft}</span>
-                                </button>
-                                <button
-                                    onClick={() => { handleUpdateExam('status', 'published'); setStatusMenuOpen(false); }}
-                                    className={`w-full text-left px-4 py-3 hover:bg-[var(--bg-hover)] flex items-center gap-3 transition-colors ${exam.status === 'published' ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400' : 'text-[var(--text-secondary)]'}`}
-                                >
-                                    <div className="p-1 rounded bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400"><CheckIcon className="text-sm" /></div>
-                                    <span className="font-medium text-sm">{T.statusPublished}</span>
-                                </button>
-                            </div>
+                {/* Row 2: Secondary Scrollable Action Toolbar */}
+                <div className="border-t border-[var(--border-primary)] bg-[var(--bg-tertiary)]/75 px-3 py-1.5 sm:px-5 sm:py-2 flex items-center justify-between gap-2.5 overflow-x-auto whitespace-nowrap scrollbar-none">
+                    {/* Left: History & Audit Health */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                        {/* Undo / Redo */}
+                        <div className="flex items-center bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-xl p-0.5 shadow-2xs">
+                            <button 
+                                onClick={undo} 
+                                disabled={!canUndo} 
+                                className="p-1.5 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] disabled:opacity-30 transition-colors"
+                                title="Undo (Urungkan Perubahan)"
+                                aria-label="Undo"
+                            >
+                                <UndoIcon className="text-xs sm:text-sm" />
+                            </button>
+                            <div className="w-[1px] h-3.5 bg-[var(--border-primary)] mx-0.5"></div>
+                            <button 
+                                onClick={redo} 
+                                disabled={!canRedo} 
+                                className="p-1.5 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] disabled:opacity-30 transition-colors"
+                                title="Redo (Ulangi Perubahan)"
+                                aria-label="Redo"
+                            >
+                                <RedoIcon className="text-xs sm:text-sm" />
+                            </button>
+                        </div>
+
+                        {/* Audit / Health Check Button */}
+                        {validation && (
+                            <button
+                                onClick={() => setValidationModalOpen(true)}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[11px] sm:text-xs font-bold transition-all shadow-2xs flex-shrink-0 ${
+                                    validation.healthScore >= 90
+                                        ? 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/50 hover:bg-emerald-100'
+                                        : validation.healthScore >= 70
+                                            ? 'bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-900/50 hover:bg-amber-100'
+                                            : 'bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-900/50 hover:bg-rose-100'
+                                }`}
+                                title="Audit & Validasi Kelengkapan Soal"
+                            >
+                                <ShieldCheckIcon className="text-sm" />
+                                <span>Kesiapan: {validation.healthScore}%</span>
+                                {validation.criticalIssues.length > 0 && (
+                                    <span className="px-1.5 py-0.2 rounded-full bg-rose-600 text-white text-[10px] shadow-2xs">
+                                        {validation.criticalIssues.length} Isu
+                                    </span>
+                                )}
+                            </button>
                         )}
                     </div>
 
-                    <button onClick={handleManualSave} className="flex items-center gap-2 rounded-xl bg-blue-600 px-2.5 py-1.5 font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 sm:px-4 sm:py-2" title={T.save} aria-label={T.save}>
-                        <SaveIcon />
-                        <span className="hidden sm:inline">{T.save}</span>
-                    </button>
+                    {/* Right: Quick Tools Shortcuts */}
+                    <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+                        {/* Info Ujian Toggle */}
+                        <button
+                            onClick={() => setExamInfoOpen(!isExamInfoOpen)}
+                            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[11px] sm:text-xs font-semibold transition-colors ${
+                                isExamInfoOpen
+                                    ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800'
+                                    : 'bg-[var(--bg-secondary)] text-[var(--text-secondary)] border-[var(--border-primary)] hover:bg-[var(--bg-hover)]'
+                            }`}
+                            title="Pengaturan Kop & Identitas Ujian"
+                        >
+                            <i className="bi bi-sliders text-xs"></i>
+                            <span>Info Ujian</span>
+                        </button>
+
+                        {/* Bank Soal */}
+                        <button
+                            onClick={handleToolbarOpenBank}
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-[var(--border-primary)] bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-[11px] sm:text-xs font-semibold transition-colors"
+                            title="Ambil Soal dari Bank Soal"
+                        >
+                            <BankIcon className="text-xs text-amber-500" />
+                            <span>Bank Soal</span>
+                        </button>
+
+                        {/* Smart Import */}
+                        <button
+                            onClick={handleToolbarOpenSmartImport}
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-[var(--border-primary)] bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-[11px] sm:text-xs font-semibold transition-colors"
+                            title="Smart Import dari Naskah Word/Teks"
+                        >
+                            <LightningIcon className="text-xs text-indigo-500" />
+                            <span>Smart Import</span>
+                        </button>
+
+                        {/* AI Generator */}
+                        <button
+                            onClick={handleToolbarOpenAi}
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-purple-200 dark:border-purple-900/50 bg-purple-50/60 dark:bg-purple-950/20 text-purple-700 dark:text-purple-300 hover:bg-purple-100 text-[11px] sm:text-xs font-semibold transition-colors"
+                            title="AI Generator Soal Otomatis"
+                        >
+                            <StarsIcon className="text-xs text-purple-600 dark:text-purple-400" />
+                            <span>AI Generator</span>
+                        </button>
+                    </div>
                 </div>
-            </div>
             </div>
 
             <div dir={exam.direction} className="flex-grow overflow-y-auto px-2.5 py-3 sm:p-4 md:p-8 space-y-5 sm:space-y-6 max-w-6xl mx-auto w-full pb-28 md:pb-24">
@@ -1423,6 +1581,28 @@ const EditorView: React.FC<{ examId: string; onBack: () => void }> = ({ examId, 
                 onClose={() => setSmartImportOpen(false)} 
                 onImport={handleImportQuestions}
             />
+
+            {exam && (
+                <ExamValidationModal
+                    isOpen={isValidationModalOpen}
+                    onClose={() => setValidationModalOpen(false)}
+                    exam={exam}
+                    onJumpToQuestion={(_sectionId, questionId) => {
+                        if (questionId) {
+                            setTimeout(() => {
+                                const el = document.getElementById(`question-${questionId}`);
+                                if (el) {
+                                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                    el.classList.add('ring-4', 'ring-blue-500', 'shadow-2xl');
+                                    setTimeout(() => {
+                                        el.classList.remove('ring-4', 'ring-blue-500', 'shadow-2xl');
+                                    }, 2500);
+                                }
+                            }, 100);
+                        }
+                    }}
+                />
+            )}
         </div>
     );
 };

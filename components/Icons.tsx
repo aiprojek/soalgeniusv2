@@ -105,11 +105,19 @@ export const BookIcon = ({ className }: IconProps) => <i className={`bi bi-book-
 // Icons for Packet Generator
 export const StackIcon = ({ className }: IconProps) => <i className={`bi bi-collection-fill ${className || ''}`}></i>;
 
-// Icons for Export
+// Icons for Export & Formats
 export const WordIcon = ({ className }: IconProps) => <i className={`bi bi-file-earmark-word-fill ${className || ''}`}></i>;
 export const FileCodeIcon = ({ className }: IconProps) => <i className={`bi bi-file-earmark-code-fill ${className || ''}`}></i>;
 export const FilePdfIcon = ({ className }: IconProps) => <i className={`bi bi-file-earmark-pdf-fill ${className || ''}`}></i>;
 export const ServerIcon = ({ className }: IconProps) => <i className={`bi bi-hdd-network-fill ${className || ''}`}></i>;
+export const FileSpreadsheetIcon = ({ className }: IconProps) => <i className={`bi bi-file-earmark-spreadsheet-fill ${className || ''}`}></i>;
+export const FileTextIcon = ({ className }: IconProps) => <i className={`bi bi-file-earmark-text-fill ${className || ''}`}></i>;
+
+// Icons for Audit & Validation
+export const ShieldCheckIcon = ({ className }: IconProps) => <i className={`bi bi-shield-check ${className || ''}`}></i>;
+export const ExclamationTriangleIcon = ({ className }: IconProps) => <i className={`bi bi-exclamation-triangle-fill ${className || ''}`}></i>;
+export const EyeIcon = ({ className }: IconProps) => <i className={`bi bi-eye-fill ${className || ''}`}></i>;
+export const SparklesIcon = ({ className }: IconProps) => <i className={`bi bi-stars ${className || ''}`}></i>;
 
 // Icons for Storage Settings
 export const HddIcon = ({ className }: IconProps) => <i className={`bi bi-hdd-fill ${className || ''}`}></i>;

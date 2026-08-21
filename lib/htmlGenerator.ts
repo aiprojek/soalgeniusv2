@@ -596,8 +596,8 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
                 right: 0;
                 text-align: center;
                 font-size: 8pt;
-                color: #94a3b8; /* Slate-400 */
-                opacity: 0.5;
+                color: #64748b; /* Slate-500 solid 100% */
+                opacity: 1;
                 font-style: italic;
                 padding-bottom: 5mm;
                 pointer-events: none;
@@ -610,10 +610,10 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
             margin-top: 2rem;
             text-align: center;
             font-size: 8pt;
-            color: #94a3b8;
-            opacity: 0.5;
+            color: #64748b;
+            opacity: 1;
             font-style: italic;
-            border-top: 1px dashed #e2e8f0;
+            border-top: 1px dashed #cbd5e1;
             padding-top: 0.5rem;
         }
 

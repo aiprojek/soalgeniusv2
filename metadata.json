@@ -1,5 +1,8 @@
 {
   "name": "SoalGenius",
-  "description": "An application to help teachers create exam questions easily without worrying about formatting. It provides a simple editor, a live preview, and options to print or export the exam as a self-contained HTML file.",
-  "requestFramePermissions": []
+  "description": "Aplikasi penyusun naskah ujian dan bank soal profesional untuk guru dengan pratinjau instan, validasi naskah otomatis, rumus matematika KaTeX, dukungan naskah Arab RTL, serta ekspor dokumen Word (.docx), PDF, HTML, Moodle XML, Canvas QTI 2.1, GIFT, Aiken, dan CSV.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

@@ -4,12 +4,15 @@ import { getExam, getSettings } from '../lib/storage';
 import { generateHtmlContent } from '../lib/htmlGenerator';
 import { generateDocx } from '../lib/docxGenerator';
 import { generateMoodleXML } from '../lib/lmsGenerator';
+import { validateExam } from '../lib/examValidator';
+import ExamValidationModal from '../components/ExamValidationModal';
+import LmsExportModal from '../components/LmsExportModal';
 import {
-    ChevronLeftIcon, ZoomInIcon, ZoomOutIcon, DownloadIcon, PrinterIcon, WordIcon, ServerIcon
+    ChevronLeftIcon, ZoomInIcon, ZoomOutIcon, DownloadIcon, PrinterIcon, 
+    WordIcon, ServerIcon, ShieldCheckIcon, ExclamationTriangleIcon, CheckIcon
 } from '../components/Icons';
 import { useToast } from '../contexts/ToastContext';
 import { useModal } from '../contexts/ModalContext';
-
 
 const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId, onBack }) => {
     const [exam, setExam] = useState<Exam | null>(null);
@@ -19,6 +22,8 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
     const [showAnswerKey, setShowAnswerKey] = useState(false);
     const [isActionsMenuOpen, setActionsMenuOpen] = useState(false);
     const [isExportingWord, setIsExportingWord] = useState(false);
+    const [isLmsModalOpen, setIsLmsModalOpen] = useState(false);
+    const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
     const [iframeHeight, setIframeHeight] = useState<string | number>('297mm');
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const actionsMenuRef = useRef<HTMLDivElement>(null);
@@ -27,7 +32,6 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
     const mainContainerRef = useRef<HTMLElement>(null);
     const { addToast } = useToast();
     const { showConfirm } = useModal();
-
 
     useEffect(() => {
         const loadData = async () => {
@@ -45,6 +49,8 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
         loadData();
     }, [examId, onBack]);
 
+    const validation = useMemo(() => exam ? validateExam(exam) : null, [exam]);
+
     useEffect(() => {
         if (!settings || !mainContainerRef.current || isLoading) return;
 
@@ -59,44 +65,30 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
             setZoom(containerWidth < paperWidthPx ? containerWidth / paperWidthPx : 1);
         };
 
-        const timer = setTimeout(calculateZoom, 100);
+        calculateZoom();
         window.addEventListener('resize', calculateZoom);
-        return () => { clearTimeout(timer); window.removeEventListener('resize', calculateZoom); };
+        return () => window.removeEventListener('resize', calculateZoom);
     }, [settings, isLoading]);
 
     useEffect(() => {
-        if (!isActionsMenuOpen) return;
-
-        const handlePointerDown = (event: MouseEvent) => {
-            const target = event.target as Node | null;
-            if (!target) return;
-
-            const clickedMenu = actionsMenuRef.current?.contains(target) || mobileActionsMenuRef.current?.contains(target);
-            const clickedButton = actionsButtonRef.current?.contains(target);
-            if (!clickedMenu && !clickedButton) {
+        const handleClickOutside = (event: MouseEvent) => {
+            const target = event.target as Node;
+            if (actionsButtonRef.current && actionsButtonRef.current.contains(target)) {
+                return;
+            }
+            if (
+                (actionsMenuRef.current && !actionsMenuRef.current.contains(target)) &&
+                (mobileActionsMenuRef.current && !mobileActionsMenuRef.current.contains(target))
+            ) {
                 setActionsMenuOpen(false);
             }
         };
 
-        const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.key === 'Escape') {
-                setActionsMenuOpen(false);
-            }
-        };
-
-        document.addEventListener('mousedown', handlePointerDown);
-        document.addEventListener('keydown', handleKeyDown);
+        document.addEventListener('mousedown', handleClickOutside);
         return () => {
-            document.removeEventListener('mousedown', handlePointerDown);
-            document.removeEventListener('keydown', handleKeyDown);
+            document.removeEventListener('mousedown', handleClickOutside);
         };
-    }, [isActionsMenuOpen]);
-
-    useEffect(() => {
-        if (!settings) return;
-        const defaultHeight = settings.paperSize === 'A4' ? '297mm' : settings.paperSize === 'F4' ? '330mm' : settings.paperSize === 'Legal' ? '356mm' : '279mm';
-        setIframeHeight(defaultHeight);
-    }, [settings, showAnswerKey]);
+    }, []);
 
     const examHtml = useMemo(() => {
         if (!exam || !settings) return '';
@@ -108,36 +100,33 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
         return generateHtmlContent(exam, settings, 'answer_key', false);
     }, [exam, settings]);
 
-    // --- Donation Prompt Helper ---
     const showDonationPrompt = useCallback(() => {
-        // Small delay to make it feel natural after the download starts
-        setTimeout(() => {
+        const key = 'lastDonationPrompt';
+        const lastPrompt = localStorage.getItem(key);
+        const now = new Date().getTime();
+        const oneDay = 24 * 60 * 60 * 1000;
+
+        if (!lastPrompt || (now - parseInt(lastPrompt, 10)) > oneDay) {
+            localStorage.setItem(key, now.toString());
             showConfirm({
-                title: "Dukungan Pengembangan ☕",
-                content: (
-                    <div className="text-sm text-[var(--text-secondary)] space-y-3">
-                        <p>Dokumen berhasil diproses! Semoga bermanfaat untuk kegiatan mengajar Bapak/Ibu.</p>
-                        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
-                            <p><strong>SoalGenius</strong> dikembangkan secara mandiri dan gratis (Open Source). Jika aplikasi ini membantu pekerjaan Anda, pertimbangkan untuk mentraktir kami kopi agar kami semangat mengembangkan fitur baru.</p>
-                        </div>
-                    </div>
-                ),
-                confirmLabel: "Traktir Kopi",
+                title: "Dukung SoalGenius",
+                content: "Aplikasi ini bermanfaat? Pertimbangkan untuk berdonasi agar pengembangan dapat terus berlanjut.",
+                confirmLabel: "Donasi Sekarang",
+                cancelLabel: "Nanti Saja",
                 confirmVariant: "primary",
-                onConfirm: () => window.open("https://lynk.id/aiprojek/s/bvBJvdA", "_blank")
+                onConfirm: () => {
+                    window.open('https://saweria.co/akzashine', '_blank');
+                }
             });
-        }, 1500);
+        }
     }, [showConfirm]);
 
-    const handleExportHtml = useCallback(() => {
+    const executeExportHtml = useCallback(() => {
         if (!exam || !settings) return;
-
-        const now = new Date();
-        const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
-        const sanitize = (str: string) => (str || '').replace(/[^a-z0-9_.-]/gi, '_').replace(/_+/g, '_');
-        const baseName = [sanitize(exam.subject), sanitize(exam.class), sanitize(exam.title), timestamp].filter(Boolean).join('_');
         const currentMode = showAnswerKey ? 'answer_key' : 'exam';
-        const contentToExport = generateHtmlContent(exam, settings, currentMode, false);
+        const sanitize = (str: string) => (str || '').replace(/[^a-z0-9_.-]/gi, '_');
+        const baseName = sanitize(exam.title);
+        const contentToExport = generateHtmlContent(exam, settings, currentMode, true);
         const blob = new Blob([contentToExport], { type: 'text/html' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -151,17 +140,23 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
         showDonationPrompt();
     }, [exam, settings, showAnswerKey, showDonationPrompt]);
 
-    const handleExportWord = useCallback(async () => {
+    const handleExportHtml = useCallback(() => {
+        executeExportHtml();
+    }, [executeExportHtml]);
+
+    const executeExportWord = useCallback(async () => {
         if (!exam || !settings) return;
         setIsExportingWord(true);
         addToast('Menyiapkan dokumen Word...', 'info');
 
         try {
-            const blob = await generateDocx(exam, settings);
+            const currentMode = showAnswerKey ? 'answer_key' : 'exam';
+            const blob = await generateDocx(exam, settings, currentMode);
             const now = new Date();
             const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
             const sanitize = (str: string) => (str || '').replace(/[^a-z0-9_.-]/gi, '_');
-            const fileName = `${sanitize(exam.title)}_${timestamp}.docx`;
+            const suffix = showAnswerKey ? '_Kunci_Jawaban' : '';
+            const fileName = `${sanitize(exam.title)}${suffix}_${timestamp}.docx`;
 
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -171,7 +166,7 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            addToast('Dokumen Word berhasil diunduh.', 'success');
+            addToast(`Dokumen Word ${showAnswerKey ? 'Kunci Jawaban ' : ''}berhasil diunduh.`, 'success');
 
             showDonationPrompt();
         } catch (error) {
@@ -180,35 +175,14 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
         } finally {
             setIsExportingWord(false);
         }
-    }, [exam, settings, addToast, showDonationPrompt]);
+    }, [exam, settings, showAnswerKey, addToast, showDonationPrompt]);
 
-    const handleExportMoodle = useCallback(() => {
-        if (!exam) return;
-        try {
-            const xml = generateMoodleXML(exam);
-            const blob = new Blob([xml], { type: 'application/xml' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            const sanitize = (str: string) => (str || '').replace(/[^a-z0-9_.-]/gi, '_');
-            a.download = `${sanitize(exam.title)}_moodle.xml`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            addToast('File Moodle XML berhasil diunduh.', 'success');
-
-            showDonationPrompt();
-        } catch (error) {
-            console.error("Export Moodle failed", error);
-            addToast('Gagal mengekspor ke Moodle XML.', 'error');
-        }
-    }, [exam, addToast, showDonationPrompt]);
+    const handleExportWord = useCallback(() => {
+        executeExportWord();
+    }, [executeExportWord]);
 
     const handlePrint = () => {
         iframeRef.current?.contentWindow?.print();
-        // In many browsers, code execution pauses at print(), then resumes.
-        // We add a delay to ensure the dialog is likely closed or the user is done interacting.
         showDonationPrompt();
     };
 
@@ -248,11 +222,34 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
         <div className="fixed inset-0 app-shell-page z-50 flex flex-col print:bg-white">
             <header className="relative z-30 flex-shrink-0 print:hidden border-b border-[var(--border-primary)] bg-[color:color-mix(in_srgb,var(--bg-secondary)_90%,transparent)] backdrop-blur-md">
                 <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-2 px-2.5 py-2 sm:px-4 sm:py-2.5">
-                    <div className="flex min-w-0 flex-1 justify-start">
+                    <div className="flex min-w-0 flex-1 items-center gap-2">
                         <button onClick={onBack} className="flex items-center space-x-2 text-[var(--text-secondary)] hover:text-[var(--text-accent)] font-semibold py-2 px-3 rounded-xl hover:bg-[var(--bg-hover)]">
                             <ChevronLeftIcon className="text-xl" />
                             <span className="hidden sm:inline">Kembali</span>
                         </button>
+
+                        {/* Health Status Indicator Badge */}
+                        {validation && (
+                            <button 
+                                onClick={() => setIsValidationModalOpen(true)}
+                                className={`hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
+                                    validation.healthScore >= 90
+                                        ? 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/50 hover:bg-emerald-100'
+                                        : validation.healthScore >= 70
+                                            ? 'bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-900/50 hover:bg-amber-100'
+                                            : 'bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-900/50 hover:bg-rose-100'
+                                }`}
+                                title="Klik untuk melihat hasil audit & validasi naskah"
+                            >
+                                <ShieldCheckIcon />
+                                <span>Kesiapan {validation.healthScore}%</span>
+                                {validation.criticalIssues.length > 0 && (
+                                    <span className="px-1.5 py-0.2 rounded-full bg-rose-600 text-white text-[10px]">
+                                        {validation.criticalIssues.length} Isu
+                                    </span>
+                                )}
+                            </button>
+                        )}
                     </div>
 
                     <div className="hidden md:flex flex-1 items-center justify-center gap-3 lg:gap-4 px-3">
@@ -267,35 +264,58 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
                         </div>
                     </div>
 
-                    <div className="flex-1 flex justify-end">
+                    <div className="flex-1 flex justify-end items-center gap-2">
                         <div className="hidden md:block">
                             <div className="relative inline-flex">
-                                <button ref={actionsButtonRef} onClick={() => setActionsMenuOpen(open => !open)} className="flex items-center space-x-2 bg-[var(--bg-muted)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] font-semibold py-2 px-3 rounded-xl" aria-haspopup="menu" aria-expanded={isActionsMenuOpen}>
+                                <button ref={actionsButtonRef} onClick={() => setActionsMenuOpen(open => !open)} className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-3.5 rounded-xl shadow-sm transition-colors" aria-haspopup="menu" aria-expanded={isActionsMenuOpen}>
                                     <DownloadIcon />
-                                    <span>Aksi</span>
+                                    <span>Ekspor & Aksi</span>
+                                    <i className={`bi bi-chevron-down text-xs transition-transform ${isActionsMenuOpen ? 'rotate-180' : ''}`}></i>
                                 </button>
                                 {isActionsMenuOpen && (
-                                    <div ref={actionsMenuRef} className="animate-fade-in absolute right-0 top-[calc(100%+0.65rem)] z-[120] w-[22rem] rounded-[18px] border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-2 shadow-[var(--shadow-card)]">
-                                        <div className="px-3 pb-2 pt-1">
-                                            <p className="text-sm font-semibold text-[var(--text-primary)]">Aksi Dokumen</p>
-                                            <p className="text-xs text-[var(--text-secondary)]">Export atau cetak dokumen dari sini</p>
+                                    <div ref={actionsMenuRef} className="animate-fade-in absolute right-0 top-[calc(100%+0.65rem)] z-[120] w-[23rem] rounded-[20px] border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-2 shadow-2xl">
+                                        <div className="px-3 pb-2 pt-1 border-b border-[var(--border-primary)] mb-1">
+                                            <p className="text-sm font-bold text-[var(--text-primary)]">Format Ekspor & Dokumen</p>
+                                            <p className="text-xs text-[var(--text-secondary)]">Pilih format unduhan naskah ujian atau kuis online</p>
                                         </div>
                                         <div className="space-y-1">
-                                            <button onClick={(e) => { e.stopPropagation(); handleExportWord(); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--bg-hover)] text-blue-600 dark:text-blue-400">
-                                                {isExportingWord ? <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></div> : <WordIcon />}
-                                                <span className="font-medium">Ekspor Word (.docx)</span>
+                                            <button onClick={(e) => { e.stopPropagation(); handleExportWord(); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-3.5 py-2.5 text-left hover:bg-[var(--bg-hover)] text-blue-600 dark:text-blue-400 rounded-xl">
+                                                {isExportingWord ? <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></div> : <WordIcon className="text-lg" />}
+                                                <div className="min-w-0 flex-1">
+                                                    <span className="font-semibold text-sm block">Dokumen Word (.docx)</span>
+                                                    <span className="text-[11px] text-[var(--text-secondary)] block">Format standar cetak & kunci terpisah</span>
+                                                </div>
                                             </button>
-                                            <button onClick={(e) => { e.stopPropagation(); handleExportHtml(); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--bg-hover)] text-[var(--text-primary)]">
-                                                <DownloadIcon />
-                                                <span className="font-medium">Ekspor HTML</span>
+                                            <button onClick={(e) => { e.stopPropagation(); setIsLmsModalOpen(true); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-3.5 py-2.5 text-left hover:bg-[var(--bg-hover)] text-orange-600 dark:text-orange-400 rounded-xl">
+                                                <ServerIcon className="text-lg" />
+                                                <div className="min-w-0 flex-1">
+                                                    <span className="font-semibold text-sm block">Ekspor LMS & Bank Soal</span>
+                                                    <span className="text-[11px] text-[var(--text-secondary)] block">Moodle, Canvas, GIFT, Quizizz, Excel</span>
+                                                </div>
                                             </button>
-                                            <button onClick={(e) => { e.stopPropagation(); handleExportMoodle(); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--bg-hover)] text-orange-600 dark:text-orange-400">
-                                                <ServerIcon />
-                                                <span className="font-medium">Ekspor Moodle XML</span>
+                                            <button onClick={(e) => { e.stopPropagation(); handleExportHtml(); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-3.5 py-2.5 text-left hover:bg-[var(--bg-hover)] text-[var(--text-primary)] rounded-xl">
+                                                <DownloadIcon className="text-lg text-emerald-600" />
+                                                <div className="min-w-0 flex-1">
+                                                    <span className="font-semibold text-sm block">Ekspor Web HTML</span>
+                                                    <span className="text-[11px] text-[var(--text-secondary)] block">Naskah halaman web mandiri</span>
+                                                </div>
                                             </button>
-                                            <button onClick={() => { handlePrint(); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--bg-hover)] text-[var(--text-primary)]">
-                                                <PrinterIcon />
-                                                <span className="font-medium">Cetak / Simpan PDF</span>
+                                            <button onClick={() => { handlePrint(); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-3.5 py-2.5 text-left hover:bg-[var(--bg-hover)] text-[var(--text-primary)] rounded-xl">
+                                                <PrinterIcon className="text-lg text-indigo-600" />
+                                                <div className="min-w-0 flex-1">
+                                                    <span className="font-semibold text-sm block">Cetak / Simpan PDF</span>
+                                                    <span className="text-[11px] text-[var(--text-secondary)] block">Cetak langsung atau simpan PDF per halaman</span>
+                                                </div>
+                                            </button>
+
+                                            <div className="border-t border-[var(--border-primary)] my-1 pt-1"></div>
+
+                                            <button onClick={() => { setIsValidationModalOpen(true); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-3.5 py-2.5 text-left hover:bg-[var(--bg-hover)] text-teal-600 dark:text-teal-400 rounded-xl">
+                                                <ShieldCheckIcon className="text-lg" />
+                                                <div className="min-w-0 flex-1">
+                                                    <span className="font-semibold text-sm block">Audit & Validasi Naskah</span>
+                                                    <span className="text-[11px] text-[var(--text-secondary)] block">Cek kelengkapan kunci & kesiapan soal</span>
+                                                </div>
                                             </button>
                                         </div>
                                     </div>
@@ -303,9 +323,9 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
                             </div>
                         </div>
                         <div className="md:hidden">
-                            <button onClick={() => setActionsMenuOpen(true)} className="flex items-center space-x-2 bg-[var(--bg-muted)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] font-semibold py-2 px-3 rounded-xl text-sm sm:px-4" aria-haspopup="dialog" aria-expanded={isActionsMenuOpen}>
+                            <button onClick={() => setActionsMenuOpen(true)} className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-3 rounded-xl text-sm sm:px-4 shadow-sm" aria-haspopup="dialog" aria-expanded={isActionsMenuOpen}>
                                 <DownloadIcon />
-                                <span>Export</span>
+                                <span>Ekspor</span>
                             </button>
                         </div>
                     </div>
@@ -316,8 +336,21 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
                         <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
                                 <h1 className="truncate text-[13px] sm:text-sm font-bold text-[var(--text-primary)]">{exam.title}</h1>
-                                <p className="text-[11px] sm:text-xs text-[var(--text-secondary)]">
-                                    {showAnswerKey ? 'Kunci Jawaban' : 'Lembar Soal'} • {(zoom * 100).toFixed(0)}%
+                                <p className="text-[11px] sm:text-xs text-[var(--text-secondary)] flex items-center gap-1.5">
+                                    <span>{showAnswerKey ? 'Kunci Jawaban' : 'Lembar Soal'}</span>
+                                    <span>•</span>
+                                    <span>{(zoom * 100).toFixed(0)}%</span>
+                                    {validation && (
+                                        <>
+                                            <span>•</span>
+                                            <span 
+                                                onClick={() => setIsValidationModalOpen(true)}
+                                                className={`font-semibold cursor-pointer underline ${validation.healthScore >= 80 ? 'text-emerald-600' : 'text-amber-600'}`}
+                                            >
+                                                Audit: {validation.healthScore}%
+                                            </span>
+                                        </>
+                                    )}
                                 </p>
                             </div>
                             <div className="flex items-center gap-1">
@@ -333,43 +366,70 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
                     </div>
                 </div>
             </header>
+            
             <main ref={mainContainerRef} className="flex-grow overflow-auto px-2 py-3 sm:p-8 flex justify-center app-bottom-safe" style={{ scrollbarWidth: 'thin', scrollbarColor: '#94a3b8 #e2e8f0' }}>
                 <div className="my-1 sm:my-8 origin-top transition-transform duration-200 ease-in-out flex-shrink-0 rounded-[14px] border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-1 shadow-[var(--shadow-card)] sm:rounded-[24px] sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none" style={{ transform: `scale(${zoom})`, width: settings.paperSize === 'A4' ? '210mm' : settings.paperSize === 'F4' ? '215mm' : '216mm' }}>
                     <iframe ref={iframeRef} onLoad={syncIframeHeight} sandbox="allow-modals allow-same-origin allow-scripts" srcDoc={showAnswerKey ? answerKeyHtml : examHtml} title="Pratinjau Ujian" className="w-full rounded-[12px] sm:rounded-none shadow-lg sm:shadow-2xl" style={{ height: iframeHeight }} />
                 </div>
             </main>
 
+            {/* Mobile Actions Bottom Sheet */}
             {isActionsMenuOpen && (
                 <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/45 p-0 md:hidden" onClick={() => setActionsMenuOpen(false)}>
                     <div ref={mobileActionsMenuRef} className="w-full rounded-t-[28px] bg-[var(--bg-secondary)] border-t border-[var(--border-primary)] shadow-2xl animate-scale-in md:mt-16 md:w-[22rem] md:rounded-[22px] md:border md:border-[var(--border-primary)]" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-center py-3 md:hidden">
                             <div className="h-1.5 w-14 rounded-full bg-[var(--border-secondary)]"></div>
                         </div>
-                        <div className="px-5 pb-2 pt-1 md:pt-4">
+                        <div className="px-5 pb-2 pt-1 md:pt-4 border-b border-[var(--border-primary)]">
                             <h4 className="text-base font-bold text-[var(--text-primary)] line-clamp-1">{exam.title}</h4>
-                            <p className="text-sm text-[var(--text-secondary)]">Pilih aksi export atau cetak</p>
+                            <p className="text-sm text-[var(--text-secondary)]">Pilih aksi ekspor atau cetak</p>
                         </div>
-                        <div className="px-3 pb-5 space-y-1">
+                        <div className="px-3 py-3 space-y-1">
                             <button onClick={(e) => { e.stopPropagation(); handleExportWord(); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--bg-hover)] text-blue-600 dark:text-blue-400">
-                                {isExportingWord ? <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></div> : <WordIcon />}
+                                {isExportingWord ? <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></div> : <WordIcon className="text-lg" />}
                                 <span className="font-medium">Ekspor Word (.docx)</span>
                             </button>
+                            <button onClick={(e) => { e.stopPropagation(); setIsLmsModalOpen(true); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--bg-hover)] text-orange-600 dark:text-orange-400">
+                                <ServerIcon className="text-lg" />
+                                <span className="font-medium">Ekspor LMS & Bank Soal (Moodle, Canvas, CSV)</span>
+                            </button>
                             <button onClick={(e) => { e.stopPropagation(); handleExportHtml(); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--bg-hover)] text-[var(--text-primary)]">
-                                <DownloadIcon />
+                                <DownloadIcon className="text-lg" />
                                 <span className="font-medium">Ekspor HTML</span>
                             </button>
-                            <button onClick={(e) => { e.stopPropagation(); handleExportMoodle(); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--bg-hover)] text-orange-600 dark:text-orange-400">
-                                <ServerIcon />
-                                <span className="font-medium">Ekspor Moodle XML</span>
-                            </button>
                             <button onClick={() => { handlePrint(); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--bg-hover)] text-[var(--text-primary)]">
-                                <PrinterIcon />
+                                <PrinterIcon className="text-lg" />
                                 <span className="font-medium">Cetak / Simpan PDF</span>
+                            </button>
+                            <div className="border-t border-[var(--border-primary)] my-1"></div>
+                            <button onClick={() => { setIsValidationModalOpen(true); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--bg-hover)] text-teal-600 dark:text-teal-400">
+                                <ShieldCheckIcon className="text-lg" />
+                                <span className="font-medium">Audit & Validasi Naskah</span>
                             </button>
                         </div>
                     </div>
                 </div>
             )}
+
+            {/* LMS Export Hub Modal */}
+            <LmsExportModal
+                isOpen={isLmsModalOpen}
+                onClose={() => setIsLmsModalOpen(false)}
+                exam={exam}
+                settings={settings}
+                onValidateFirst={() => {
+                    setIsLmsModalOpen(false);
+                    setIsValidationModalOpen(true);
+                }}
+                showDonationPrompt={showDonationPrompt}
+            />
+
+            {/* Validation & Health Check Modal */}
+            <ExamValidationModal
+                isOpen={isValidationModalOpen}
+                onClose={() => setIsValidationModalOpen(false)}
+                exam={exam}
+            />
         </div>
     );
 };

@@ -228,6 +228,13 @@ export const rtlTranslations: typeof ltrTranslations = {
   },
 };
 
-export const getTranslations = (direction: 'ltr' | 'rtl') => {
+export const translations = {
+  ltr: ltrTranslations,
+  rtl: rtlTranslations,
+};
+
+export type Translations = typeof ltrTranslations;
+
+export const getTranslations = (direction?: 'ltr' | 'rtl') => {
     return direction === 'rtl' ? rtlTranslations : ltrTranslations;
 };

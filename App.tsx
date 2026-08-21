@@ -237,7 +237,7 @@ function AppContent() {
     }
     
     if (nav.view === 'editor' && nav.examId) {
-        return <EditorView examId={nav.examId} onBack={handleBackToArchive} />;
+        return <EditorView examId={nav.examId} onBack={handleBackToArchive} onPreview={() => handlePreviewExam(nav.examId!)} />;
     }
     
     if (nav.view === 'preview' && nav.examId) {
@@ -258,14 +258,66 @@ function AppContent() {
     );
 }
 
+interface ErrorBoundaryProps {
+    children: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+    hasError: boolean;
+    error: Error | null;
+}
+
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+    constructor(props: ErrorBoundaryProps) {
+        super(props);
+        this.state = { hasError: false, error: null };
+    }
+
+    static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+        return { hasError: true, error };
+    }
+
+    componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+        console.error("Uncaught application error:", error, errorInfo);
+    }
+
+    handleReload = () => {
+        window.location.reload();
+    };
+
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div className="flex h-screen w-screen items-center justify-center bg-[var(--bg-primary)] p-4 text-[var(--text-primary)]">
+                    <div className="max-w-md rounded-2xl border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-6 text-center shadow-lg">
+                        <div className="text-xl font-bold text-red-500">Terjadi Kesalahan</div>
+                        <p className="mt-2 text-sm text-[var(--text-secondary)]">
+                            {this.state.error?.message || "Aplikasi mengalami kendala saat memuat komponen."}
+                        </p>
+                        <button
+                            onClick={this.handleReload}
+                            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                        >
+                            Muat Ulang Aplikasi
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+        return this.props.children;
+    }
+}
+
 export default function App() {
     return (
-        <ThemeProvider>
-            <ModalProvider>
-                <ToastProvider>
-                    <AppContent />
-                </ToastProvider>
-            </ModalProvider>
-        </ThemeProvider>
+        <ErrorBoundary>
+            <ThemeProvider>
+                <ModalProvider>
+                    <ToastProvider>
+                        <AppContent />
+                    </ToastProvider>
+                </ModalProvider>
+            </ThemeProvider>
+        </ErrorBoundary>
     );
 }
