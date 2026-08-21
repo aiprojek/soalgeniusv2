@@ -1075,7 +1075,9 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
               itemIndex++;
             }
 
-            isSectionStart = false;
+            if (itemsAddedInThisChunk > 0) {
+              isSectionStart = false;
+            }
           }
         };
 
