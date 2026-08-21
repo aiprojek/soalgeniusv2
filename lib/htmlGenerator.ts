@@ -540,12 +540,15 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
              align-items: center;
              gap: 1.5rem;
              padding: 2rem 0;
+             min-height: 100vh;
+             box-sizing: border-box;
         }
         .exam-sheet {
             background-color: white;
             width: ${paperDimensions[paperSize].width};
             min-height: ${paperDimensions[paperSize].height};
             height: ${paperDimensions[paperSize].height};
+            max-height: ${paperDimensions[paperSize].height};
             padding: ${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm;
             transform-origin: top;
             transition: transform 0.2s ease-in-out;
@@ -554,10 +557,15 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
             overflow: hidden;
             display: flex;
             flex-direction: column;
+            box-sizing: border-box;
         }
         .exam-sheet-inner {
-            flex: 1;
+            flex: 1 1 auto;
             min-height: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
         }
 
         /* Print-specific Styles */
@@ -577,6 +585,7 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
                 width: ${paperDimensions[paperSize].width};
                 min-height: ${paperDimensions[paperSize].height};
                 height: ${paperDimensions[paperSize].height};
+                max-height: ${paperDimensions[paperSize].height};
                 transform: none !important;
                 page-break-after: always;
                 break-after: page;
@@ -607,12 +616,18 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
         /* Screen View Styles for Watermark */
         .watermark-footer {
             display: block;
-            margin-top: 2rem;
+            margin-top: auto;
             text-align: center;
             font-size: 8pt;
             color: #64748b;
             opacity: 1;
             font-style: italic;
+            border-top: 1px dashed #cbd5e1;
+            padding-top: 0.4rem;
+            padding-bottom: 0.1rem;
+            flex-shrink: 0;
+            box-sizing: border-box;
+        }
             border-top: 1px dashed #cbd5e1;
             padding-top: 0.5rem;
         }
@@ -905,9 +920,21 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
     const previewPaginationScript = `
     <script>
       function sgPageFits(sheet) {
+        if (!sheet) return true;
         const inner = sheet.querySelector('.exam-sheet-inner');
-        if (!inner) return true;
-        return inner.scrollHeight <= inner.clientHeight + 2;
+        
+        // 1. Check if sheet scrollHeight exceeds its clientHeight
+        // Note: 2px tolerance for subpixel rounding
+        if (sheet.scrollHeight > (sheet.clientHeight + 2)) {
+          return false;
+        }
+
+        // 2. Check if inner scrollHeight exceeds inner clientHeight
+        if (inner && inner.scrollHeight > (inner.clientHeight + 2)) {
+          return false;
+        }
+
+        return true;
       }
 
       function sgCreatePage(templateSheet) {
@@ -930,10 +957,16 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
 
       function paginatePreviewPages() {
         const container = document.querySelector('.exam-sheet-container');
-        const originalSheet = container && container.querySelector('.exam-sheet');
-        if (!container || !originalSheet) return;
+        if (!container) return;
 
-        const sourceSheet = originalSheet.cloneNode(true);
+        // Ensure we capture the pristine, unpaginated initial sheet once
+        if (!window.__sgPristineSourceSheet) {
+          const initialSheet = container.querySelector('.exam-sheet');
+          if (!initialSheet) return;
+          window.__sgPristineSourceSheet = initialSheet.cloneNode(true);
+        }
+
+        const sourceSheet = window.__sgPristineSourceSheet.cloneNode(true);
         const sourceInner = sourceSheet.querySelector('.exam-sheet-inner');
         if (!sourceInner) return;
 
@@ -946,11 +979,12 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
         const topLevelBlocks = Array.from(paginateRoot.children);
         const listSelector = examBody ? '.questions-list' : '.answers-list';
 
+        // Clear container before populating pages
         container.innerHTML = '';
 
         const pages = [];
         const createNewPage = () => {
-          const page = sgCreatePage(originalSheet);
+          const page = sgCreatePage(window.__sgPristineSourceSheet);
           const wrapper = paginateRoot.cloneNode(false);
           page.inner.appendChild(wrapper);
           page.wrapper = wrapper;
@@ -996,10 +1030,11 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
 
             currentPage.wrapper.appendChild(chunk);
 
-            // If the header itself doesn't fit on the current page, move to a new page
+            // If the section header itself doesn't fit on the current page, move to a new page
             if (!sgPageFits(currentPage.sheet)) {
               currentPage.wrapper.removeChild(chunk);
-              if (currentPage.wrapper.children.length > 0 || (currentPage === pages[0] && firstPageFixedNodes.length > 0)) {
+              const hasPriorContent = (currentPage.wrapper.children.length > 0) || (currentPage === pages[0] && firstPageFixedNodes.length > 0);
+              if (hasPriorContent) {
                 currentPage = createNewPage();
                 currentPage.wrapper.appendChild(chunk);
               } else {
@@ -1045,20 +1080,22 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
         };
 
         topLevelBlocks.forEach(block => {
-          const blockClone = block.cloneNode(true);
-          if (appendBlockToCurrent(blockClone)) return;
-
           if (block.classList.contains('exam-section')) {
             paginateSection(block);
-            return;
+          } else {
+            const blockClone = block.cloneNode(true);
+            if (!appendBlockToCurrent(blockClone)) {
+              currentPage = createNewPage();
+              currentPage.wrapper.appendChild(block.cloneNode(true));
+            }
           }
-
-          currentPage = createNewPage();
-          currentPage.wrapper.appendChild(block.cloneNode(true));
         });
 
         window.__soalGeniusPreviewPageCount = pages.length;
         document.documentElement.style.setProperty('--sg-preview-pages', String(pages.length));
+        try {
+          window.dispatchEvent(new CustomEvent('soalgenius-preview-paginated', { detail: { pageCount: pages.length } }));
+        } catch (e) {}
       }
 
       const debouncedPaginatePreview = sgDebounce(paginatePreviewPages, 120);

@@ -24,6 +24,7 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
     const [isExportingWord, setIsExportingWord] = useState(false);
     const [isLmsModalOpen, setIsLmsModalOpen] = useState(false);
     const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
+    const [pageCount, setPageCount] = useState<number>(1);
     const [iframeHeight, setIframeHeight] = useState<string | number>('297mm');
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const actionsMenuRef = useRef<HTMLDivElement>(null);
@@ -200,16 +201,20 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
             
             let sheetsTotalHeight = 0;
             if (sheets && sheets.length > 0) {
+                setPageCount(sheets.length);
                 sheets.forEach(sheet => {
                     sheetsTotalHeight += (sheet as HTMLElement).offsetHeight || 0;
                 });
                 // 1.5rem (24px) gap between sheets + 2rem (32px) top and bottom padding
                 sheetsTotalHeight += Math.max(0, sheets.length - 1) * 24 + 80;
+            } else {
+                setPageCount(1);
             }
 
             const nextHeight = Math.max(
                 sheetsTotalHeight,
                 (container as HTMLElement)?.scrollHeight || 0,
+                (container as HTMLElement)?.offsetHeight || 0,
                 html?.scrollHeight || 0,
                 body?.scrollHeight || 0,
                 html?.offsetHeight || 0,
@@ -280,6 +285,9 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
                         <div className="flex items-center rounded-xl bg-[var(--bg-muted)] p-0.5">
                             <button onClick={() => setShowAnswerKey(false)} className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${!showAnswerKey ? 'bg-[var(--bg-secondary)] text-blue-600 dark:text-slate-100 shadow-sm' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'}`}>Soal</button>
                             <button onClick={() => setShowAnswerKey(true)} className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${showAnswerKey ? 'bg-[var(--bg-secondary)] text-blue-600 dark:text-slate-100 shadow-sm' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'}`}>Kunci Jawaban</button>
+                        </div>
+                        <div className="hidden xl:inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-[var(--bg-muted)] text-[var(--text-secondary)]">
+                            {pageCount} Lembar
                         </div>
                     </div>
 
@@ -357,6 +365,8 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
                                 <h1 className="truncate text-[13px] sm:text-sm font-bold text-[var(--text-primary)]">{exam.title}</h1>
                                 <p className="text-[11px] sm:text-xs text-[var(--text-secondary)] flex items-center gap-1.5">
                                     <span>{showAnswerKey ? 'Kunci Jawaban' : 'Lembar Soal'}</span>
+                                    <span>•</span>
+                                    <span>{pageCount} Lembar</span>
                                     <span>•</span>
                                     <span>{(zoom * 100).toFixed(0)}%</span>
                                     {validation && (
