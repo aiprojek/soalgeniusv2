@@ -218,6 +218,7 @@ export const parseHtmlToRuns = (
     html: string,
     mainFont: string,
     fontSizeHalfPts = 24,
+    isRTL = false,
     maxImageWidth = 320,
     maxImageHeight = 240
 ): (TextRun | ImageRun)[] => {
@@ -226,6 +227,8 @@ export const parseHtmlToRuns = (
 
     const div = document.createElement('div');
     div.innerHTML = sanitizeRichHtml(html);
+
+    const fontProp = isRTL ? { name: mainFont, cs: mainFont, ascii: mainFont, hAnsi: mainFont } : mainFont;
 
     const processTextWithFormulas = (text: string, style: RunStyle) => {
         if (!text) return;
@@ -243,14 +246,18 @@ export const parseHtmlToRuns = (
                     runs.push(new TextRun({
                         text: textBefore,
                         bold: style.bold,
+                        boldComplexScript: style.bold,
                         italics: style.italics,
+                        italicsComplexScript: style.italics,
                         underline: style.underline ? {} : undefined,
                         strike: style.strike,
                         subScript: style.sub,
                         superScript: style.super,
                         color: style.color,
-                        font: mainFont,
+                        font: fontProp,
                         size: fontSizeHalfPts,
+                        sizeComplexScript: fontSizeHalfPts,
+                        rightToLeft: isRTL,
                     }));
                 }
             }
@@ -264,10 +271,14 @@ export const parseHtmlToRuns = (
             runs.push(new TextRun({
                 text: isDisplay ? `  ${readableFormula}  ` : readableFormula,
                 bold: style.bold,
+                boldComplexScript: style.bold,
                 italics: true,
+                italicsComplexScript: true,
                 font: 'Cambria Math',
                 size: fontSizeHalfPts,
+                sizeComplexScript: fontSizeHalfPts,
                 color: style.color || '1E40AF', // slight navy/math color tint
+                rightToLeft: false, // Math equations are LTR
             }));
 
             lastIndex = match.index + rawFormula.length;
@@ -280,14 +291,18 @@ export const parseHtmlToRuns = (
                 runs.push(new TextRun({
                     text: remaining,
                     bold: style.bold,
+                    boldComplexScript: style.bold,
                     italics: style.italics,
+                    italicsComplexScript: style.italics,
                     underline: style.underline ? {} : undefined,
                     strike: style.strike,
                     subScript: style.sub,
                     superScript: style.super,
                     color: style.color,
-                    font: mainFont,
+                    font: fontProp,
                     size: fontSizeHalfPts,
+                    sizeComplexScript: fontSizeHalfPts,
+                    rightToLeft: isRTL,
                 }));
             }
         }
@@ -330,7 +345,7 @@ export const parseHtmlToRuns = (
                     }
                 }
             } else if (tagName === 'BR') {
-                runs.push(new TextRun({ text: "", break: 1 }));
+                runs.push(new TextRun({ text: "", break: 1, rightToLeft: isRTL }));
             } else {
                 const newStyle: RunStyle = { ...style };
                 if (['B', 'STRONG'].includes(tagName)) newStyle.bold = true;
@@ -346,7 +361,7 @@ export const parseHtmlToRuns = (
                 if (parsedColor) newStyle.color = parsedColor;
 
                 if (['P', 'DIV', 'LI', 'TR'].includes(tagName) && runs.length > 0) {
-                    runs.push(new TextRun({ text: "", break: 1 }));
+                    runs.push(new TextRun({ text: "", break: 1, rightToLeft: isRTL }));
                 }
 
                 el.childNodes.forEach(child => traverse(child, newStyle));
@@ -365,6 +380,38 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
     const lineSpacingTwips = Math.round((settings.lineSpacing || 1.15) * 240);
     const T = translations[isRTL ? 'rtl' : 'ltr'];
     const isTwoColumnExam = (exam.layoutColumns || 1) === 2 && mode === 'exam';
+
+    const fontProp = isRTL ? { name: mainFont, cs: mainFont, ascii: mainFont, hAnsi: mainFont } : mainFont;
+
+    const createRun = (options: {
+        text: string;
+        bold?: boolean;
+        italics?: boolean;
+        underline?: boolean;
+        strike?: boolean;
+        subScript?: boolean;
+        superScript?: boolean;
+        color?: string;
+        font?: any;
+        size?: number;
+        break?: number;
+    }): TextRun => new TextRun({
+        text: options.text,
+        bold: options.bold,
+        boldComplexScript: options.bold,
+        italics: options.italics,
+        italicsComplexScript: options.italics,
+        underline: options.underline ? {} : undefined,
+        strike: options.strike,
+        subScript: options.subScript,
+        superScript: options.superScript,
+        color: options.color,
+        font: options.font || fontProp,
+        size: options.size || fontSizeHalfPts,
+        sizeComplexScript: options.size || fontSizeHalfPts,
+        rightToLeft: isRTL,
+        break: options.break,
+    });
 
     // Page margins in twips (1mm = 56.7 twips)
     const pageMargins = {
@@ -387,13 +434,13 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
         children: [
             new Paragraph({
                 alignment: AlignmentType.CENTER,
+                bidirectional: isRTL,
                 children: [
-                    new TextRun({
+                    createRun({
                         text: "Dibuat dengan SoalGenius by AI Projek | aiprojek01.my.id",
                         color: "64748B", // Slate-500 solid 100%
                         italics: true,
                         size: 16, // 8pt
-                        font: mainFont,
                     }),
                 ],
             }),
@@ -409,11 +456,10 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
             alignment: AlignmentType.CENTER,
             bidirectional: isRTL,
             children: [
-                new TextRun({
+                createRun({
                     text: T.answerKeyTitle,
                     bold: true,
                     size: fontSizeHalfPts + 6,
-                    font: mainFont,
                     color: "1E3A8A",
                 }),
             ],
@@ -424,11 +470,10 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
             alignment: AlignmentType.CENTER,
             bidirectional: isRTL,
             children: [
-                new TextRun({
+                createRun({
                     text: exam.title,
                     bold: true,
                     size: fontSizeHalfPts + 2,
-                    font: mainFont,
                 }),
             ],
             spacing: { after: 120 },
@@ -439,11 +484,10 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
             alignment: AlignmentType.CENTER,
             bidirectional: isRTL,
             children: [
-                new TextRun({
+                createRun({
                     text: metaText,
                     italics: true,
                     size: fontSizeHalfPts - 2,
-                    font: mainFont,
                     color: "475569",
                 }),
             ],
@@ -456,7 +500,7 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
                 new TableRow({
                     children: [
                         new TableCell({
-                            children: [new Paragraph({})],
+                            children: [new Paragraph({ bidirectional: isRTL, alignment: isRTL ? AlignmentType.RIGHT : AlignmentType.LEFT })],
                             borders: {
                                 top: { style: BorderStyle.NONE, size: 0, color: "auto" },
                                 bottom: { style: BorderStyle.SINGLE, size: 8, color: "1E3A8A" },
@@ -470,8 +514,9 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
             ],
             width: { size: 100, type: WidthType.PERCENTAGE },
             borders: INVISIBLE_BORDER,
+            visuallyRightToLeft: isRTL,
         }));
-        answerKeyChildren.push(new Paragraph({ text: "", spacing: { after: 200 } }));
+        answerKeyChildren.push(new Paragraph({ text: "", spacing: { after: 200 }, bidirectional: isRTL, alignment: isRTL ? AlignmentType.RIGHT : AlignmentType.LEFT }));
 
         // 2. Sections & Question Answers
         for (const section of exam.sections) {
@@ -488,11 +533,10 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
                 alignment: isRTL ? AlignmentType.RIGHT : AlignmentType.LEFT,
                 bidirectional: isRTL,
                 children: [
-                    new TextRun({
+                    createRun({
                         text: sectionInstruction,
                         bold: true,
                         size: fontSizeHalfPts,
-                        font: mainFont,
                         color: "1E3A8A",
                     }),
                 ],
@@ -511,13 +555,13 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
                         if (choice) {
                             const choiceIndex = (q.choices || []).indexOf(choice);
                             const choiceLetter = isRTL ? toArabicLetter(choiceIndex) : String.fromCharCode(65 + choiceIndex);
-                            const choiceTextRuns = parseHtmlToRuns(choice.text, mainFont, fontSizeHalfPts);
+                            const choiceTextRuns = parseHtmlToRuns(choice.text, mainFont, fontSizeHalfPts, isRTL);
                             answerRuns = [
-                                new TextRun({ text: `${choiceLetter}. `, bold: true, font: mainFont, size: fontSizeHalfPts, color: "15803D" }),
+                                createRun({ text: `${choiceLetter}. `, bold: true, size: fontSizeHalfPts, color: "15803D" }),
                                 ...choiceTextRuns
                             ];
                         } else {
-                            answerRuns = [new TextRun({ text: T.noAnswer, italics: true, font: mainFont, size: fontSizeHalfPts, color: "94A3B8" })];
+                            answerRuns = [createRun({ text: T.noAnswer, italics: true, size: fontSizeHalfPts, color: "94A3B8" })];
                         }
                         break;
                     }
@@ -529,16 +573,16 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
                                 const idx = (q.choices || []).indexOf(c);
                                 return isRTL ? toArabicLetter(idx) : String.fromCharCode(65 + idx);
                             }).join(', ');
-                            answerRuns = [new TextRun({ text: letters, bold: true, font: mainFont, size: fontSizeHalfPts, color: "15803D" })];
+                            answerRuns = [createRun({ text: letters, bold: true, size: fontSizeHalfPts, color: "15803D" })];
                         } else {
-                            answerRuns = [new TextRun({ text: T.noAnswer, italics: true, font: mainFont, size: fontSizeHalfPts, color: "94A3B8" })];
+                            answerRuns = [createRun({ text: T.noAnswer, italics: true, size: fontSizeHalfPts, color: "94A3B8" })];
                         }
                         break;
                     }
                     case QuestionType.TRUE_FALSE: {
                         const isTrue = q.answerKey === 'true';
                         const text = isTrue ? T.trueAnswer : T.falseAnswer;
-                        answerRuns = [new TextRun({ text: text, bold: true, font: mainFont, size: fontSizeHalfPts, color: "15803D" })];
+                        answerRuns = [createRun({ text: text, bold: true, size: fontSizeHalfPts, color: "15803D" })];
                         break;
                     }
                     case QuestionType.MATCHING: {
@@ -554,18 +598,18 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
                                 }
                                 return null;
                             }).filter(Boolean).join('   |   ');
-                            answerRuns = [new TextRun({ text: pairsText || T.noAnswer, bold: true, font: mainFont, size: fontSizeHalfPts, color: "15803D" })];
+                            answerRuns = [createRun({ text: pairsText || T.noAnswer, bold: true, size: fontSizeHalfPts, color: "15803D" })];
                         } else {
-                            answerRuns = [new TextRun({ text: T.noAnswer, italics: true, font: mainFont, size: fontSizeHalfPts, color: "94A3B8" })];
+                            answerRuns = [createRun({ text: T.noAnswer, italics: true, size: fontSizeHalfPts, color: "94A3B8" })];
                         }
                         break;
                     }
                     case QuestionType.SHORT_ANSWER:
                     case QuestionType.ESSAY: {
                         if (q.answerKey && typeof q.answerKey === 'string') {
-                            answerRuns = parseHtmlToRuns(q.answerKey, mainFont, fontSizeHalfPts);
+                            answerRuns = parseHtmlToRuns(q.answerKey, mainFont, fontSizeHalfPts, isRTL);
                         } else {
-                            answerRuns = [new TextRun({ text: T.noAnswer, italics: true, font: mainFont, size: fontSizeHalfPts, color: "94A3B8" })];
+                            answerRuns = [createRun({ text: T.noAnswer, italics: true, size: fontSizeHalfPts, color: "94A3B8" })];
                         }
                         break;
                     }
@@ -574,11 +618,11 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
                             const tableRows = q.tableData.rows.map(row => {
                                 const cells = row.cells.filter(cell => !cell.isMerged).map(cell => {
                                     const answer = (q.tableAnswerKey || {})[cell.id];
-                                    const contentRuns = parseHtmlToRuns(cell.content, mainFont, fontSizeHalfPts - 2);
+                                    const contentRuns = parseHtmlToRuns(cell.content, mainFont, fontSizeHalfPts - 2, isRTL);
                                     const cellChildren = [new Paragraph({ children: contentRuns, alignment: isRTL ? AlignmentType.RIGHT : AlignmentType.LEFT, bidirectional: isRTL })];
                                     if (answer) {
                                         cellChildren.push(new Paragraph({
-                                            children: [new TextRun({ text: `[${answer}]`, bold: true, color: "15803D", font: mainFont, size: fontSizeHalfPts - 2 })],
+                                            children: [createRun({ text: `[${answer}]`, bold: true, color: "15803D", size: fontSizeHalfPts - 2 })],
                                             alignment: isRTL ? AlignmentType.RIGHT : AlignmentType.LEFT,
                                             bidirectional: isRTL,
                                         }));
@@ -597,15 +641,16 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
                             answerKeyChildren.push(new Paragraph({
                                 alignment: isRTL ? AlignmentType.RIGHT : AlignmentType.LEFT,
                                 bidirectional: isRTL,
-                                children: [new TextRun({ text: `${qNumberDisplay} `, bold: true, font: mainFont, size: fontSizeHalfPts })],
+                                children: [createRun({ text: `${qNumberDisplay} `, bold: true, size: fontSizeHalfPts })],
                                 spacing: { before: 100, after: 60 }
                             }));
                             answerKeyChildren.push(new Table({
                                 rows: tableRows,
                                 width: { size: 100, type: WidthType.PERCENTAGE },
                                 borders: SOLID_BORDER,
+                                visuallyRightToLeft: isRTL,
                             }));
-                            answerKeyChildren.push(new Paragraph({ text: "", spacing: { after: 120 } }));
+                            answerKeyChildren.push(new Paragraph({ text: "", spacing: { after: 120 }, bidirectional: isRTL, alignment: isRTL ? AlignmentType.RIGHT : AlignmentType.LEFT }));
                             continue;
                         }
                         break;
@@ -631,18 +676,18 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
                             return `${rLabel}: ${ansText}`;
                         }).join('   |   ');
 
-                        answerRuns = [new TextRun({ text: rowAnswers || T.noAnswer, bold: true, font: mainFont, size: fontSizeHalfPts, color: "15803D" })];
+                        answerRuns = [createRun({ text: rowAnswers || T.noAnswer, bold: true, size: fontSizeHalfPts, color: "15803D" })];
                         break;
                     }
                     default:
-                        answerRuns = [new TextRun({ text: T.noAnswer, italics: true, font: mainFont, size: fontSizeHalfPts })];
+                        answerRuns = [createRun({ text: T.noAnswer, italics: true, size: fontSizeHalfPts })];
                 }
 
                 answerKeyChildren.push(new Paragraph({
                     alignment: isRTL ? AlignmentType.RIGHT : AlignmentType.LEFT,
                     bidirectional: isRTL,
                     children: [
-                        new TextRun({ text: `${qNumberDisplay}  `, bold: true, font: mainFont, size: fontSizeHalfPts }),
+                        createRun({ text: `${qNumberDisplay}  `, bold: true, size: fontSizeHalfPts }),
                         ...answerRuns
                     ],
                     spacing: { after: 100 },
@@ -655,8 +700,18 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
             styles: {
                 default: {
                     document: {
-                        run: { font: mainFont, size: fontSizeHalfPts, color: "000000" },
-                        paragraph: { lineSpacing: lineSpacingTwips },
+                        run: {
+                            font: fontProp,
+                            size: fontSizeHalfPts,
+                            sizeComplexScript: fontSizeHalfPts,
+                            color: "000000",
+                            rightToLeft: isRTL,
+                        },
+                        paragraph: {
+                            lineSpacing: lineSpacingTwips,
+                            bidirectional: isRTL,
+                            alignment: isRTL ? AlignmentType.RIGHT : AlignmentType.LEFT,
+                        },
                     },
                 },
             },
@@ -686,8 +741,13 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
     const headerCells: TableCell[] = [];
 
     const headerTextParas = (settings.examHeaderLines || []).map(line => new Paragraph({
-        children: [new TextRun({ text: line.text, bold: true, size: line.sizeMode === 'fixed' ? (line.sizePt ? line.sizePt * 2 : fontSizeHalfPts) : fontSizeHalfPts + 4, font: mainFont })],
+        children: [createRun({
+            text: line.text,
+            bold: true,
+            size: line.sizeMode === 'fixed' ? (line.sizePt ? line.sizePt * 2 : fontSizeHalfPts) : fontSizeHalfPts + 4,
+        })],
         alignment: AlignmentType.CENTER,
+        bidirectional: isRTL,
         spacing: { after: 40, line: 240 },
     }));
 
@@ -699,7 +759,8 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
                 transformation: { width: 65, height: 65 },
                 type: getImageType(base64),
             })],
-            alignment: AlignmentType.CENTER
+            alignment: AlignmentType.CENTER,
+            bidirectional: isRTL,
         })],
         borders: HEADER_CELL_BORDER,
         verticalAlign: VerticalAlign.CENTER
@@ -742,15 +803,16 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
     const headerTable = new Table({
         rows: [new TableRow({ children: headerCells })],
         width: { size: 100, type: WidthType.PERCENTAGE },
-        borders: INVISIBLE_BORDER
+        borders: INVISIBLE_BORDER,
+        visuallyRightToLeft: isRTL,
     });
 
     headerChildren.push(headerTable);
-    headerChildren.push(new Paragraph({ text: "", spacing: { after: 160 } }));
+    headerChildren.push(new Paragraph({ text: "", spacing: { after: 160 }, bidirectional: isRTL, alignment: isRTL ? AlignmentType.RIGHT : AlignmentType.LEFT }));
 
     // Judul Ujian
     headerChildren.push(new Paragraph({
-        children: [new TextRun({ text: exam.title.toUpperCase(), bold: true, size: fontSizeHalfPts + 2, font: mainFont })],
+        children: [createRun({ text: exam.title.toUpperCase(), bold: true, size: fontSizeHalfPts + 2 })],
         alignment: AlignmentType.CENTER,
         bidirectional: isRTL,
         spacing: { after: 180 }
@@ -771,63 +833,35 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
     const metaTableRows = metaData.map((data, index) => {
         const scoreChildren = index === 0 ? [
             new Paragraph({
-                children: [new TextRun({ text: T.score, bold: true, size: fontSizeHalfPts, font: mainFont })],
+                children: [createRun({ text: T.score, bold: true, size: fontSizeHalfPts })],
                 alignment: AlignmentType.CENTER,
                 bidirectional: isRTL,
                 spacing: { after: 80 }
             }),
-            new Paragraph({ text: "", spacing: { after: 200 } })
+            new Paragraph({ text: "", spacing: { after: 200 }, bidirectional: isRTL, alignment: isRTL ? AlignmentType.RIGHT : AlignmentType.LEFT })
         ] : [];
 
-        if (isRTL) {
-            // RTL Meta layout: Score Box on Left (20%), Value (55%), Label (25%) on Right
-            return new TableRow({
-                children: [
-                    new TableCell({
-                        width: { size: 20, type: WidthType.PERCENTAGE },
-                        children: scoreChildren,
-                        verticalMerge: index === 0 ? VerticalMergeType.RESTART : VerticalMergeType.CONTINUE,
-                        borders: SOLID_BORDER,
-                        verticalAlign: VerticalAlign.TOP
-                    }),
-                    new TableCell({
-                        width: { size: 55, type: WidthType.PERCENTAGE },
-                        children: [new Paragraph({
-                            children: [new TextRun({ text: data.value, size: fontSizeHalfPts, font: mainFont })],
-                            spacing: { after: 50 },
-                            alignment: AlignmentType.RIGHT,
-                            bidirectional: true,
-                        })],
-                        borders: INVISIBLE_BORDER,
-                        verticalAlign: VerticalAlign.CENTER
-                    }),
-                    new TableCell({
-                        width: { size: 25, type: WidthType.PERCENTAGE },
-                        children: [new Paragraph({
-                            children: [new TextRun({ text: data.label, bold: true, size: fontSizeHalfPts, font: mainFont })],
-                            spacing: { after: 50 },
-                            alignment: AlignmentType.RIGHT,
-                            bidirectional: true,
-                        })],
-                        borders: INVISIBLE_BORDER,
-                        verticalAlign: VerticalAlign.CENTER
-                    }),
-                ]
-            });
-        }
-
-        // LTR Meta layout: Label (25%), Value (55%), Score Box (20%)
         return new TableRow({
             children: [
                 new TableCell({
                     width: { size: 25, type: WidthType.PERCENTAGE },
-                    children: [new Paragraph({ children: [new TextRun({ text: data.label, bold: true, size: fontSizeHalfPts, font: mainFont })], spacing: { after: 50 } })],
+                    children: [new Paragraph({
+                        children: [createRun({ text: data.label, bold: true, size: fontSizeHalfPts })],
+                        spacing: { after: 50 },
+                        alignment: isRTL ? AlignmentType.RIGHT : AlignmentType.LEFT,
+                        bidirectional: isRTL,
+                    })],
                     borders: INVISIBLE_BORDER,
                     verticalAlign: VerticalAlign.CENTER
                 }),
                 new TableCell({
                     width: { size: 55, type: WidthType.PERCENTAGE },
-                    children: [new Paragraph({ children: [new TextRun({ text: data.value, size: fontSizeHalfPts, font: mainFont })], spacing: { after: 50 } })],
+                    children: [new Paragraph({
+                        children: [createRun({ text: data.value, size: fontSizeHalfPts })],
+                        spacing: { after: 50 },
+                        alignment: isRTL ? AlignmentType.RIGHT : AlignmentType.LEFT,
+                        bidirectional: isRTL,
+                    })],
                     borders: INVISIBLE_BORDER,
                     verticalAlign: VerticalAlign.CENTER
                 }),
@@ -845,16 +879,17 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
     const metaTable = new Table({
         rows: metaTableRows,
         width: { size: 100, type: WidthType.PERCENTAGE },
-        borders: INVISIBLE_BORDER
+        borders: INVISIBLE_BORDER,
+        visuallyRightToLeft: isRTL,
     });
 
     headerChildren.push(metaTable);
-    headerChildren.push(new Paragraph({ text: "", spacing: { after: 200 } }));
+    headerChildren.push(new Paragraph({ text: "", spacing: { after: 200 }, bidirectional: isRTL, alignment: isRTL ? AlignmentType.RIGHT : AlignmentType.LEFT }));
 
     // --- 3. PETUNJUK PENGERJAAN UMUM ---
     if (exam.instructions && exam.instructions.trim()) {
         headerChildren.push(new Paragraph({
-            children: [new TextRun({ text: T.instructions, bold: true, font: mainFont, size: fontSizeHalfPts, italics: true })],
+            children: [createRun({ text: T.instructions, bold: true, size: fontSizeHalfPts, italics: true })],
             alignment: isRTL ? AlignmentType.RIGHT : AlignmentType.LEFT,
             bidirectional: isRTL,
             spacing: { after: 60 }
@@ -864,14 +899,14 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
         instructionLines.forEach(line => {
             if (line.trim()) {
                 headerChildren.push(new Paragraph({
-                    children: [new TextRun({ text: line.trim(), font: mainFont, size: fontSizeHalfPts })],
+                    children: [createRun({ text: line.trim(), size: fontSizeHalfPts })],
                     alignment: isRTL ? AlignmentType.RIGHT : AlignmentType.LEFT,
                     bidirectional: isRTL,
                     spacing: { after: 40 }
                 }));
             }
         });
-        headerChildren.push(new Paragraph({ text: "", spacing: { after: 160 } }));
+        headerChildren.push(new Paragraph({ text: "", spacing: { after: 160 }, bidirectional: isRTL, alignment: isRTL ? AlignmentType.RIGHT : AlignmentType.LEFT }));
     }
 
     // --- 4. ISI SOAL (SECTIONS & QUESTIONS) ---
@@ -888,7 +923,7 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
         }
 
         questionsChildren.push(new Paragraph({
-            children: [new TextRun({ text: instructionText, bold: true, font: mainFont, size: fontSizeHalfPts })],
+            children: [createRun({ text: instructionText, bold: true, size: fontSizeHalfPts })],
             alignment: isRTL ? AlignmentType.RIGHT : AlignmentType.LEFT,
             bidirectional: isRTL,
             spacing: { before: 200, after: 120 }
@@ -897,7 +932,7 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
         // Section-level stimulus (wacana)
         if (section.stimulus && section.stimulus.trim()) {
             questionsChildren.push(new Paragraph({
-                children: parseHtmlToRuns(section.stimulus, mainFont, fontSizeHalfPts),
+                children: parseHtmlToRuns(section.stimulus, mainFont, fontSizeHalfPts, isRTL),
                 alignment: isRTL ? AlignmentType.RIGHT : AlignmentType.JUSTIFIED,
                 bidirectional: isRTL,
                 spacing: { after: 160 }
@@ -909,7 +944,7 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
             // If it is a stimulus type, render distinct block without numbering
             if (question.type === QuestionType.STIMULUS) {
                 questionsChildren.push(new Paragraph({
-                    children: parseHtmlToRuns(question.text, mainFont, fontSizeHalfPts),
+                    children: parseHtmlToRuns(question.text, mainFont, fontSizeHalfPts, isRTL),
                     alignment: isRTL ? AlignmentType.RIGHT : AlignmentType.JUSTIFIED,
                     bidirectional: isRTL,
                     spacing: { before: 100, after: 160 }
@@ -918,12 +953,12 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
             }
 
             const qNumberDisplay = isRTL ? `${toArabicNumeral(question.number)}.` : `${question.number}.`;
-            const qRuns = parseHtmlToRuns(question.text, mainFont, fontSizeHalfPts);
+            const qRuns = parseHtmlToRuns(question.text, mainFont, fontSizeHalfPts, isRTL);
 
             // Question Prompt Line
             questionsChildren.push(new Paragraph({
                 children: [
-                    new TextRun({ text: `${qNumberDisplay} `, bold: true, font: mainFont, size: fontSizeHalfPts }),
+                    createRun({ text: `${qNumberDisplay} `, bold: true, size: fontSizeHalfPts }),
                     ...qRuns
                 ],
                 alignment: isRTL ? AlignmentType.RIGHT : AlignmentType.LEFT,
@@ -943,11 +978,11 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
                             const c2 = question.choices[i + 1];
 
                             const c1Letter = isRTL ? toArabicLetter(i) : String.fromCharCode(65 + i);
-                            const c1Runs = parseHtmlToRuns(c1.text, mainFont, fontSizeHalfPts);
+                            const c1Runs = parseHtmlToRuns(c1.text, mainFont, fontSizeHalfPts, isRTL);
                             const c1Cell = new TableCell({
                                 width: { size: 50, type: WidthType.PERCENTAGE },
                                 children: [new Paragraph({
-                                    children: [new TextRun({ text: `${c1Letter}. `, bold: true, font: mainFont, size: fontSizeHalfPts }), ...c1Runs],
+                                    children: [createRun({ text: `${c1Letter}. `, bold: true, size: fontSizeHalfPts }), ...c1Runs],
                                     alignment: isRTL ? AlignmentType.RIGHT : AlignmentType.LEFT,
                                     bidirectional: isRTL,
                                     spacing: { after: 40 }
@@ -958,11 +993,11 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
                             let c2Cell: TableCell;
                             if (c2) {
                                 const c2Letter = isRTL ? toArabicLetter(i + 1) : String.fromCharCode(65 + i + 1);
-                                const c2Runs = parseHtmlToRuns(c2.text, mainFont, fontSizeHalfPts);
+                                const c2Runs = parseHtmlToRuns(c2.text, mainFont, fontSizeHalfPts, isRTL);
                                 c2Cell = new TableCell({
                                     width: { size: 50, type: WidthType.PERCENTAGE },
                                     children: [new Paragraph({
-                                        children: [new TextRun({ text: `${c2Letter}. `, bold: true, font: mainFont, size: fontSizeHalfPts }), ...c2Runs],
+                                        children: [createRun({ text: `${c2Letter}. `, bold: true, size: fontSizeHalfPts }), ...c2Runs],
                                         alignment: isRTL ? AlignmentType.RIGHT : AlignmentType.LEFT,
                                         bidirectional: isRTL,
                                         spacing: { after: 40 }
@@ -972,13 +1007,13 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
                             } else {
                                 c2Cell = new TableCell({
                                     width: { size: 50, type: WidthType.PERCENTAGE },
-                                    children: [new Paragraph({})],
+                                    children: [new Paragraph({ bidirectional: isRTL, alignment: isRTL ? AlignmentType.RIGHT : AlignmentType.LEFT })],
                                     borders: INVISIBLE_BORDER,
                                 });
                             }
 
                             choiceRows.push(new TableRow({
-                                children: isRTL ? [c2Cell, c1Cell] : [c1Cell, c2Cell]
+                                children: [c1Cell, c2Cell]
                             }));
                         }
 
@@ -986,20 +1021,21 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
                             rows: choiceRows,
                             width: { size: 100, type: WidthType.PERCENTAGE },
                             borders: INVISIBLE_BORDER,
+                            visuallyRightToLeft: isRTL,
                         }));
                     } else {
                         // Standard 1-column list of choices
                         question.choices.forEach((choice, idx) => {
                             const letter = isRTL ? toArabicLetter(idx) : String.fromCharCode(65 + idx);
-                            const choiceRuns = parseHtmlToRuns(choice.text, mainFont, fontSizeHalfPts);
+                            const choiceRuns = parseHtmlToRuns(choice.text, mainFont, fontSizeHalfPts, isRTL);
                             questionsChildren.push(new Paragraph({
                                 children: [
-                                    new TextRun({ text: `${letter}.  `, bold: true, font: mainFont, size: fontSizeHalfPts }),
+                                    createRun({ text: `${letter}.  `, bold: true, size: fontSizeHalfPts }),
                                     ...choiceRuns
                                 ],
                                 alignment: isRTL ? AlignmentType.RIGHT : AlignmentType.LEFT,
                                 bidirectional: isRTL,
-                                indent: isRTL ? undefined : { left: 720, hanging: 320 },
+                                indent: isRTL ? { right: 360 } : { left: 720, hanging: 320 },
                                 spacing: { after: 50 }
                             }));
                         });
@@ -1012,15 +1048,15 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
                 if (question.choices && question.choices.length > 0) {
                     question.choices.forEach((choice, idx) => {
                         const letter = isRTL ? toArabicLetter(idx) : String.fromCharCode(65 + idx);
-                        const choiceRuns = parseHtmlToRuns(choice.text, mainFont, fontSizeHalfPts);
+                        const choiceRuns = parseHtmlToRuns(choice.text, mainFont, fontSizeHalfPts, isRTL);
                         questionsChildren.push(new Paragraph({
                             children: [
-                                new TextRun({ text: `[   ] ${letter}.  `, bold: true, font: mainFont, size: fontSizeHalfPts }),
+                                createRun({ text: `[   ] ${letter}.  `, bold: true, size: fontSizeHalfPts }),
                                 ...choiceRuns
                             ],
                             alignment: isRTL ? AlignmentType.RIGHT : AlignmentType.LEFT,
                             bidirectional: isRTL,
-                            indent: isRTL ? undefined : { left: 720, hanging: 450 },
+                            indent: isRTL ? { right: 360 } : { left: 720, hanging: 450 },
                             spacing: { after: 50 }
                         }));
                     });
@@ -1029,15 +1065,13 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
 
             // --- Benar / Salah (True / False) ---
             else if (question.type === QuestionType.TRUE_FALSE) {
-                const tfText = isRTL
-                    ? `[   ] ${T.trueText}        [   ] ${T.falseText}`
-                    : `[   ] ${T.trueText}        [   ] ${T.falseText}`;
+                const tfText = `[   ] ${T.trueText}        [   ] ${T.falseText}`;
 
                 questionsChildren.push(new Paragraph({
-                    children: [new TextRun({ text: tfText, bold: true, font: mainFont, size: fontSizeHalfPts })],
+                    children: [createRun({ text: tfText, bold: true, size: fontSizeHalfPts })],
                     alignment: isRTL ? AlignmentType.RIGHT : AlignmentType.LEFT,
                     bidirectional: isRTL,
-                    indent: isRTL ? undefined : { left: 720 },
+                    indent: isRTL ? { right: 360 } : { left: 720 },
                     spacing: { after: 120 }
                 }));
             }
@@ -1049,7 +1083,7 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
                     height: { value: 340, rule: HeightRule.ATLEAST }, // ~0.6cm
                     children: [
                         new TableCell({
-                            children: [new Paragraph({})],
+                            children: [new Paragraph({ bidirectional: isRTL, alignment: isRTL ? AlignmentType.RIGHT : AlignmentType.LEFT })],
                             borders: {
                                 top: { style: BorderStyle.NONE, size: 0, color: "auto" },
                                 bottom: { style: BorderStyle.DOTTED, size: 4, color: "64748B" },
@@ -1064,9 +1098,10 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
                 questionsChildren.push(new Table({
                     rows: answerRows,
                     width: { size: 100, type: WidthType.PERCENTAGE },
-                    borders: INVISIBLE_BORDER
+                    borders: INVISIBLE_BORDER,
+                    visuallyRightToLeft: isRTL,
                 }));
-                questionsChildren.push(new Paragraph({ text: "", spacing: { after: 60 } }));
+                questionsChildren.push(new Paragraph({ text: "", spacing: { after: 60 }, bidirectional: isRTL, alignment: isRTL ? AlignmentType.RIGHT : AlignmentType.LEFT }));
             }
 
             // --- Menjodohkan (Matching Table) ---
@@ -1079,7 +1114,7 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
                 // Header row
                 const headerColA = new TableCell({
                     children: [new Paragraph({
-                        children: [new TextRun({ text: T.colA, bold: true, font: mainFont, size: fontSizeHalfPts })],
+                        children: [createRun({ text: T.colA, bold: true, size: fontSizeHalfPts })],
                         alignment: AlignmentType.CENTER,
                         bidirectional: isRTL,
                     })],
@@ -1092,7 +1127,7 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
 
                 const headerColB = new TableCell({
                     children: [new Paragraph({
-                        children: [new TextRun({ text: T.colB, bold: true, font: mainFont, size: fontSizeHalfPts })],
+                        children: [createRun({ text: T.colB, bold: true, size: fontSizeHalfPts })],
                         alignment: AlignmentType.CENTER,
                         bidirectional: isRTL,
                     })],
@@ -1104,7 +1139,7 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
                 });
 
                 tableRows.push(new TableRow({
-                    children: isRTL ? [headerColB, headerColA] : [headerColA, headerColB]
+                    children: [headerColA, headerColB]
                 }));
 
                 // Data rows
@@ -1113,11 +1148,11 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
                     const answer = answers[i];
 
                     const promptNum = isRTL ? toArabicNumeral(i + 1) : String(i + 1);
-                    const promptRuns = prompt ? parseHtmlToRuns(prompt.text, mainFont, fontSizeHalfPts - 2) : [];
+                    const promptRuns = prompt ? parseHtmlToRuns(prompt.text, mainFont, fontSizeHalfPts - 2, isRTL) : [];
                     const promptCell = new TableCell({
                         children: [
                             new Paragraph({
-                                children: prompt ? [new TextRun({ text: `${promptNum}. `, bold: true, font: mainFont, size: fontSizeHalfPts - 2 }), ...promptRuns] : [],
+                                children: prompt ? [createRun({ text: `${promptNum}. `, bold: true, size: fontSizeHalfPts - 2 }), ...promptRuns] : [],
                                 alignment: isRTL ? AlignmentType.RIGHT : AlignmentType.LEFT,
                                 bidirectional: isRTL,
                                 spacing: { after: 60 }
@@ -1130,11 +1165,11 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
                     });
 
                     const answerLet = isRTL ? toArabicLetter(i) : String.fromCharCode(65 + i);
-                    const answerRuns = answer ? parseHtmlToRuns(answer.text, mainFont, fontSizeHalfPts - 2) : [];
+                    const answerRuns = answer ? parseHtmlToRuns(answer.text, mainFont, fontSizeHalfPts - 2, isRTL) : [];
                     const answerCell = new TableCell({
                         children: [
                             new Paragraph({
-                                children: answer ? [new TextRun({ text: `${answerLet}. `, bold: true, font: mainFont, size: fontSizeHalfPts - 2 }), ...answerRuns] : [],
+                                children: answer ? [createRun({ text: `${answerLet}. `, bold: true, size: fontSizeHalfPts - 2 }), ...answerRuns] : [],
                                 alignment: isRTL ? AlignmentType.RIGHT : AlignmentType.LEFT,
                                 bidirectional: isRTL,
                                 spacing: { after: 60 }
@@ -1147,7 +1182,7 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
                     });
 
                     tableRows.push(new TableRow({
-                        children: isRTL ? [answerCell, promptCell] : [promptCell, answerCell]
+                        children: [promptCell, answerCell]
                     }));
                 }
 
@@ -1155,8 +1190,9 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
                     rows: tableRows,
                     width: { size: 100, type: WidthType.PERCENTAGE },
                     borders: SOLID_BORDER,
+                    visuallyRightToLeft: isRTL,
                 }));
-                questionsChildren.push(new Paragraph({ text: "", spacing: { after: 100 } }));
+                questionsChildren.push(new Paragraph({ text: "", spacing: { after: 100 }, bidirectional: isRTL, alignment: isRTL ? AlignmentType.RIGHT : AlignmentType.LEFT }));
             }
 
             // --- Table-based Questions (TABLE, TABLE_MULTIPLE_CHOICE, TABLE_COMPLEX_MULTIPLE_CHOICE) ---
@@ -1164,7 +1200,7 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
                 if (question.tableData && question.tableData.rows.length > 0) {
                     const tableRows = question.tableData.rows.map(row => {
                         const cells = row.cells.filter(cell => !cell.isMerged).map(cell => {
-                            const cellRuns = parseHtmlToRuns(cell.content, mainFont, fontSizeHalfPts - 2);
+                            const cellRuns = parseHtmlToRuns(cell.content, mainFont, fontSizeHalfPts - 2, isRTL);
                             return new TableCell({
                                 children: [new Paragraph({
                                     children: cellRuns,
@@ -1178,15 +1214,16 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
                                 verticalAlign: cell.verticalAlign === 'top' ? VerticalAlign.TOP : cell.verticalAlign === 'bottom' ? VerticalAlign.BOTTOM : VerticalAlign.CENTER
                             });
                         });
-                        return new TableRow({ children: isRTL ? [...cells].reverse() : cells });
+                        return new TableRow({ children: cells });
                     });
 
                     questionsChildren.push(new Table({
                         rows: tableRows,
                         width: { size: 100, type: WidthType.PERCENTAGE },
                         borders: SOLID_BORDER,
+                        visuallyRightToLeft: isRTL,
                     }));
-                    questionsChildren.push(new Paragraph({ text: "", spacing: { after: 100 } }));
+                    questionsChildren.push(new Paragraph({ text: "", spacing: { after: 100 }, bidirectional: isRTL, alignment: isRTL ? AlignmentType.RIGHT : AlignmentType.LEFT }));
                 }
 
                 // Append choices for TABLE_MULTIPLE_CHOICE or TABLE_COMPLEX_MULTIPLE_CHOICE
@@ -1195,16 +1232,16 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
                         const isComplex = question.type === QuestionType.TABLE_COMPLEX_MULTIPLE_CHOICE;
                         question.choices.forEach((choice, idx) => {
                             const letter = isRTL ? toArabicLetter(idx) : String.fromCharCode(65 + idx);
-                            const choiceRuns = parseHtmlToRuns(choice.text, mainFont, fontSizeHalfPts);
+                            const choiceRuns = parseHtmlToRuns(choice.text, mainFont, fontSizeHalfPts, isRTL);
                             const prefix = isComplex ? `[   ] ${letter}.  ` : `${letter}.  `;
                             questionsChildren.push(new Paragraph({
                                 children: [
-                                    new TextRun({ text: prefix, bold: true, font: mainFont, size: fontSizeHalfPts }),
+                                    createRun({ text: prefix, bold: true, size: fontSizeHalfPts }),
                                     ...choiceRuns
                                 ],
                                 alignment: isRTL ? AlignmentType.RIGHT : AlignmentType.LEFT,
                                 bidirectional: isRTL,
-                                indent: isRTL ? undefined : { left: 720, hanging: 360 },
+                                indent: isRTL ? { right: 360 } : { left: 720, hanging: 360 },
                                 spacing: { after: 50 }
                             }));
                         });
@@ -1213,7 +1250,7 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
             }
 
             // Spacer antar soal
-            questionsChildren.push(new Paragraph({ text: "", spacing: { after: 120 } }));
+            questionsChildren.push(new Paragraph({ text: "", spacing: { after: 120 }, bidirectional: isRTL, alignment: isRTL ? AlignmentType.RIGHT : AlignmentType.LEFT }));
         }
     }
 
@@ -1271,8 +1308,18 @@ export const generateDocx = async (exam: Exam, settings: Settings, mode: 'exam' 
         styles: {
             default: {
                 document: {
-                    run: { font: mainFont, size: fontSizeHalfPts, color: "000000" },
-                    paragraph: { lineSpacing: lineSpacingTwips },
+                    run: {
+                        font: fontProp,
+                        size: fontSizeHalfPts,
+                        sizeComplexScript: fontSizeHalfPts,
+                        color: "000000",
+                        rightToLeft: isRTL,
+                    },
+                    paragraph: {
+                        lineSpacing: lineSpacingTwips,
+                        bidirectional: isRTL,
+                        alignment: isRTL ? AlignmentType.RIGHT : AlignmentType.LEFT,
+                    },
                 },
             },
         },
