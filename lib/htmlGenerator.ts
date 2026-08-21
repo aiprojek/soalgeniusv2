@@ -845,7 +845,6 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
         if (!headerParagraphs.length) return;
 
         headerParagraphs.forEach(p => {
-          // Reset inline styles to correctly recalculate on resize
           p.style.fontSize = ''; 
           p.style.lineHeight = '';
           p.style.whiteSpace = 'nowrap';
@@ -859,10 +858,7 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
           if (textWidth > containerWidth) {
             const currentFontSize = parseFloat(window.getComputedStyle(p).fontSize);
             const ratio = containerWidth / textWidth;
-            // Use a safety margin (0.98) to avoid text touching the edges
             const newSize = currentFontSize * ratio * 0.98;
-            
-            // 10pt in pixels (10 * 96 / 72 = 13.333px)
             const minSizePx = 13.333;
             
             if (newSize >= minSizePx) {
@@ -872,7 +868,6 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
               p.style.fontSize = minSizePx + 'px';
               p.style.whiteSpace = 'normal';
             }
-            // Adjust line height to prevent overlap if font size changes significantly
             p.style.lineHeight = '1.2';
           } else {
             p.style.whiteSpace = 'nowrap';
@@ -881,18 +876,6 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
       }
       
       const debouncedAdjust = sgDebounce(adjustHeaderTextSize, 150);
-
-      // Run when the document is ready and fonts have been loaded
-      document.addEventListener('DOMContentLoaded', () => {
-        if (document.fonts) {
-          document.fonts.ready.then(adjustHeaderTextSize);
-        } else {
-          // Fallback for older browsers
-          setTimeout(adjustHeaderTextSize, 200);
-        }
-      });
-
-      // Rerun on window resize
       window.addEventListener('resize', debouncedAdjust);
     </script>
     `;
@@ -904,19 +887,18 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
 
       function renderSoalGeniusMath() {
         if (typeof renderMathInElement !== 'function') return;
-
-        renderMathInElement(document.body, {
-          delimiters: [
-            { left: '$$', right: '$$', display: true },
-            { left: '$', right: '$', display: false }
-          ],
-          throwOnError: false
-        });
+        try {
+          renderMathInElement(document.body, {
+            delimiters: [
+              { left: '$$', right: '$$', display: true },
+              { left: '$', right: '$', display: false }
+            ],
+            throwOnError: false
+          });
+        } catch (err) {
+          console.warn("KaTeX render error:", err);
+        }
       }
-
-      document.addEventListener('DOMContentLoaded', () => {
-        renderSoalGeniusMath();
-      });
     </script>
     `;
     
@@ -946,34 +928,6 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
         return nodes.map(node => node.cloneNode(true));
       }
 
-      function sgReservedNodeCountForPage(page, pages, firstPageFixedCount) {
-        return page === pages[0] ? firstPageFixedCount : 0;
-      }
-
-      function sgBuildSectionFragment(section, listSelector, items, startIndex) {
-        const fragment = section.cloneNode(false);
-        const originalList = section.querySelector(listSelector);
-        if (startIndex === 0) {
-          const staticChildren = Array.from(section.children).filter(child => child !== originalList);
-          staticChildren.forEach(child => fragment.appendChild(child.cloneNode(true)));
-        }
-
-        if (!originalList) {
-          return { section: section.cloneNode(true), nextIndex: startIndex + 1 };
-        }
-
-        const listClone = originalList.cloneNode(false);
-        fragment.appendChild(listClone);
-
-        let index = startIndex;
-        while (index < items.length) {
-          listClone.appendChild(items[index].cloneNode(true));
-          index += 1;
-        }
-
-        return { section: fragment, nextIndex: index };
-      }
-
       function paginatePreviewPages() {
         const container = document.querySelector('.exam-sheet-container');
         const originalSheet = container && container.querySelector('.exam-sheet');
@@ -995,7 +949,7 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
         container.innerHTML = '';
 
         const pages = [];
-        const createEmptyPage = () => {
+        const createNewPage = () => {
           const page = sgCreatePage(originalSheet);
           const wrapper = paginateRoot.cloneNode(false);
           page.inner.appendChild(wrapper);
@@ -1005,42 +959,35 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
           return page;
         };
 
-        let currentPage = createEmptyPage();
+        let currentPage = createNewPage();
         sgCloneChildren(firstPageFixedNodes).forEach(node => {
           currentPage.inner.insertBefore(node, currentPage.wrapper);
         });
 
-        const appendBlock = (block) => {
+        const appendBlockToCurrent = (block) => {
           currentPage.wrapper.appendChild(block);
           if (sgPageFits(currentPage.sheet)) return true;
           currentPage.wrapper.removeChild(block);
           return false;
         };
 
-        const splitSectionAcrossPages = (section) => {
+        const paginateSection = (section) => {
           const list = section.querySelector(listSelector);
           const items = list ? Array.from(list.children) : [];
           if (!list || items.length === 0) {
-            currentPage.wrapper.appendChild(section.cloneNode(true));
+            if (!appendBlockToCurrent(section.cloneNode(true))) {
+              currentPage = createNewPage();
+              currentPage.wrapper.appendChild(section.cloneNode(true));
+            }
             return;
           }
 
-          let index = 0;
-          while (index < items.length) {
-            const attempt = sgBuildSectionFragment(section, listSelector, items, index);
-            const fragment = attempt.section;
+          let itemIndex = 0;
+          let isSectionStart = true;
 
-            currentPage.wrapper.appendChild(fragment);
-            if (sgPageFits(currentPage.sheet)) {
-              index = attempt.nextIndex;
-              continue;
-            }
-
-            currentPage.wrapper.removeChild(fragment);
-
-            let localIndex = index;
+          while (itemIndex < items.length) {
             const chunk = section.cloneNode(false);
-            if (index === 0) {
+            if (isSectionStart) {
               const staticChildren = Array.from(section.children).filter(child => child !== list);
               staticChildren.forEach(child => chunk.appendChild(child.cloneNode(true)));
             }
@@ -1048,53 +995,65 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
             chunk.appendChild(listClone);
 
             currentPage.wrapper.appendChild(chunk);
+
+            // If the header itself doesn't fit on the current page, move to a new page
             if (!sgPageFits(currentPage.sheet)) {
               currentPage.wrapper.removeChild(chunk);
-              currentPage = createEmptyPage();
-              continue;
+              if (currentPage.wrapper.children.length > 0 || (currentPage === pages[0] && firstPageFixedNodes.length > 0)) {
+                currentPage = createNewPage();
+                currentPage.wrapper.appendChild(chunk);
+              } else {
+                currentPage.wrapper.appendChild(chunk);
+              }
             }
 
-            while (localIndex < items.length) {
-              const itemClone = items[localIndex].cloneNode(true);
+            let itemsAddedInThisChunk = 0;
+            while (itemIndex < items.length) {
+              const itemClone = items[itemIndex].cloneNode(true);
               listClone.appendChild(itemClone);
+
               if (!sgPageFits(currentPage.sheet)) {
                 listClone.removeChild(itemClone);
-                if (listClone.children.length === 0) {
-                  const pageHasContentBeforeChunk = currentPage.wrapper.children.length > 1; // chunk itself is 1
-
-                  currentPage.wrapper.removeChild(chunk);
-
-                  if (pageHasContentBeforeChunk) {
-                    currentPage = createEmptyPage();
-                    continue;
+                if (itemsAddedInThisChunk === 0) {
+                  const hasPriorContent = (currentPage.wrapper.children.length > 1) || (currentPage === pages[0] && firstPageFixedNodes.length > 0);
+                  if (hasPriorContent) {
+                    currentPage.wrapper.removeChild(chunk);
+                    currentPage = createNewPage();
+                    break;
+                  } else {
+                    // Force item on empty page to make progress
+                    listClone.appendChild(itemClone);
+                    itemIndex++;
+                    itemsAddedInThisChunk++;
+                    if (itemIndex < items.length) {
+                      currentPage = createNewPage();
+                    }
+                    break;
                   }
-
-                  currentPage.wrapper.appendChild(chunk);
-                  listClone.appendChild(itemClone);
-                  localIndex += 1;
+                } else {
+                  currentPage = createNewPage();
+                  break;
                 }
-                break;
               }
-              localIndex += 1;
+
+              itemsAddedInThisChunk++;
+              itemIndex++;
             }
 
-            index = localIndex;
-            if (index < items.length) {
-              currentPage = createEmptyPage();
-            }
+            isSectionStart = false;
           }
         };
 
         topLevelBlocks.forEach(block => {
           const blockClone = block.cloneNode(true);
-          if (appendBlock(blockClone)) return;
+          if (appendBlockToCurrent(blockClone)) return;
 
           if (block.classList.contains('exam-section')) {
-            splitSectionAcrossPages(block);
+            paginateSection(block);
             return;
           }
 
-          currentPage = createEmptyPage();
+          currentPage = createNewPage();
           currentPage.wrapper.appendChild(block.cloneNode(true));
         });
 
@@ -1103,22 +1062,6 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
       }
 
       const debouncedPaginatePreview = sgDebounce(paginatePreviewPages, 120);
-
-      document.addEventListener('DOMContentLoaded', () => {
-        const run = () => {
-          paginatePreviewPages();
-          requestAnimationFrame(() => {
-            window.dispatchEvent(new Event('soalgenius-preview-paginated'));
-          });
-        };
-
-        if (document.fonts) {
-          document.fonts.ready.then(() => setTimeout(run, 50));
-        } else {
-          setTimeout(run, 150);
-        }
-      });
-
       window.addEventListener('resize', debouncedPaginatePreview);
     </script>
 `;
@@ -1129,49 +1072,58 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
         const sheets = document.querySelectorAll('.exam-sheet');
         if (!sheets.length) return;
         
-        // This should only run on smaller screens, not on desktop where user might want 1:1 view.
-        // Let's use a threshold, e.g., 850px, which is roughly the width of the paper.
-        const isSmallScreen = window.innerWidth < 850;
+        const isStandalone = ${includePrintButton ? 'true' : 'false'};
+        if (!isStandalone) return;
 
+        const viewportWidth = document.documentElement.clientWidth;
         sheets.forEach(sheet => {
-          if (isSmallScreen) {
-              const viewportWidth = document.documentElement.clientWidth;
-              const sheetWidth = sheet.offsetWidth;
-              const targetWidth = viewportWidth - 16;
+          const sheetWidth = sheet.offsetWidth;
+          const targetWidth = viewportWidth - 16;
 
-              if (sheetWidth > targetWidth) {
-                  const scale = targetWidth / sheetWidth;
-                  sheet.style.transform = \`scale(\${scale})\`;
-                  
-                  const scaledHeight = sheet.offsetHeight * scale;
-                  const marginOffset = sheet.offsetHeight - scaledHeight;
-                  sheet.style.marginBottom = \`-\${marginOffset}px\`;
-              } else {
-                   sheet.style.transform = 'scale(1)';
-                   sheet.style.marginBottom = '0';
-              }
+          if (viewportWidth < 850 && sheetWidth > targetWidth) {
+              const scale = targetWidth / sheetWidth;
+              sheet.style.transform = \`scale(\${scale})\`;
+              const scaledHeight = sheet.offsetHeight * scale;
+              const marginOffset = sheet.offsetHeight - scaledHeight;
+              sheet.style.marginBottom = \`-\${marginOffset}px\`;
           } else {
-              sheet.style.transform = 'scale(1)';
-              sheet.style.marginBottom = '0';
+               sheet.style.transform = 'scale(1)';
+               sheet.style.marginBottom = '0';
           }
         });
       }
 
       const debouncedAutoZoom = sgDebounce(autoZoomOnMobile, 150);
-
-      document.addEventListener('DOMContentLoaded', () => {
-        // Run after fonts are loaded to get correct dimensions.
-        if (document.fonts) {
-            document.fonts.ready.then(() => setTimeout(autoZoomOnMobile, 100));
-        } else {
-            setTimeout(autoZoomOnMobile, 250); // Fallback
-        }
-      });
-
       window.addEventListener('resize', debouncedAutoZoom);
-      window.addEventListener('soalgenius-preview-paginated', debouncedAutoZoom);
     </script>
 `;
+
+    const masterInitScript = `
+    <script>
+      function runMasterInit() {
+        try { adjustHeaderTextSize(); } catch (e) { console.error(e); }
+        try { renderSoalGeniusMath(); } catch (e) { console.error(e); }
+        try { paginatePreviewPages(); } catch (e) { console.error(e); }
+        try { autoZoomOnMobile(); } catch (e) { console.error(e); }
+        try {
+          window.dispatchEvent(new Event('soalgenius-preview-paginated'));
+        } catch (e) {}
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', runMasterInit);
+      } else {
+        runMasterInit();
+      }
+
+      window.addEventListener('load', runMasterInit);
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(function() {
+          setTimeout(runMasterInit, 30);
+        });
+      }
+    </script>
+    `;
 
     return `
 <!DOCTYPE html>
@@ -1199,6 +1151,7 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
     ${mathRenderScript}
     ${previewPaginationScript}
     ${autoZoomScript}
+    ${masterInitScript}
 </body>
 </html>`;
 };

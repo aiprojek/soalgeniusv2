@@ -195,7 +195,21 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
         const resize = () => {
             const html = doc.documentElement;
             const body = doc.body;
+            const container = doc.querySelector('.exam-sheet-container');
+            const sheets = doc.querySelectorAll('.exam-sheet');
+            
+            let sheetsTotalHeight = 0;
+            if (sheets && sheets.length > 0) {
+                sheets.forEach(sheet => {
+                    sheetsTotalHeight += (sheet as HTMLElement).offsetHeight || 0;
+                });
+                // 1.5rem (24px) gap between sheets + 2rem (32px) top and bottom padding
+                sheetsTotalHeight += Math.max(0, sheets.length - 1) * 24 + 80;
+            }
+
             const nextHeight = Math.max(
+                sheetsTotalHeight,
+                (container as HTMLElement)?.scrollHeight || 0,
                 html?.scrollHeight || 0,
                 body?.scrollHeight || 0,
                 html?.offsetHeight || 0,
@@ -207,12 +221,17 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
         };
 
         resize();
-        window.setTimeout(resize, 80);
-        window.setTimeout(resize, 220);
-        window.setTimeout(resize, 500);
+        window.setTimeout(resize, 60);
+        window.setTimeout(resize, 180);
+        window.setTimeout(resize, 400);
+        window.setTimeout(resize, 1000);
         frameWindow?.addEventListener('soalgenius-preview-paginated', resize);
         frameWindow?.addEventListener('resize', resize);
     }, []);
+
+    useEffect(() => {
+        syncIframeHeight();
+    }, [showAnswerKey, examHtml, answerKeyHtml, syncIframeHeight]);
 
     if (isLoading || !exam || !settings) {
         return <div className="fixed inset-0 app-shell-page flex items-center justify-center text-[var(--text-secondary)]">Memuat Pratinjau...</div>;
