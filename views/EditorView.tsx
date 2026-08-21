@@ -4,7 +4,6 @@ import { QuestionType } from '../types';
 import { useModal } from '../contexts/ModalContext';
 import { useToast } from '../contexts/ToastContext';
 import { getExam, saveExam, getSettings, saveQuestionToBank } from '../lib/storage';
-import { isDropboxConnected, hasUnsavedLocalChanges, uploadToDropbox } from '../lib/dropbox';
 import { sanitizeRichHtml, toRoman } from '../lib/utils';
 import { generateHtmlContent } from '../lib/htmlGenerator';
 import QuestionBankView from './QuestionBankView';
@@ -21,8 +20,7 @@ import ExamValidationModal from '../components/ExamValidationModal';
 import { 
     PlusIcon, TrashIcon, PrinterIcon, EditIcon, ChevronLeftIcon, SaveIcon, CheckIcon, BookmarkPlusIcon, CloseIcon,
     ZoomInIcon, ZoomOutIcon, BankIcon, UndoIcon, RedoIcon, CardTextIcon, LayoutSplitIcon, StarsIcon,
-    CloudUploadIcon, CloudCheckIcon, CardTextIcon as StimulusIcon, CloudDownloadIcon, LightningIcon,
-    ShieldCheckIcon, EyeIcon
+    CardTextIcon as StimulusIcon, LightningIcon, ShieldCheckIcon, EyeIcon
 } from '../components/Icons';
 
 // --- Start Custom Quill Icons ---

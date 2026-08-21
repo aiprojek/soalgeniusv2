@@ -391,12 +391,21 @@ export const createBackupData = async (): Promise<string> => {
     const settings = await getSettings();
     const bankQuestions = await db.bankQuestions.toArray();
     const folders = await getFolders();
+    const geminiApiKey = localStorage.getItem('soalgenius_gemini_api_key') || '';
 
     const backupData = {
         source: 'SoalGeniusDB',
-        version: 3, // Increment version for schema update
+        version: 3, // Current schema version
         createdAt: new Date().toISOString(),
-        data: { exams, settings, bankQuestions, folders }
+        data: { 
+            exams, 
+            settings, 
+            bankQuestions, 
+            folders,
+            preferences: {
+                geminiApiKey
+            }
+        }
     };
 
     return JSON.stringify(backupData, null, 2);
@@ -404,27 +413,136 @@ export const createBackupData = async (): Promise<string> => {
 
 export const restoreBackupData = async (jsonString: string): Promise<boolean> => {
     try {
-        const backupData = JSON.parse(jsonString);
-
-        if ((backupData.source !== 'SoalGeniusDB' && backupData.source !== 'SoalGenius') || !backupData.data) {
-            throw new Error('Format backup tidak valid');
+        let backupData: any;
+        try {
+            backupData = JSON.parse(jsonString);
+        } catch {
+            throw new Error('Format file tidak valid. Pastikan file berupa JSON.');
         }
 
-        await (db as any).transaction('rw', db.exams, db.settings, db.bankQuestions, db.folders, async () => {
-            // Hapus semua data yang ada
-            await db.exams.clear();
-            await db.settings.clear();
-            await db.bankQuestions.clear();
-            await db.folders.clear();
+        // Support both full backup wrapper and direct raw objects
+        const rawPayload = backupData.data || backupData;
+        if (!rawPayload || (typeof rawPayload !== 'object')) {
+            throw new Error('Struktur data backup tidak valid.');
+        }
 
-            // Masukkan data baru
-            if (backupData.data.exams) await db.exams.bulkPut(backupData.data.exams);
-            if (backupData.data.settings) await db.settings.put({ ...backupData.data.settings, key: SETTINGS_DB_KEY });
-            if (backupData.data.bankQuestions) await db.bankQuestions.bulkPut(backupData.data.bankQuestions);
-            if (backupData.data.folders) await db.folders.bulkPut(backupData.data.folders);
+        // 1. Normalize Exams
+        let rawExams: any[] = [];
+        if (Array.isArray(rawPayload.exams)) {
+            rawExams = rawPayload.exams;
+        } else if (rawPayload.id && (rawPayload.sections || rawPayload.questions || rawPayload.title)) {
+            // Single exam object passed directly
+            rawExams = [rawPayload];
+        }
+
+        const normalizedExams: Exam[] = rawExams.map((exam: any, idx: number) => {
+            let sections = exam.sections;
+            if (!sections && exam.questions) {
+                // Convert legacy root questions to sections
+                sections = [
+                    {
+                        id: crypto.randomUUID(),
+                        instructions: 'I. Jawablah pertanyaan-pertanyaan berikut dengan benar!',
+                        questions: Array.isArray(exam.questions) ? exam.questions.map((q: any, qIdx: number) => ({
+                            ...q,
+                            number: q.number || String(qIdx + 1)
+                        })) : []
+                    }
+                ];
+            } else if (!Array.isArray(sections)) {
+                sections = [];
+            }
+
+            return {
+                id: exam.id || crypto.randomUUID(),
+                title: exam.title || `Ujian ${idx + 1}`,
+                subject: exam.subject || '',
+                date: exam.date || new Date().toISOString().split('T')[0],
+                class: exam.class || '',
+                instructions: exam.instructions || '',
+                waktuUjian: exam.waktuUjian || '',
+                keterangan: exam.keterangan || '',
+                status: exam.status === 'published' ? 'published' : 'draft',
+                direction: exam.direction === 'rtl' ? 'rtl' : 'ltr',
+                layoutColumns: exam.layoutColumns === 2 ? 2 : 1,
+                folderId: typeof exam.folderId === 'string' ? exam.folderId : undefined,
+                tags: Array.isArray(exam.tags) ? exam.tags : [],
+                sections
+            };
         });
+
+        // 2. Normalize Settings
+        let settingsToSave: Settings | null = null;
+        if (rawPayload.settings) {
+            const rawSettings = rawPayload.settings;
+            let logos = rawSettings.logos;
+            if (!logos && rawSettings.logo !== undefined) {
+                logos = [rawSettings.logo, null];
+            }
+            if (!Array.isArray(logos)) {
+                logos = [null, null];
+            }
+            settingsToSave = {
+                ...defaultSettings,
+                ...rawSettings,
+                logos: [logos[0] || null, logos[1] || null]
+            };
+        }
+
+        // 3. Normalize Folders
+        const rawFolders = Array.isArray(rawPayload.folders) ? rawPayload.folders : [];
+        const normalizedFolders: Folder[] = rawFolders.map((f: any, idx: number) => ({
+            id: f.id || crypto.randomUUID(),
+            name: f.name || `Folder ${idx + 1}`,
+            createdAt: f.createdAt || new Date().toISOString()
+        }));
+
+        // 4. Normalize Question Bank
+        const rawBank = Array.isArray(rawPayload.bankQuestions) ? rawPayload.bankQuestions : [];
+        const normalizedBank: BankQuestion[] = rawBank.map((bq: any) => ({
+            bankId: bq.bankId || crypto.randomUUID(),
+            question: bq.question || {
+                id: crypto.randomUUID(),
+                number: '1',
+                type: QuestionType.MULTIPLE_CHOICE,
+                text: ''
+            },
+            subject: bq.subject || '',
+            class: bq.class || '',
+            createdAt: bq.createdAt || new Date().toISOString()
+        }));
+
+        // Execute atomic database write
+        await (db as any).transaction('rw', db.exams, db.settings, db.bankQuestions, db.folders, async () => {
+            // Hapus dan masukkan data yang diperbarui
+            await db.exams.clear();
+            if (normalizedExams.length > 0) {
+                await db.exams.bulkPut(normalizedExams);
+            }
+
+            if (settingsToSave) {
+                await db.settings.clear();
+                await db.settings.put({ ...settingsToSave, key: SETTINGS_DB_KEY });
+            }
+
+            await db.bankQuestions.clear();
+            if (normalizedBank.length > 0) {
+                await db.bankQuestions.bulkPut(normalizedBank);
+            }
+
+            await db.folders.clear();
+            if (normalizedFolders.length > 0) {
+                await db.folders.bulkPut(normalizedFolders);
+            }
+        });
+
+        // 5. Restore Preferences if available
+        const prefs = rawPayload.preferences || backupData.preferences;
+        if (prefs?.geminiApiKey && typeof prefs.geminiApiKey === 'string') {
+            localStorage.setItem('soalgenius_gemini_api_key', prefs.geminiApiKey);
+        }
         
-        touchLocalChange(); // Restore counts as a local change (technically state change)
+        touchLocalChange(); // Update change tracking for cloud sync
         return true;
     } catch (error) {
         console.error("Gagal restore:", error);
