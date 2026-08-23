@@ -127,7 +127,7 @@ function AppContent() {
     }, []);
     
     useEffect(() => {
-        if ('serviceWorker' in navigator && window.self === window.top) {
+        if ('serviceWorker' in navigator) {
             const registerServiceWorker = async () => {
                 try {
                     const registration = await navigator.serviceWorker.register('./sw.js');
@@ -147,7 +147,7 @@ function AppContent() {
                         }
                     };
                 } catch (error) {
-                    console.error('Error during service worker registration:', error);
+                    console.warn('Service worker registration note (e.g. running in sandbox or iframe):', error);
                 }
             };
 

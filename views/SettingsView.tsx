@@ -90,20 +90,19 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
     }, []);
 
     const checkOfflineStatus = useCallback(async () => {
-        if (!('serviceWorker' in navigator) || !('caches' in window)) {
+        if (!('caches' in window)) {
             setOfflineStatus('not_ready');
             return;
         }
 
         try {
-            const [controller, cachedIndex] = await Promise.all([
-                navigator.serviceWorker.ready.then(() => Boolean(navigator.serviceWorker.controller)).catch(() => false),
-                caches.match('./index.html').then(response => Boolean(response)).catch(() => false),
-            ]);
+            const cache = await caches.open('soalgenius-cache-v10-offline-first');
+            const keys = await cache.keys();
+            const hasIndex = (await cache.match('./index.html')) || (await cache.match('./')) || (await cache.match(window.location.origin + '/')) || (await cache.match(window.location.href));
 
-            setOfflineStatus(controller && cachedIndex ? 'ready' : 'not_ready');
+            setOfflineStatus(hasIndex || keys.length >= 2 ? 'ready' : 'not_ready');
         } catch (error) {
-            console.error('Failed to check offline status:', error);
+            console.warn('Failed to check offline status:', error);
             setOfflineStatus('not_ready');
         }
     }, []);
@@ -239,73 +238,90 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
     const handleRefreshOfflineCache = useCallback(async () => {
         setIsRefreshingOfflineCache(true);
         try {
-            // 1. Minta SW untuk update ke versi terbaru
-            if ('serviceWorker' in navigator) {
-                const registration = await navigator.serviceWorker.ready;
-                await registration.update();
-            }
-
-            // 2. Kumpulkan semua URL yang perlu di-cache
+            // 1. Kumpulkan semua URL yang perlu di-cache
             const urlsToCache = new Set<string>([
                 // App shell
                 './',
                 './index.html',
                 './manifest.json',
                 './icon.svg',
+                window.location.origin + '/',
+                window.location.href,
             ]);
 
             // Tambahkan semua JS & CSS lokal yang sudah di-load oleh Vite
             document.querySelectorAll('script[src], link[rel="stylesheet"]').forEach((el) => {
                 const src = el instanceof HTMLScriptElement ? el.src : (el as HTMLLinkElement).href;
-                if (src && src.startsWith(window.location.origin)) {
+                if (src && (src.startsWith('http://') || src.startsWith('https://'))) {
                     urlsToCache.add(src);
                 }
             });
 
-            // Tambahkan semua external CDN resources (Google Fonts CSS, Bootstrap Icons CSS)
+            // Tambahkan font & style references
             document.querySelectorAll('link[rel="stylesheet"]').forEach((el) => {
                 const href = (el as HTMLLinkElement).href;
-                // Sertakan Google Fonts dan CDN Bootstrap Icons
-                if (href && (href.includes('fonts.googleapis.com') || href.includes('fonts.gstatic.com') || href.includes('cdn.jsdelivr.net') || href.includes('unpkg.com'))) {
+                if (href && (href.startsWith('http://') || href.startsWith('https://'))) {
                     urlsToCache.add(href);
                 }
             });
 
             const allUrls = Array.from(urlsToCache);
 
-            // 3. Kirim daftar URL ke Service Worker untuk di-cache secara resmi via Cache API
-            //    SW akan menjawab dengan pesan CACHE_URLS_DONE
-            const swReady = 'serviceWorker' in navigator && navigator.serviceWorker.controller;
-            if (swReady) {
-                await new Promise<void>((resolve, reject) => {
-                    const timeout = setTimeout(() => reject(new Error('SW cache timeout')), 60000);
-
-                    const handler = (event: MessageEvent) => {
-                        if (event.data?.type === 'CACHE_URLS_DONE') {
-                            clearTimeout(timeout);
-                            navigator.serviceWorker.removeEventListener('message', handler);
-                            resolve();
+            // 2. Simpan langsung ke Cache Storage API secara andal & cepat
+            if ('caches' in window) {
+                const cache = await caches.open('soalgenius-cache-v10-offline-first');
+                
+                await Promise.allSettled(
+                    allUrls.map(async (url) => {
+                        try {
+                            const controller = new AbortController();
+                            const timeoutId = setTimeout(() => controller.abort(), 6000);
+                            
+                            let response: Response;
+                            try {
+                                response = await fetch(url, { 
+                                    cache: 'reload',
+                                    signal: controller.signal 
+                                });
+                            } catch {
+                                // Coba no-cors jika cross-origin membatasi normal fetch
+                                response = await fetch(url, { 
+                                    mode: 'no-cors',
+                                    signal: controller.signal 
+                                });
+                            }
+                            
+                            clearTimeout(timeoutId);
+                            if (response && (response.ok || response.type === 'opaque')) {
+                                await cache.put(url, response.clone());
+                            }
+                        } catch (err) {
+                            console.warn('Gagal menyimpan cache asset:', url, err);
                         }
-                    };
-                    navigator.serviceWorker.addEventListener('message', handler);
-                    navigator.serviceWorker.controller!.postMessage({
-                        type: 'CACHE_URLS',
-                        urls: allUrls,
-                    });
-                });
-            } else {
-                // Fallback: fetch biasa agar terdeteksi SW lewat stale-while-revalidate
-                await Promise.all(
-                    allUrls.map((url) =>
-                        fetch(url, { cache: 'reload' }).catch((err) =>
-                            console.warn('Failed to refresh offline asset:', url, err)
-                        )
-                    )
+                    })
                 );
             }
 
+            // 3. Daftarkan dan perbarui Service Worker (jika didukung) tanpa blocking
+            if ('serviceWorker' in navigator) {
+                try {
+                    const reg = await navigator.serviceWorker.register('./sw.js');
+                    if (reg.update) {
+                        reg.update().catch(() => {});
+                    }
+                    if (navigator.serviceWorker.controller) {
+                        navigator.serviceWorker.controller.postMessage({
+                            type: 'CACHE_URLS',
+                            urls: allUrls,
+                        });
+                    }
+                } catch (swErr) {
+                    console.warn('Service worker update warning:', swErr);
+                }
+            }
+
             await checkOfflineStatus();
-            addToast('Unduh library selesai! Aplikasi siap digunakan offline.', 'success');
+            addToast('Unduh library selesai! Seluruh komponen aplikasi telah tersimpan untuk penggunaan offline.', 'success');
         } catch (error) {
             console.error('Failed to refresh offline cache:', error);
             addToast('Gagal mengunduh library. Pastikan internet aktif dan coba lagi.', 'error');

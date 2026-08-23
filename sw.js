@@ -1,7 +1,7 @@
 // Nama cache — naikkan versi jika ada perubahan besar pada aset
 const CACHE_NAME = 'soalgenius-cache-v10-offline-first';
 
-// Daftar URL statis aplikasi yang pasti ada
+// Daftar URL statis aplikasi dasar
 const appShellFiles = [
   './',
   './index.html',
@@ -24,24 +24,36 @@ self.addEventListener('message', (event) => {
       caches.open(CACHE_NAME).then(async (cache) => {
         let cached = 0;
         let failed = 0;
-        for (const url of urls) {
-          try {
-            const response = await fetch(url, { cache: 'reload' });
-            if (response.ok || response.type === 'opaque') {
-              await cache.put(url, response);
-              cached++;
+        await Promise.allSettled(
+          urls.map(async (url) => {
+            try {
+              const controller = new AbortController();
+              const timer = setTimeout(() => controller.abort(), 8000);
+              const response = await fetch(url, { 
+                cache: 'reload',
+                signal: controller.signal 
+              });
+              clearTimeout(timer);
+              if (response.ok || response.type === 'opaque') {
+                await cache.put(url, response);
+                cached++;
+              }
+            } catch (err) {
+              failed++;
+              console.warn(`SW: Gagal cache ${url}:`, err);
             }
-          } catch (err) {
-            failed++;
-            console.warn(`SW: Gagal cache ${url}:`, err);
-          }
-        }
+          })
+        );
         console.log(`SW: CACHE_URLS selesai. Berhasil: ${cached}, Gagal: ${failed}`);
 
         // Beritahu client bahwa proses selesai
-        const clients = await self.clients.matchAll({ includeUncontrolled: true });
-        for (const client of clients) {
-          client.postMessage({ type: 'CACHE_URLS_DONE', cached, failed });
+        try {
+          const clients = await self.clients.matchAll({ includeUncontrolled: true });
+          for (const client of clients) {
+            client.postMessage({ type: 'CACHE_URLS_DONE', cached, failed });
+          }
+        } catch (e) {
+          // Abaikan jika client tidak dapat dijangkau
         }
       })
     );
@@ -49,20 +61,22 @@ self.addEventListener('message', (event) => {
 });
 
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then(async (cache) => {
       console.log('SW: Install — pre-caching app shell...');
-      // Pre-cache setiap file satu per satu agar kegagalan satu tidak membatalkan yang lain
-      for (const url of appShellFiles) {
-        try {
-          const response = await fetch(url, { cache: 'reload' });
-          if (response.ok || response.type === 'opaque') {
-            await cache.put(url, response);
+      await Promise.allSettled(
+        appShellFiles.map(async (url) => {
+          try {
+            const response = await fetch(url, { cache: 'reload' });
+            if (response.ok || response.type === 'opaque') {
+              await cache.put(url, response);
+            }
+          } catch (err) {
+            console.warn(`SW: Gagal pre-cache ${url}:`, err);
           }
-        } catch (err) {
-          console.warn(`SW: Gagal pre-cache ${url}:`, err);
-        }
-      }
+        })
+      );
       console.log('SW: Pre-caching selesai.');
     })
   );
@@ -90,9 +104,16 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(event.request.url);
 
-  // Lewati request ke API eksternal (Dropbox, Gemini, Pollinations, Google Fonts API)
-  // Google Fonts CSS bisa dilewati — font file-nya tetap di-cache lewat CACHE_URLS
-  if (url.hostname !== self.location.hostname) return;
+  // Lewati request ke API eksternal dinamis
+  if (
+    url.hostname.includes('dropbox') ||
+    url.hostname.includes('generativelanguage.googleapis.com') ||
+    url.hostname.includes('pollinations.ai') ||
+    url.hostname.includes('saweria.co') ||
+    url.hostname.includes('lynk.id')
+  ) {
+    return;
+  }
 
   event.respondWith(
     caches.open(CACHE_NAME).then(async (cache) => {
@@ -102,26 +123,24 @@ self.addEventListener('fetch', (event) => {
       // Mulai network request di background untuk update cache (stale-while-revalidate)
       const networkFetch = fetch(event.request)
         .then((networkResponse) => {
-          // Hanya cache response yang valid (status 200 atau opaque cross-origin)
           if (
             networkResponse &&
             (networkResponse.status === 200 || networkResponse.type === 'opaque')
           ) {
-            cache.put(event.request, networkResponse.clone());
+            cache.put(event.request, networkResponse.clone()).catch(() => {});
           }
           return networkResponse;
         })
         .catch(() => {
           // Network gagal (offline) — kembalikan dari cache jika ada
           if (cachedResponse) {
-            console.log('SW: Offline, melayani dari cache:', event.request.url);
             return cachedResponse;
           }
           // Jika ini adalah navigation request (halaman baru), sajikan index.html
           if (event.request.mode === 'navigate') {
-            return cache.match('./index.html') || cache.match('/');
+            return cache.match('./index.html') || cache.match('/') || cache.match('./');
           }
-          // Untuk aset lain yang tidak di-cache, return error response
+          // Untuk aset lain yang tidak di-cache
           return new Response('Offline — Resource not cached', {
             status: 503,
             statusText: 'Service Unavailable',
@@ -129,9 +148,8 @@ self.addEventListener('fetch', (event) => {
           });
         });
 
-      // Jika ada di cache, sajikan sekarang dan update di background
-      // Jika tidak ada di cache, tunggu network
       return cachedResponse || networkFetch;
     })
   );
 });
+
