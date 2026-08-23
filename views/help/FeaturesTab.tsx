@@ -35,16 +35,30 @@ const FeatureCategory: React.FC<{ title: string; description: string; items: Fea
 const FeaturesTab: React.FC = () => {
     const editingFeatures: Feature[] = [
         {
-            icon: "bi-pencil-square",
-            title: "Editor Canggih (Rich-Text)",
-            description: "Format teks tebal/miring, sisipkan gambar, buat tabel kompleks, dan render rumus matematika (KaTeX) dengan WYSIWYG editor.",
+            icon: "bi-stars",
+            title: "Smart Page Fit (Pas Halaman)",
+            description: "Hitung otomatis ukuran font, spasi baris, margin, dan tata letak 2 kolom agar naskah ujian pas tepat dengan target jumlah halaman (hemat kertas fotokopi).",
             tone: "bg-blue-100 dark:bg-blue-900/30",
             iconTone: "text-blue-600 dark:text-blue-300"
         },
         {
+            icon: "bi-shield-check",
+            title: "Audit & Validasi Kesiapan Naskah",
+            description: "Pemeriksa mutu otomatis untuk mendeteksi kunci jawaban yang kosong, opsi soal belum terisi, dan memvalidasi total bobot skor sebelum naskah dicetak.",
+            tone: "bg-emerald-100 dark:bg-emerald-900/30",
+            iconTone: "text-emerald-600 dark:text-emerald-300"
+        },
+        {
+            icon: "bi-pencil-square",
+            title: "Editor Canggih (Rich-Text)",
+            description: "Format teks tebal/miring, sisipkan gambar, buat tabel kompleks, dan render rumus matematika (KaTeX) dengan WYSIWYG editor.",
+            tone: "bg-sky-100 dark:bg-sky-900/30",
+            iconTone: "text-sky-600 dark:text-sky-300"
+        },
+        {
             icon: "bi-layout-split",
-            title: "Layout Kolom Otomatis",
-            description: "Atur dokumen dalam 1 kolom atau 2 kolom hemat kertas. Penomoran dan tata letak pilihan ganda akan menyesuaikan otomatis secara rapi.",
+            title: "Layout Kolom & Opsi Sejajar",
+            description: "Atur dokumen dalam 1 kolom atau 2 kolom hemat kertas. Penomoran dan tata letak pilihan ganda (1 kolom atau 2 kolom sejajar) menyesuaikan otomatis secara rapi.",
             tone: "bg-orange-100 dark:bg-orange-900/30",
             iconTone: "text-orange-600 dark:text-orange-300"
         },
@@ -105,8 +119,8 @@ const FeaturesTab: React.FC = () => {
         },
         {
             icon: "bi-file-earmark-word",
-            title: "Multi Format Ekspor",
-            description: "Ekspor ujian ke format Microsoft Word (.docx), file HTML mandiri, skema Moodle XML (untuk LMS), atau cetak langsung ke kertas/PDF.",
+            title: "Multi Format Ekspor & LMS",
+            description: "Ekspor ujian ke Microsoft Word (.docx), Web HTML, Moodle XML, GIFT, Aiken, Quizizz/Google Forms CSV, Rekap Kisi-kisi Excel, atau cetak PDF.",
             tone: "bg-indigo-100 dark:bg-indigo-900/30",
             iconTone: "text-indigo-600 dark:text-indigo-300"
         }

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import {
     SearchIcon, PlusIcon, StackIcon, SettingsIcon, CloudDownloadIcon,
-    DropboxIcon, StarsIcon, PrinterIcon, BookIcon
+    DropboxIcon, StarsIcon, PrinterIcon, BookIcon, SparklesIcon,
+    ShieldCheckIcon, LayoutSplitIcon, ServerIcon
 } from '../../components/Icons';
 
 interface AccordionGuide {
@@ -20,6 +21,95 @@ const GuideTab: React.FC = () => {
     };
 
     const guides: AccordionGuide[] = [
+        {
+            title: "Panduan Pas Halaman (Smart Page Fit) & Hemat Kertas",
+            icon: SparklesIcon,
+            badge: "Tata Letak Cerdas",
+            badgeColor: "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300",
+            content: (
+                <div className="space-y-4">
+                    <p>
+                        Fitur <strong>Smart Page Fit (Pas Halaman)</strong> dirancang untuk menyelesaikan masalah klasik guru: naskah soal yang "menggantung" ke halaman berikutnya (misalnya 2 halaman lewat sedikit sehingga menjadi 3 lembar, atau 3 halaman menjadi 4 lembar). Dengan fitur ini, Anda dapat mengompres atau memperluas tata letak secara cerdas agar pas dengan target lembar fotokopi yang diinginkan.
+                    </p>
+
+                    <div className="space-y-2.5">
+                        <p className="font-bold text-[var(--text-primary)] text-xs sm:text-sm">Cara Menggunakan Smart Page Fit:</p>
+                        <ol className="list-decimal list-inside space-y-1.5 text-xs sm:text-sm text-[var(--text-secondary)]">
+                            <li>Buka naskah ujian dan masuk ke halaman <strong>Pratinjau (Preview)</strong>.</li>
+                            <li>Pada toolbar tingkat 2 di bagian atas, klik tombol <strong>Pas Halaman (Smart Fit)</strong> (ditandai ikon bintang berkilau).</li>
+                            <li>Modal Smart Fit akan menampilkan 3 tab pilihan metode:
+                                <ul className="list-disc list-inside pl-4 mt-1 space-y-1">
+                                    <li><strong>Pas Otomatis (Smart Fit):</strong> Sistem menghitung estimasi volume teks dan otomatis merekomendasikan ukuran font (pt), spasi baris, margin lembar (mm), serta jumlah kolom agar pas tepat pada jumlah halaman target (misal: pas 2 lembar).</li>
+                                    <li><strong>Preset Cepat:</strong> Pilih satu dari 4 profil siap pakai: <em>Hemat Kertas Ekstrem (10pt, 2 Kolom)</em>, <em>Rapat & Efisien (11pt)</em>, <em>Standar Ujian (12pt)</em>, atau <em>Font Besar & Lapang (13.5pt)</em>.</li>
+                                    <li><strong>Kustom Manual:</strong> Atur slider font (9–16 pt), spasi baris (1.0–1.8), margin kertas (5–25 mm), pilihan 1 atau 2 kolom, dan opsi <em>Opsi Pilihan Ganda 2 Kolom</em> secara manual dengan pratinjau langsung.</li>
+                                </ul>
+                            </li>
+                            <li>Perubahan dapat dilihat langsung di lembar pratinjau di belakang modal secara <em>real-time</em>.</li>
+                            <li>Klik tombol <strong>Terapkan Tata Letak</strong> untuk menyimpan pengaturan naskah.</li>
+                        </ol>
+                    </div>
+
+                    <div className="rounded-xl bg-blue-50 dark:bg-blue-950/30 p-4 border border-blue-200 dark:border-blue-800 text-xs sm:text-sm space-y-2">
+                        <p className="font-bold text-blue-900 dark:text-blue-200">💡 Tips Efisiensi Kertas Fotokopi:</p>
+                        <p className="text-blue-800 dark:text-blue-300 leading-relaxed">
+                            Untuk soal pilihan ganda dengan 25–40 butir, aktifkan opsi <strong>2 Kolom Lembar</strong> dan centang <strong>Opsi Pilihan Ganda 2 Kolom (A & B sejajar)</strong>. Ini dapat memangkas kebutuhan kertas hingga 40-50% tanpa mengurangi keterbacaan teks oleh siswa.
+                        </p>
+                    </div>
+                </div>
+            )
+        },
+        {
+            title: "Panduan Audit & Validasi Kesiapan Naskah Soal",
+            icon: ShieldCheckIcon,
+            badge: "Kendali Mutu",
+            badgeColor: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-300",
+            content: (
+                <div className="space-y-4">
+                    <p>
+                        Fitur <strong>Audit & Validasi Naskah</strong> bertindak sebagai asisten pemeriksa kualitas sebelum naskah dicetak atau diekspor. Sistem secara otomatis mendeteksi kesalahan teknis yang sering terlewat oleh guru.
+                    </p>
+
+                    <div className="space-y-2.5">
+                        <p className="font-bold text-[var(--text-primary)] text-xs sm:text-sm">Komponen yang Diperiksa oleh Sistem Audit:</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs sm:text-sm">
+                            <div className="p-3 rounded-xl border border-[var(--border-primary)] bg-[var(--bg-secondary)] space-y-1">
+                                <span className="font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
+                                    <i className="bi bi-x-circle-fill"></i> Kunci Jawaban Kosong
+                                </span>
+                                <p className="text-[var(--text-secondary)] text-xs">Mendeteksi butir soal pilihan ganda atau esai yang belum ditentukan kunci jawabannya.</p>
+                            </div>
+                            <div className="p-3 rounded-xl border border-[var(--border-primary)] bg-[var(--bg-secondary)] space-y-1">
+                                <span className="font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
+                                    <i className="bi bi-x-circle-fill"></i> Pilihan Opsi Kosong
+                                </span>
+                                <p className="text-[var(--text-secondary)] text-xs">Menandai butir soal yang memiliki pilihan jawaban (A, B, C, D) yang masih kosong belum terisi teks.</p>
+                            </div>
+                            <div className="p-3 rounded-xl border border-[var(--border-primary)] bg-[var(--bg-secondary)] space-y-1">
+                                <span className="font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                                    <i className="bi bi-exclamation-triangle-fill"></i> Bobot Skor Ujian
+                                </span>
+                                <p className="text-[var(--text-secondary)] text-xs">Memverifikasi total bobot nilai (skor ideal 100) dan memastikan distribusi nilai merata.</p>
+                            </div>
+                            <div className="p-3 rounded-xl border border-[var(--border-primary)] bg-[var(--bg-secondary)] space-y-1">
+                                <span className="font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
+                                    <i className="bi bi-info-circle-fill"></i> Kelengkapan Bagian
+                                </span>
+                                <p className="text-[var(--text-secondary)] text-xs">Mengecek judul ujian, mata pelajaran, petunjuk pengerjaan, dan kesesuaian struktur bagian.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <p className="font-bold text-[var(--text-primary)] text-xs sm:text-sm">Cara Melihat Hasil Audit:</p>
+                        <ol className="list-decimal list-inside space-y-1.5 text-xs sm:text-sm text-[var(--text-secondary)]">
+                            <li>Di halaman <strong>Pratinjau (Preview)</strong> atau melalui menu <strong>Ekspor & Aksi</strong>, klik lencana <strong>Kesiapan XX%</strong>.</li>
+                            <li>Modal audit akan menampilkan skor kesehatan naskah (0–100%) serta rincian <strong>Isu Kritis (Wajib Diperbaiki)</strong> dan <strong>Peringatan / Saran</strong>.</li>
+                            <li>Klik langsung pada nomor butir soal bermasalah untuk segera memperbaikinya sebelum naskah digandakan.</li>
+                        </ol>
+                    </div>
+                </div>
+            )
+        },
         {
             title: "Panduan Smart Import (Sintaks Copy-Paste)",
             icon: BookIcon,
@@ -284,8 +374,8 @@ const GuideTab: React.FC = () => {
                     </div>
                     <div>
                         <h4 className="font-bold text-xs uppercase tracking-wider text-[var(--text-muted)]">Langkah 3</h4>
-                        <p className="text-xs sm:text-sm font-semibold text-[var(--text-primary)] mt-0.5">Preview & Ekspor Word/PDF</p>
-                        <p className="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed"><strong>Tujuan:</strong> Pengecekan akhir dan penyimpanan dokumen.<br />Buka halaman <strong>Preview</strong> untuk melihat hasil akhir tata letak ujian Anda. Setelah itu, ekspor dokumen menjadi file <strong>.docx (Word)</strong>, <strong>html</strong>, atau cetak langsung sebagai <strong>PDF</strong>.</p>
+                        <p className="text-xs sm:text-sm font-semibold text-[var(--text-primary)] mt-0.5">Smart Fit, Audit & Ekspor</p>
+                        <p className="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed"><strong>Tujuan:</strong> Optimasi kertas dan validasi kesiapan.<br />Buka halaman <strong>Preview</strong>. Gunakan <strong>Smart Fit</strong> agar naskah pas lembar, cek skor <strong>Audit Kesiapan</strong>, lalu ekspor dokumen menjadi <strong>Word (.docx)</strong>, <strong>LMS</strong>, <strong>HTML</strong>, atau cetak langsung ke <strong>PDF</strong>.</p>
                     </div>
                 </div>
             </div>
@@ -332,3 +422,4 @@ const GuideTab: React.FC = () => {
 };
 
 export default GuideTab;
+

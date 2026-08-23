@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { Exam, Settings } from '../types';
-import { getExam, getSettings } from '../lib/storage';
+import { getExam, getSettings, saveExam, saveSettings } from '../lib/storage';
 import { generateHtmlContent } from '../lib/htmlGenerator';
 import { generateDocx } from '../lib/docxGenerator';
 import { generateMoodleXML } from '../lib/lmsGenerator';
 import { validateExam } from '../lib/examValidator';
 import ExamValidationModal from '../components/ExamValidationModal';
 import LmsExportModal from '../components/LmsExportModal';
+import SmartPageFitModal from '../components/SmartPageFitModal';
 import {
     ChevronLeftIcon, ZoomInIcon, ZoomOutIcon, DownloadIcon, PrinterIcon, 
-    WordIcon, ServerIcon, ShieldCheckIcon, ExclamationTriangleIcon, CheckIcon
+    WordIcon, ServerIcon, ShieldCheckIcon, ExclamationTriangleIcon, CheckIcon,
+    SparklesIcon
 } from '../components/Icons';
 import { useToast } from '../contexts/ToastContext';
 import { useModal } from '../contexts/ModalContext';
@@ -24,6 +26,7 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
     const [isExportingWord, setIsExportingWord] = useState(false);
     const [isLmsModalOpen, setIsLmsModalOpen] = useState(false);
     const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
+    const [isSmartFitModalOpen, setIsSmartFitModalOpen] = useState(false);
     const [pageCount, setPageCount] = useState<number>(1);
     const [iframeHeight, setIframeHeight] = useState<string | number>('297mm');
     const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -101,45 +104,52 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
         return generateHtmlContent(exam, settings, 'answer_key', false);
     }, [exam, settings]);
 
-    const showDonationPrompt = useCallback(() => {
-        const key = 'lastDonationPrompt';
-        const lastPrompt = localStorage.getItem(key);
-        const now = new Date().getTime();
-        const oneDay = 24 * 60 * 60 * 1000;
+    const getExportBaseFileName = useCallback(() => {
+        if (!exam) return 'naskah_ujian';
+        const sanitize = (str: string) => (str || '')
+            .trim()
+            .replace(/[\/\\:*?"<>|]/g, '_')
+            .replace(/\s+/g, '_')
+            .replace(/_+/g, '_');
 
-        if (!lastPrompt || (now - parseInt(lastPrompt, 10)) > oneDay) {
-            localStorage.setItem(key, now.toString());
-            showConfirm({
-                title: "Dukung SoalGenius",
-                content: "Aplikasi ini bermanfaat? Pertimbangkan untuk berdonasi agar pengembangan dapat terus berlanjut.",
-                confirmLabel: "Donasi Sekarang",
-                cancelLabel: "Nanti Saja",
-                confirmVariant: "primary",
-                onConfirm: () => {
-                    window.open('https://saweria.co/akzashine', '_blank');
-                }
-            });
-        }
+        const parts: string[] = [];
+        if (exam.title) parts.push(sanitize(exam.title));
+        if (exam.subject) parts.push(sanitize(exam.subject));
+        if (exam.class) parts.push(sanitize(exam.class));
+
+        return parts.length > 0 ? parts.join('_') : 'naskah_ujian';
+    }, [exam]);
+
+    const showDonationPrompt = useCallback(() => {
+        showConfirm({
+            title: "Dukung SoalGenius",
+            content: "Aplikasi ini bermanfaat untuk kebutuhan pembuatan naskah ujian Anda? Pertimbangkan untuk berdonasi sukarela demi mendukung pengembangan dan pemeliharaan aplikasi ini.",
+            confirmLabel: "Dukung Sekarang",
+            confirmVariant: "primary",
+            onConfirm: () => {
+                window.open('https://lynk.id/aiprojek/s/bvBJvdA', '_blank');
+            }
+        });
     }, [showConfirm]);
 
     const executeExportHtml = useCallback(() => {
         if (!exam || !settings) return;
         const currentMode = showAnswerKey ? 'answer_key' : 'exam';
-        const sanitize = (str: string) => (str || '').replace(/[^a-z0-9_.-]/gi, '_');
-        const baseName = sanitize(exam.title);
+        const baseName = getExportBaseFileName();
         const contentToExport = generateHtmlContent(exam, settings, currentMode, true);
-        const blob = new Blob([contentToExport], { type: 'text/html' });
+        const blob = new Blob([contentToExport], { type: 'text/html;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${baseName}${showAnswerKey ? '_kunci_jawaban' : ''}.html`;
+        a.download = `${baseName}${showAnswerKey ? '_Kunci_Jawaban' : ''}.html`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+        addToast(`File Web HTML ${showAnswerKey ? 'Kunci Jawaban ' : ''}berhasil diunduh.`, 'success');
 
         showDonationPrompt();
-    }, [exam, settings, showAnswerKey, showDonationPrompt]);
+    }, [exam, settings, showAnswerKey, getExportBaseFileName, addToast, showDonationPrompt]);
 
     const handleExportHtml = useCallback(() => {
         executeExportHtml();
@@ -155,9 +165,9 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
             const blob = await generateDocx(exam, settings, currentMode);
             const now = new Date();
             const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
-            const sanitize = (str: string) => (str || '').replace(/[^a-z0-9_.-]/gi, '_');
+            const baseName = getExportBaseFileName();
             const suffix = showAnswerKey ? '_Kunci_Jawaban' : '';
-            const fileName = `${sanitize(exam.title)}${suffix}_${timestamp}.docx`;
+            const fileName = `${baseName}${suffix}_${timestamp}.docx`;
 
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -176,7 +186,7 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
         } finally {
             setIsExportingWord(false);
         }
-    }, [exam, settings, showAnswerKey, addToast, showDonationPrompt]);
+    }, [exam, settings, showAnswerKey, getExportBaseFileName, addToast, showDonationPrompt]);
 
     const handleExportWord = useCallback(() => {
         executeExportWord();
@@ -185,6 +195,20 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
     const handlePrint = () => {
         iframeRef.current?.contentWindow?.print();
         showDonationPrompt();
+    };
+
+    const handleApplySmartFit = async (newSettings: Settings, newExam: Exam, saveAsDefault: boolean) => {
+        setSettings(newSettings);
+        setExam(newExam);
+        await saveExam(newExam);
+        if (saveAsDefault) {
+            await saveSettings(newSettings);
+        }
+    };
+
+    const handleLivePreview = (tempSettings: Settings, tempExam: Exam) => {
+        setSettings(tempSettings);
+        setExam(tempExam);
     };
 
     const syncIframeHeight = useCallback(() => {
@@ -201,37 +225,41 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
             
             let sheetsTotalHeight = 0;
             if (sheets && sheets.length > 0) {
-                setPageCount(sheets.length);
+                const count = sheets.length;
+                setPageCount(prev => (prev !== count ? count : prev));
                 sheets.forEach(sheet => {
                     sheetsTotalHeight += (sheet as HTMLElement).offsetHeight || 0;
                 });
                 // 1.5rem (24px) gap between sheets + 2rem (32px) top and bottom padding
                 sheetsTotalHeight += Math.max(0, sheets.length - 1) * 24 + 80;
             } else {
-                setPageCount(1);
+                setPageCount(prev => (prev !== 1 ? 1 : prev));
             }
 
             const nextHeight = Math.max(
                 sheetsTotalHeight,
                 (container as HTMLElement)?.scrollHeight || 0,
-                (container as HTMLElement)?.offsetHeight || 0,
                 html?.scrollHeight || 0,
                 body?.scrollHeight || 0,
-                html?.offsetHeight || 0,
-                body?.offsetHeight || 0,
             );
             if (nextHeight > 0) {
-                setIframeHeight(nextHeight);
+                setIframeHeight(prev => (prev !== nextHeight ? nextHeight : prev));
             }
         };
 
         resize();
-        window.setTimeout(resize, 60);
-        window.setTimeout(resize, 180);
-        window.setTimeout(resize, 400);
-        window.setTimeout(resize, 1000);
+        const t1 = window.setTimeout(resize, 80);
+        const t2 = window.setTimeout(resize, 200);
+
         frameWindow?.addEventListener('soalgenius-preview-paginated', resize);
         frameWindow?.addEventListener('resize', resize);
+
+        return () => {
+            clearTimeout(t1);
+            clearTimeout(t2);
+            frameWindow?.removeEventListener('soalgenius-preview-paginated', resize);
+            frameWindow?.removeEventListener('resize', resize);
+        };
     }, []);
 
     useEffect(() => {
@@ -244,19 +272,179 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
 
     return (
         <div className="fixed inset-0 app-shell-page z-50 flex flex-col print:bg-white">
-            <header className="relative z-30 flex-shrink-0 print:hidden border-b border-[var(--border-primary)] bg-[color:color-mix(in_srgb,var(--bg-secondary)_90%,transparent)] backdrop-blur-md">
-                <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-2 px-2.5 py-2 sm:px-4 sm:py-2.5">
-                    <div className="flex min-w-0 flex-1 items-center gap-2">
-                        <button onClick={onBack} className="flex items-center space-x-2 text-[var(--text-secondary)] hover:text-[var(--text-accent)] font-semibold py-2 px-3 rounded-xl hover:bg-[var(--bg-hover)]">
-                            <ChevronLeftIcon className="text-xl" />
-                            <span className="hidden sm:inline">Kembali</span>
+            <header className="relative z-30 flex-shrink-0 print:hidden border-b border-[var(--border-primary)] bg-[var(--bg-secondary)] shadow-xs">
+                {/* Row 1: Primary Identity, Navigation & Export Action */}
+                <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-3 py-2.5 sm:px-5 sm:py-3">
+                    <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3.5">
+                        <button 
+                            onClick={onBack} 
+                            className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl border border-[var(--border-primary)] bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors sm:h-10 sm:w-10"
+                            title="Kembali ke Editor"
+                            aria-label="Kembali"
+                        >
+                            <ChevronLeftIcon className="text-base sm:text-lg" />
                         </button>
+                        <div className="min-w-0 flex-1">
+                            <h1 className="text-sm sm:text-base md:text-lg font-bold text-[var(--text-primary)] truncate" title={exam.title}>
+                                {exam.title || 'Pratinjau Naskah Ujian'}
+                            </h1>
+                            <div className="mt-0.5 flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-[var(--text-muted)] truncate">
+                                <span className="font-medium text-[var(--text-secondary)] truncate">{exam.subject?.trim() || 'Tanpa Mapel'}</span>
+                                <span>•</span>
+                                <span className="truncate">{exam.class?.trim() || 'Semua Kelas'}</span>
+                                <span>•</span>
+                                <span className="font-semibold text-[var(--text-primary)]">{pageCount} Halaman ({settings.paperSize || 'A4'})</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Right: Primary Quick Action / Export Dropdown */}
+                    <div className="flex flex-shrink-0 items-center gap-2">
+                        <button
+                            onClick={() => handlePrint()}
+                            className="hidden sm:inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-primary)] bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] font-semibold px-3 py-2 text-xs sm:text-sm transition-colors shadow-2xs"
+                            title="Cetak Langsung / Simpan PDF"
+                        >
+                            <PrinterIcon className="text-sm text-indigo-600 dark:text-indigo-400" />
+                            <span className="hidden md:inline">Cetak PDF</span>
+                        </button>
+
+                        <div className="relative inline-flex">
+                            <button 
+                                ref={actionsButtonRef} 
+                                onClick={() => setActionsMenuOpen(open => !open)} 
+                                className="flex items-center gap-1.5 sm:gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-3 sm:py-2 sm:px-4 rounded-xl text-xs sm:text-sm shadow-sm transition-all active:scale-95" 
+                                aria-haspopup="menu" 
+                                aria-expanded={isActionsMenuOpen}
+                            >
+                                <DownloadIcon className="text-sm" />
+                                <span>Ekspor & Aksi</span>
+                                <i className={`bi bi-chevron-down text-[10px] transition-transform ${isActionsMenuOpen ? 'rotate-180' : ''}`}></i>
+                            </button>
+
+                            {isActionsMenuOpen && (
+                                <div ref={actionsMenuRef} className="animate-scale-in absolute right-0 top-[calc(100%+0.5rem)] z-[120] w-80 sm:w-92 rounded-2xl border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-2 shadow-2xl origin-top-right">
+                                    <div className="px-3 pb-2 pt-1 border-b border-[var(--border-primary)] mb-1">
+                                        <p className="text-sm font-bold text-[var(--text-primary)]">Format Ekspor & Dokumen</p>
+                                        <p className="text-xs text-[var(--text-secondary)]">Pilih format unduhan naskah ujian atau kuis online</p>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <button onClick={(e) => { e.stopPropagation(); handleExportWord(); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[var(--bg-hover)] text-blue-600 dark:text-blue-400 rounded-xl">
+                                            {isExportingWord ? <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></div> : <WordIcon className="text-lg" />}
+                                            <div className="min-w-0 flex-1">
+                                                <span className="font-semibold text-sm block">Dokumen Word (.docx)</span>
+                                                <span className="text-[11px] text-[var(--text-secondary)] block">Format standar cetak & kunci terpisah</span>
+                                            </div>
+                                        </button>
+                                        <button onClick={(e) => { e.stopPropagation(); setIsLmsModalOpen(true); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[var(--bg-hover)] text-orange-600 dark:text-orange-400 rounded-xl">
+                                            <ServerIcon className="text-lg" />
+                                            <div className="min-w-0 flex-1">
+                                                <span className="font-semibold text-sm block">Ekspor LMS & Bank Soal</span>
+                                                <span className="text-[11px] text-[var(--text-secondary)] block">Moodle, Canvas, GIFT, Quizizz, Excel</span>
+                                            </div>
+                                        </button>
+                                        <button onClick={(e) => { e.stopPropagation(); handleExportHtml(); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[var(--bg-hover)] text-[var(--text-primary)] rounded-xl">
+                                            <DownloadIcon className="text-lg text-emerald-600" />
+                                            <div className="min-w-0 flex-1">
+                                                <span className="font-semibold text-sm block">Ekspor Web HTML</span>
+                                                <span className="text-[11px] text-[var(--text-secondary)] block">Naskah halaman web mandiri</span>
+                                            </div>
+                                        </button>
+                                        <button onClick={() => { handlePrint(); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[var(--bg-hover)] text-[var(--text-primary)] rounded-xl">
+                                            <PrinterIcon className="text-lg text-indigo-600" />
+                                            <div className="min-w-0 flex-1">
+                                                <span className="font-semibold text-sm block">Cetak / Simpan PDF</span>
+                                                <span className="text-[11px] text-[var(--text-secondary)] block">Cetak langsung atau simpan PDF per halaman</span>
+                                            </div>
+                                        </button>
+
+                                        <div className="border-t border-[var(--border-primary)] my-1 pt-1"></div>
+
+                                        <button onClick={() => { setIsValidationModalOpen(true); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[var(--bg-hover)] text-teal-600 dark:text-teal-400 rounded-xl">
+                                            <ShieldCheckIcon className="text-lg" />
+                                            <div className="min-w-0 flex-1">
+                                                <span className="font-semibold text-sm block">Audit & Validasi Naskah</span>
+                                                <span className="text-[11px] text-[var(--text-secondary)] block">Cek kelengkapan kunci & kesiapan soal</span>
+                                            </div>
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Row 2: Secondary Toolbar (View Mode, Zoom, Smart Fit, Audit Status) */}
+                <div className="border-t border-[var(--border-primary)] bg-[var(--bg-tertiary)]/75 px-3 py-1.5 sm:px-5 sm:py-2 flex items-center justify-between gap-2.5 overflow-x-auto whitespace-nowrap scrollbar-none">
+                    {/* Left: View Mode Toggle & Zoom Controls */}
+                    <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+                        {/* Soal / Kunci Jawaban Switcher */}
+                        <div className="flex items-center rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-primary)] p-0.5 shadow-2xs">
+                            <button 
+                                onClick={() => setShowAnswerKey(false)} 
+                                className={`px-3 py-1 text-xs font-bold rounded-lg transition-colors ${!showAnswerKey ? 'bg-blue-600 text-white shadow-xs' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'}`}
+                            >
+                                Naskah Soal
+                            </button>
+                            <button 
+                                onClick={() => setShowAnswerKey(true)} 
+                                className={`px-3 py-1 text-xs font-bold rounded-lg transition-colors ${showAnswerKey ? 'bg-blue-600 text-white shadow-xs' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'}`}
+                            >
+                                Kunci Jawaban
+                            </button>
+                        </div>
+
+                        {/* Zoom Controls */}
+                        <div className="flex items-center bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-xl p-0.5 shadow-2xs">
+                            <button 
+                                onClick={() => setZoom(z => Math.max(0.5, z - 0.1))} 
+                                aria-label="Perkecil Zoom" 
+                                className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] rounded-lg transition-colors"
+                            >
+                                <ZoomOutIcon className="text-xs sm:text-sm" />
+                            </button>
+                            <span className="text-[var(--text-primary)] font-mono font-bold text-xs w-11 text-center select-none">
+                                {(zoom * 100).toFixed(0)}%
+                            </span>
+                            <button 
+                                onClick={() => setZoom(z => Math.min(2, z + 0.1))} 
+                                aria-label="Perbesar Zoom" 
+                                className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] rounded-lg transition-colors"
+                            >
+                                <ZoomInIcon className="text-xs sm:text-sm" />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Right: Smart Fit Button & Audit Health Indicator */}
+                    <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+                        {/* Page Count & Smart Page Fit Trigger */}
+                        <div className="flex items-center gap-1.5">
+                            <span className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-[var(--bg-secondary)] border border-[var(--border-primary)] text-[var(--text-secondary)] shadow-2xs">
+                                {pageCount} Lembar
+                            </span>
+                            <button
+                                onClick={() => setIsSmartFitModalOpen(true)}
+                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border shadow-2xs ${
+                                    pageCount > 1 && pageCount % 2 !== 0
+                                        ? 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800 hover:bg-amber-100'
+                                        : 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-800 hover:bg-blue-100'
+                                }`}
+                                title="Optimalkan tata letak naskah agar hemat kertas fotokopi"
+                            >
+                                <SparklesIcon className="text-xs text-amber-500" />
+                                <span>Pas Halaman (Smart Fit)</span>
+                                {pageCount > 1 && pageCount % 2 !== 0 && (
+                                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-ping"></span>
+                                )}
+                            </button>
+                        </div>
 
                         {/* Health Status Indicator Badge */}
                         {validation && (
                             <button 
                                 onClick={() => setIsValidationModalOpen(true)}
-                                className={`hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all shadow-2xs ${
                                     validation.healthScore >= 90
                                         ? 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/50 hover:bg-emerald-100'
                                         : validation.healthScore >= 70
@@ -265,133 +453,15 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
                                 }`}
                                 title="Klik untuk melihat hasil audit & validasi naskah"
                             >
-                                <ShieldCheckIcon />
+                                <ShieldCheckIcon className="text-xs" />
                                 <span>Kesiapan {validation.healthScore}%</span>
                                 {validation.criticalIssues.length > 0 && (
                                     <span className="px-1.5 py-0.2 rounded-full bg-rose-600 text-white text-[10px]">
-                                        {validation.criticalIssues.length} Isu
+                                        {validation.criticalIssues.length}
                                     </span>
                                 )}
                             </button>
                         )}
-                    </div>
-
-                    <div className="hidden md:flex flex-1 items-center justify-center gap-3 lg:gap-4 px-3">
-                        <div className="flex items-center space-x-1 sm:space-x-2">
-                            <button onClick={() => setZoom(z => Math.max(0.5, z - 0.1))} aria-label="Perkecil" className="p-2 text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] rounded-lg"><ZoomOutIcon className="text-xl" /></button>
-                            <span className="text-[var(--text-primary)] font-semibold w-12 text-center">{(zoom * 100).toFixed(0)}%</span>
-                            <button onClick={() => setZoom(z => Math.min(2, z + 0.1))} aria-label="Perbesar" className="p-2 text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] rounded-lg"><ZoomInIcon className="text-xl" /></button>
-                        </div>
-                        <div className="flex items-center rounded-xl bg-[var(--bg-muted)] p-0.5">
-                            <button onClick={() => setShowAnswerKey(false)} className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${!showAnswerKey ? 'bg-[var(--bg-secondary)] text-blue-600 dark:text-slate-100 shadow-sm' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'}`}>Soal</button>
-                            <button onClick={() => setShowAnswerKey(true)} className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${showAnswerKey ? 'bg-[var(--bg-secondary)] text-blue-600 dark:text-slate-100 shadow-sm' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'}`}>Kunci Jawaban</button>
-                        </div>
-                        <div className="hidden xl:inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-[var(--bg-muted)] text-[var(--text-secondary)]">
-                            {pageCount} Lembar
-                        </div>
-                    </div>
-
-                    <div className="flex-1 flex justify-end items-center gap-2">
-                        <div className="hidden md:block">
-                            <div className="relative inline-flex">
-                                <button ref={actionsButtonRef} onClick={() => setActionsMenuOpen(open => !open)} className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-3.5 rounded-xl shadow-sm transition-colors" aria-haspopup="menu" aria-expanded={isActionsMenuOpen}>
-                                    <DownloadIcon />
-                                    <span>Ekspor & Aksi</span>
-                                    <i className={`bi bi-chevron-down text-xs transition-transform ${isActionsMenuOpen ? 'rotate-180' : ''}`}></i>
-                                </button>
-                                {isActionsMenuOpen && (
-                                    <div ref={actionsMenuRef} className="animate-fade-in absolute right-0 top-[calc(100%+0.65rem)] z-[120] w-[23rem] rounded-[20px] border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-2 shadow-2xl">
-                                        <div className="px-3 pb-2 pt-1 border-b border-[var(--border-primary)] mb-1">
-                                            <p className="text-sm font-bold text-[var(--text-primary)]">Format Ekspor & Dokumen</p>
-                                            <p className="text-xs text-[var(--text-secondary)]">Pilih format unduhan naskah ujian atau kuis online</p>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <button onClick={(e) => { e.stopPropagation(); handleExportWord(); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-3.5 py-2.5 text-left hover:bg-[var(--bg-hover)] text-blue-600 dark:text-blue-400 rounded-xl">
-                                                {isExportingWord ? <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></div> : <WordIcon className="text-lg" />}
-                                                <div className="min-w-0 flex-1">
-                                                    <span className="font-semibold text-sm block">Dokumen Word (.docx)</span>
-                                                    <span className="text-[11px] text-[var(--text-secondary)] block">Format standar cetak & kunci terpisah</span>
-                                                </div>
-                                            </button>
-                                            <button onClick={(e) => { e.stopPropagation(); setIsLmsModalOpen(true); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-3.5 py-2.5 text-left hover:bg-[var(--bg-hover)] text-orange-600 dark:text-orange-400 rounded-xl">
-                                                <ServerIcon className="text-lg" />
-                                                <div className="min-w-0 flex-1">
-                                                    <span className="font-semibold text-sm block">Ekspor LMS & Bank Soal</span>
-                                                    <span className="text-[11px] text-[var(--text-secondary)] block">Moodle, Canvas, GIFT, Quizizz, Excel</span>
-                                                </div>
-                                            </button>
-                                            <button onClick={(e) => { e.stopPropagation(); handleExportHtml(); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-3.5 py-2.5 text-left hover:bg-[var(--bg-hover)] text-[var(--text-primary)] rounded-xl">
-                                                <DownloadIcon className="text-lg text-emerald-600" />
-                                                <div className="min-w-0 flex-1">
-                                                    <span className="font-semibold text-sm block">Ekspor Web HTML</span>
-                                                    <span className="text-[11px] text-[var(--text-secondary)] block">Naskah halaman web mandiri</span>
-                                                </div>
-                                            </button>
-                                            <button onClick={() => { handlePrint(); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-3.5 py-2.5 text-left hover:bg-[var(--bg-hover)] text-[var(--text-primary)] rounded-xl">
-                                                <PrinterIcon className="text-lg text-indigo-600" />
-                                                <div className="min-w-0 flex-1">
-                                                    <span className="font-semibold text-sm block">Cetak / Simpan PDF</span>
-                                                    <span className="text-[11px] text-[var(--text-secondary)] block">Cetak langsung atau simpan PDF per halaman</span>
-                                                </div>
-                                            </button>
-
-                                            <div className="border-t border-[var(--border-primary)] my-1 pt-1"></div>
-
-                                            <button onClick={() => { setIsValidationModalOpen(true); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-3.5 py-2.5 text-left hover:bg-[var(--bg-hover)] text-teal-600 dark:text-teal-400 rounded-xl">
-                                                <ShieldCheckIcon className="text-lg" />
-                                                <div className="min-w-0 flex-1">
-                                                    <span className="font-semibold text-sm block">Audit & Validasi Naskah</span>
-                                                    <span className="text-[11px] text-[var(--text-secondary)] block">Cek kelengkapan kunci & kesiapan soal</span>
-                                                </div>
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                        <div className="md:hidden">
-                            <button onClick={() => setActionsMenuOpen(true)} className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-3 rounded-xl text-sm sm:px-4 shadow-sm" aria-haspopup="dialog" aria-expanded={isActionsMenuOpen}>
-                                <DownloadIcon />
-                                <span>Ekspor</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="mx-auto w-full max-w-6xl px-2.5 pb-2 md:hidden">
-                    <div className="app-surface-muted rounded-[var(--radius-card)] px-2.5 py-2 sm:px-3 sm:py-3">
-                        <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                                <h1 className="truncate text-[13px] sm:text-sm font-bold text-[var(--text-primary)]">{exam.title}</h1>
-                                <p className="text-[11px] sm:text-xs text-[var(--text-secondary)] flex items-center gap-1.5">
-                                    <span>{showAnswerKey ? 'Kunci Jawaban' : 'Lembar Soal'}</span>
-                                    <span>•</span>
-                                    <span>{pageCount} Lembar</span>
-                                    <span>•</span>
-                                    <span>{(zoom * 100).toFixed(0)}%</span>
-                                    {validation && (
-                                        <>
-                                            <span>•</span>
-                                            <span 
-                                                onClick={() => setIsValidationModalOpen(true)}
-                                                className={`font-semibold cursor-pointer underline ${validation.healthScore >= 80 ? 'text-emerald-600' : 'text-amber-600'}`}
-                                            >
-                                                Audit: {validation.healthScore}%
-                                            </span>
-                                        </>
-                                    )}
-                                </p>
-                            </div>
-                            <div className="flex items-center gap-1">
-                                <button onClick={() => setZoom(z => Math.max(0.5, z - 0.1))} aria-label="Perkecil" className="app-control p-1.5 sm:p-2 text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"><ZoomOutIcon className="text-base sm:text-lg" /></button>
-                                <button onClick={() => setZoom(z => Math.min(2, z + 0.1))} aria-label="Perbesar" className="app-control p-1.5 sm:p-2 text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"><ZoomInIcon className="text-base sm:text-lg" /></button>
-                            </div>
-                        </div>
-
-                        <div className="mt-2 flex items-center rounded-[var(--radius-control)] bg-[var(--bg-muted)] p-0.5">
-                            <button onClick={() => setShowAnswerKey(false)} className={`flex-1 px-2.5 py-1.5 text-xs sm:px-3 sm:py-2 sm:text-sm font-semibold rounded-lg transition-colors ${!showAnswerKey ? 'bg-[var(--bg-secondary)] text-blue-600 shadow-sm' : 'text-[var(--text-secondary)]'}`}>Soal</button>
-                            <button onClick={() => setShowAnswerKey(true)} className={`flex-1 px-2.5 py-1.5 text-xs sm:px-3 sm:py-2 sm:text-sm font-semibold rounded-lg transition-colors ${showAnswerKey ? 'bg-[var(--bg-secondary)] text-blue-600 shadow-sm' : 'text-[var(--text-secondary)]'}`}>Kunci</button>
-                        </div>
                     </div>
                 </div>
             </header>
@@ -439,6 +509,17 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
                     </div>
                 </div>
             )}
+
+            {/* Smart Page Fit Modal */}
+            <SmartPageFitModal
+                isOpen={isSmartFitModalOpen}
+                onClose={() => setIsSmartFitModalOpen(false)}
+                exam={exam}
+                settings={settings}
+                currentPageCount={pageCount}
+                onApplySettings={handleApplySmartFit}
+                onLivePreview={handleLivePreview}
+            />
 
             {/* LMS Export Hub Modal */}
             <LmsExportModal

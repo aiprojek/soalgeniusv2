@@ -1139,27 +1139,32 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
 
     const masterInitScript = `
     <script>
+      var __sgMasterInitDone = false;
+      var __sgMasterInitTimer = null;
+
       function runMasterInit() {
+        if (__sgMasterInitDone) return;
+        __sgMasterInitDone = true;
         try { adjustHeaderTextSize(); } catch (e) { console.error(e); }
         try { renderSoalGeniusMath(); } catch (e) { console.error(e); }
         try { paginatePreviewPages(); } catch (e) { console.error(e); }
         try { autoZoomOnMobile(); } catch (e) { console.error(e); }
-        try {
-          window.dispatchEvent(new Event('soalgenius-preview-paginated'));
-        } catch (e) {}
+      }
+
+      function scheduleMasterInit() {
+        if (__sgMasterInitTimer) clearTimeout(__sgMasterInitTimer);
+        __sgMasterInitTimer = setTimeout(runMasterInit, 16);
       }
 
       if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', runMasterInit);
+        document.addEventListener('DOMContentLoaded', scheduleMasterInit);
       } else {
-        runMasterInit();
+        scheduleMasterInit();
       }
 
-      window.addEventListener('load', runMasterInit);
+      window.addEventListener('load', scheduleMasterInit);
       if (document.fonts && document.fonts.ready) {
-        document.fonts.ready.then(function() {
-          setTimeout(runMasterInit, 30);
-        });
+        document.fonts.ready.then(scheduleMasterInit);
       }
     </script>
     `;
