@@ -149,6 +149,23 @@ export const duplicateExam = async (id: string): Promise<Exam> => {
     return newExam;
 };
 
+export const renumberSectionsQuestions = (sections: Section[]): Section[] => {
+    let currentNumber = 1;
+    return sections.map(section => ({
+        ...section,
+        questions: section.questions.map(q => {
+            if (q.type === QuestionType.STIMULUS) {
+                return { ...q, number: '' };
+            }
+            const qNum = String(currentNumber++);
+            return {
+                ...q,
+                number: qNum
+            };
+        })
+    }));
+};
+
 export const shuffleExam = async (id: string): Promise<Exam> => {
     const allExams = await getAllExams();
     const examToShuffle = allExams.find(exam => exam.id === id);
@@ -171,14 +188,16 @@ export const shuffleExam = async (id: string): Promise<Exam> => {
     const newVariantNumber = highestVariant + 1;
     const newTitle = `${baseTitle} - Varian ${newVariantNumber}`;
 
+    const shuffledSections = examToShuffle.sections.map(section => ({
+        ...section,
+        questions: shuffleArray(section.questions),
+    }));
+
     const newExam: Exam = {
         ...JSON.parse(JSON.stringify(examToShuffle)),
         id: crypto.randomUUID(),
         title: newTitle,
-        sections: examToShuffle.sections.map(section => ({
-            ...section,
-            questions: shuffleArray(section.questions),
-        })),
+        sections: renumberSectionsQuestions(shuffledSections),
         status: 'draft',
     };
     await saveExam(newExam); // saveExam calls touchLocalChange
@@ -187,7 +206,7 @@ export const shuffleExam = async (id: string): Promise<Exam> => {
 
 /**
  * Membuat paket soal berbeda (Paket A, Paket B, dst) dari satu master.
- * Mengacak urutan soal DAN urutan opsi jawaban.
+ * Mengacak urutan soal DAN urutan opsi jawaban, serta me-reset urutan nomor soal agar tetap 1, 2, 3...
  */
 export const createExamPackets = async (masterId: string, count: number): Promise<void> => {
     const masterExam = await getExam(masterId);
@@ -203,8 +222,8 @@ export const createExamPackets = async (masterId: string, count: number): Promis
         newExam.status = 'draft';
 
         // Process sections
-        newExam.sections = newExam.sections.map(section => {
-            // 1. Shuffle Questions order
+        const shuffledSections = newExam.sections.map(section => {
+            // 1. Shuffle Questions order within section
             const shuffledQuestions = shuffleArray(section.questions);
 
             // 2. Shuffle Choices within questions (if applicable)
@@ -226,6 +245,9 @@ export const createExamPackets = async (masterId: string, count: number): Promis
                 questions: fullyShuffledQuestions
             };
         });
+
+        // 3. Reset and sequentially renumber all questions (1, 2, 3...)
+        newExam.sections = renumberSectionsQuestions(shuffledSections);
 
         await saveExam(newExam);
     }

@@ -3,7 +3,7 @@ import type { Exam, Question, Settings, Section, TableData, TableRowData, TableC
 import { QuestionType } from '../types';
 import { useModal } from '../contexts/ModalContext';
 import { useToast } from '../contexts/ToastContext';
-import { getExam, saveExam, getSettings, saveQuestionToBank } from '../lib/storage';
+import { getExam, saveExam, getSettings, saveQuestionToBank, renumberSectionsQuestions } from '../lib/storage';
 import { sanitizeRichHtml, toRoman } from '../lib/utils';
 import { generateHtmlContent } from '../lib/htmlGenerator';
 import QuestionBankView from './QuestionBankView';
@@ -1112,6 +1112,17 @@ const EditorView: React.FC<{ examId: string; onBack: () => void; onPreview?: () 
         });
     };
 
+    const handleRenumberQuestions = () => {
+        setExam((prev) => {
+            if (!prev) return null;
+            return {
+                ...prev,
+                sections: renumberSectionsQuestions(prev.sections)
+            };
+        });
+        addToast("Nomor butir soal berhasil diurutkan ulang (1, 2, 3...).", "success");
+    };
+
     const handleSaveToBank = async (question: Question) => {
         if (!exam) return;
         try {
@@ -1401,6 +1412,16 @@ const EditorView: React.FC<{ examId: string; onBack: () => void; onPreview?: () 
                         >
                             <i className="bi bi-sliders text-xs"></i>
                             <span>Info Ujian</span>
+                        </button>
+
+                        {/* Urutkan Nomor Soal */}
+                         <button
+                            onClick={handleRenumberQuestions}
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-[var(--border-primary)] bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-[11px] sm:text-xs font-semibold transition-colors"
+                            title="Urutkan Ulang Nomor Soal (1, 2, 3...)"
+                        >
+                            <i className="bi bi-sort-numeric-down text-xs text-blue-500"></i>
+                            <span className="hidden sm:inline">Urutkan Nomor</span>
                         </button>
 
                         {/* Bank Soal */}
