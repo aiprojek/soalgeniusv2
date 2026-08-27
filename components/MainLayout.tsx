@@ -4,7 +4,7 @@ import { useModal } from '../contexts/ModalContext';
 import { useToast } from '../contexts/ToastContext';
 import { isDropboxConnected, uploadToDropbox, downloadFromDropbox } from '../lib/dropbox';
 import { 
-    ArchiveIcon, BankIcon, SettingsIcon, HelpIcon,
+    ArchiveIcon, BankIcon, SettingsIcon, HelpIcon, GlobeIcon,
     CloudUploadIcon, CloudDownloadIcon, DropboxIcon, CloudCheckIcon
 } from './Icons';
 
@@ -94,6 +94,7 @@ const MainLayout: React.FC<{
     const sidebarItems = [
         { id: 'archive', label: 'Arsip Soal', icon: ArchiveIcon, action: () => onNavigate('archive') },
         { id: 'bank', label: 'Bank Soal', icon: BankIcon, action: () => onNavigate('bank') },
+        { id: 'community', label: 'Pusat Berbagi MGMP', icon: GlobeIcon, action: () => onNavigate('community') },
         { id: 'settings', label: 'Pengaturan', icon: SettingsIcon, action: () => onNavigate('settings') },
         { id: 'help', label: 'Bantuan', icon: HelpIcon, action: handleHelp },
     ];
@@ -183,19 +184,19 @@ const MainLayout: React.FC<{
                 <main className="mx-auto w-full max-w-7xl flex-grow px-2.5 py-3 sm:px-4 sm:py-4 md:px-6 md:py-8 lg:px-8 app-bottom-safe">
                     {children}
                 </main>
-                <footer className="hidden md:block text-center py-4 text-sm text-[var(--text-secondary)] bg-[var(--bg-tertiary)] border-t border-[var(--border-primary)]">
-                     © {new Date().getFullYear()} SoalGenius. Dibuat dengan ❤️ untuk para pendidik.
+                <footer className="text-center py-4 px-4 text-xs sm:text-sm text-[var(--text-secondary)] bg-[var(--bg-tertiary)] border-t border-[var(--border-primary)] mb-14 md:mb-0">
+                    © {new Date().getFullYear()} SoalGenius. Dibuat dengan ❤️ untuk para pendidik.
                 </footer>
 
                 <nav className="app-mobile-nav fixed inset-x-0 bottom-0 z-20 border-t border-[var(--border-primary)] bg-[color:color-mix(in_srgb,var(--bg-secondary)_92%,transparent)] backdrop-blur-md md:hidden">
-                    <div className="grid grid-cols-4 gap-1 px-1.5 py-1.5 sm:px-2 sm:py-2">
+                    <div className="grid grid-cols-5 gap-0.5 px-1 py-1.5 sm:px-2 sm:py-2">
                         {sidebarItems.map(item => {
                             const isActive = currentView === item.id;
                             return (
                                 <button
                                     key={item.id}
                                     onClick={item.action}
-                                    className={`app-control flex flex-col items-center justify-center gap-0.5 px-1 py-1.5 text-[10px] font-medium transition-colors sm:gap-1 sm:px-2 sm:py-2 sm:text-[11px] ${
+                                    className={`app-control flex flex-col items-center justify-center gap-0.5 px-0.5 py-1.5 text-[9px] font-medium transition-colors sm:gap-1 sm:px-1.5 sm:py-2 sm:text-[11px] ${
                                         isActive
                                             ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
                                             : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
@@ -203,7 +204,7 @@ const MainLayout: React.FC<{
                                     aria-current={isActive ? 'page' : undefined}
                                 >
                                     <item.icon className="text-base sm:text-lg" />
-                                    <span className="truncate">{item.label.replace('Arsip ', '').replace('Bank ', 'Bank ')}</span>
+                                    <span className="truncate max-w-full">{item.label.replace('Arsip ', '').replace('Bank ', 'Bank ').replace('Pusat Berbagi MGMP', 'MGMP')}</span>
                                 </button>
                             );
                         })}

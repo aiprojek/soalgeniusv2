@@ -1,10 +1,12 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import type { Exam, Settings } from '../types';
+import type { View } from '../App';
 import { getSettings, saveSettings, getAllExams, deleteExam, createBackupData, restoreBackupData } from '../lib/storage';
 import { getDropboxConfig, isDropboxConnected as checkDbxStatus, getDropboxAuthCodeUrl, exchangeAuthCodeForToken, clearDropboxToken, uploadToDropbox, downloadFromDropbox, getDropboxSpaceUsage, DropboxSpaceUsage, saveDropboxConfig, getDropboxToken, saveDropboxToken } from '../lib/dropbox';
 import { saveGeminiKey, getGeminiKey } from '../lib/gemini';
 import { generateDocx } from '../lib/docxGenerator';
 import { generateHtmlContent } from '../lib/htmlGenerator';
+import { TEMPLATE_PRESETS, applyPresetToSettings, TemplatePresetMeta } from '../lib/templatePresets';
 import { useToast } from '../contexts/ToastContext';
 import { useModal } from '../contexts/ModalContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -12,10 +14,17 @@ import {
     PlusIcon, TrashIcon, DropboxIcon, CloudUploadIcon, CloudDownloadIcon, 
     CheckIcon, SettingsIcon, CardTextIcon, PrinterIcon, 
     HddIcon, DownloadIcon, SearchIcon, BackupIcon, RestoreIcon, StarsIcon, RobotIcon, WordIcon, FileCodeIcon, InfoIcon,
-    QrCodeIcon, ScanIcon, CopyIcon, CloseIcon
+    QrCodeIcon, ScanIcon, CopyIcon, CloseIcon,
+    PaletteIcon, MortarboardIcon, MoonStarsIcon, GlobeIcon, BuildingIcon, TreeIcon, SparklesIcon,
+    EyeIcon, ShieldCheckIcon
 } from '../components/Icons';
 
-type SettingsTab = 'general' | 'header' | 'format' | 'ai' | 'cloud' | 'storage';
+export type SettingsTab = 'template' | 'general' | 'header' | 'format' | 'ai' | 'cloud' | 'storage';
+
+interface SettingsViewProps {
+    initialTab?: SettingsTab;
+    onNavigate?: (view: View) => void;
+}
 
 const formatBytes = (bytes: number, decimals = 2) => {
     if (!+bytes) return '0 Bytes';
@@ -26,7 +35,7 @@ const formatBytes = (bytes: number, decimals = 2) => {
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
 };
 
-const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'general' }) => {
+const SettingsView: React.FC<SettingsViewProps> = ({ initialTab = 'template', onNavigate }) => {
     const [settings, setSettings] = useState<Settings | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [offlineStatus, setOfflineStatus] = useState<'checking' | 'ready' | 'not_ready'>('checking');
@@ -34,6 +43,7 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
     
     // AI Settings
     const [geminiApiKey, setGeminiApiKey] = useState('');
+    const [showApiKey, setShowApiKey] = useState(false);
 
     // Dropbox States
     const [dropboxAppKey, setDropboxAppKey] = useState('');
@@ -60,6 +70,7 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
     const [examList, setExamList] = useState<(Exam & { size: number })[]>([]);
     const [storageSearchTerm, setStorageSearchTerm] = useState('');
     const [selectedExamIds, setSelectedExamIds] = useState<Set<string>>(new Set());
+    const [presetIncludeHeader, setPresetIncludeHeader] = useState<boolean>(false);
     const restoreInputRef = useRef<HTMLInputElement>(null);
     
     const { addToast } = useToast();
@@ -167,7 +178,6 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
         }
 
         setStorageBreakdown({ examData, offlineCacheEstimate });
-        
         setExamList(examsWithSize);
     };
 
@@ -228,7 +238,7 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
             newLogos[index] = null;
             return { ...s, logos: newLogos };
         });
-    }
+    };
 
     const handleMarginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -240,7 +250,6 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
         try {
             // 1. Kumpulkan semua URL yang perlu di-cache
             const urlsToCache = new Set<string>([
-                // App shell
                 './',
                 './index.html',
                 './manifest.json',
@@ -249,7 +258,6 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
                 window.location.href,
             ]);
 
-            // Tambahkan semua JS & CSS lokal yang sudah di-load oleh Vite
             document.querySelectorAll('script[src], link[rel="stylesheet"]').forEach((el) => {
                 const src = el instanceof HTMLScriptElement ? el.src : (el as HTMLLinkElement).href;
                 if (src && (src.startsWith('http://') || src.startsWith('https://'))) {
@@ -257,7 +265,6 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
                 }
             });
 
-            // Tambahkan font & style references
             document.querySelectorAll('link[rel="stylesheet"]').forEach((el) => {
                 const href = (el as HTMLLinkElement).href;
                 if (href && (href.startsWith('http://') || href.startsWith('https://'))) {
@@ -267,7 +274,7 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
 
             const allUrls = Array.from(urlsToCache);
 
-            // 2. Simpan langsung ke Cache Storage API secara andal & cepat
+            // 2. Simpan langsung ke Cache Storage API
             if ('caches' in window) {
                 const cache = await caches.open('soalgenius-cache-v10-offline-first');
                 
@@ -284,7 +291,6 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
                                     signal: controller.signal 
                                 });
                             } catch {
-                                // Coba no-cors jika cross-origin membatasi normal fetch
                                 response = await fetch(url, { 
                                     mode: 'no-cors',
                                     signal: controller.signal 
@@ -302,7 +308,7 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
                 );
             }
 
-            // 3. Daftarkan dan perbarui Service Worker (jika didukung) tanpa blocking
+            // 3. Daftarkan Service Worker
             if ('serviceWorker' in navigator) {
                 try {
                     const reg = await navigator.serviceWorker.register('./sw.js');
@@ -378,9 +384,9 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
             showConfirm({
                 title: "Dukungan Pengembangan ☕",
                 content: (
-                    <div className="text-sm text-[var(--text-secondary)] space-y-3">
+                    <div className="text-xs sm:text-sm text-[var(--text-secondary)] space-y-3">
                         <p>Dokumen berhasil diproses! Semoga bermanfaat untuk kegiatan mengajar Bapak/Ibu.</p>
-                        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
+                        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-[var(--radius-card)] border border-blue-100 dark:border-blue-800">
                             <p><strong>SoalGenius</strong> dikembangkan secara mandiri dan gratis (Open Source). Jika aplikasi ini membantu pekerjaan Anda, pertimbangkan untuk mentraktir kami kopi agar kami semangat mengembangkan fitur baru.</p>
                         </div>
                     </div>
@@ -403,17 +409,16 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
 
         try {
             if (format === 'json') {
-                // Create a compatible backup structure for single exam so it can be restored
                 const backupPayload = {
                     source: 'SoalGeniusDB',
                     version: 3,
                     createdAt: new Date().toISOString(),
-                    data: { exams: [exam] } // Wrap in array
+                    data: { exams: [exam] }
                 };
                 blob = new Blob([JSON.stringify(backupPayload, null, 2)], { type: 'application/json' });
             } else if (format === 'docx') {
                 blob = await generateDocx(exam, settings);
-            } else { // html
+            } else {
                 const htmlContent = generateHtmlContent(exam, settings, 'exam', false);
                 blob = new Blob([htmlContent], { type: 'text/html' });
             }
@@ -428,7 +433,6 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
             URL.revokeObjectURL(url);
             if (!silent) {
                 addToast(`Berhasil mengekspor ${format.toUpperCase()}`, 'success');
-                // Prompt donation for single exports in settings too, as user requested "export lainnya juga"
                 showDonationPrompt();
             }
         } catch (e: any) {
@@ -456,13 +460,11 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
             await exchangeAuthCodeForToken(dropboxAuthCode, dropboxAppKey, dropboxAppSecret);
             setIsDropboxConnected(true);
             
-            // AUTO-RESTORE CHECK
-            // If this connection was triggered by Pairing, we auto-download and restart.
             const shouldAutoSync = sessionStorage.getItem('soalgenius_auto_restore');
             if (shouldAutoSync === '1') {
                 addToast('Koneksi berhasil! Mengunduh data dari Cloud...', 'info');
                 await downloadFromDropbox();
-                sessionStorage.removeItem('soalgenius_auto_restore'); // Clean up
+                sessionStorage.removeItem('soalgenius_auto_restore');
                 addToast('Data berhasil dipulihkan. Restarting...', 'success');
                 setTimeout(() => window.location.reload(), 1500);
             } else {
@@ -497,7 +499,6 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
         try {
             await uploadToDropbox();
             addToast('Data lokal berhasil diunggah ke Dropbox.', 'success');
-            // Refresh Usage
             getDropboxSpaceUsage().then(setDropboxUsage);
         } catch (error: any) {
             const msg = error instanceof Error ? error.message : 'Gagal upload ke cloud.';
@@ -613,7 +614,6 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
     // --- QR Scanner Logic ---
     const stopScanner = () => {
         if (scannerRef.current) {
-            // Fix: Use unknown for catch variable and handle logging safely
             scannerRef.current.clear().catch((error: any) => {
                 console.error("Failed to clear scanner", error);
             });
@@ -624,18 +624,14 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
 
     const onScanSuccess = (decodedText: any) => {
         stopScanner();
-        // decodedText passed from library might be unknown type, safely cast to string
         const text = typeof decodedText === 'string' ? decodedText : String(decodedText);
         processPairingCode(text);
     };
 
-    const onScanFailure = (error: any) => {
-        // Handle scan failure, usually better to ignore to avoid spamming logs
-    };
+    const onScanFailure = () => {};
 
     const startScanner = () => {
         setIsScanning(true);
-        // Wait for DOM element to exist
         setTimeout(async () => {
             if (!document.getElementById('reader')) return;
             
@@ -645,7 +641,7 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
                     const scanner = new Html5QrcodeScanner(
                         "reader",
                         { fps: 10, qrbox: { width: 250, height: 250 } },
-                        /* verbose= */ false
+                        false
                     );
                     scannerRef.current = scanner;
                     scanner.render(onScanSuccess, onScanFailure);
@@ -672,7 +668,7 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
                 try {
                     await deleteExam(examId);
                     addToast('Data dihapus.', 'success');
-                    loadStorageData(); // Refresh list
+                    loadStorageData();
                 } catch (e: any) {
                     addToast('Gagal menghapus data.', 'error');
                 }
@@ -728,7 +724,6 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
         const selectedExams = examList.filter(e => selectedExamIds.has(e.id));
         if (selectedExams.length === 0) return;
 
-        // Browser constraint warning
         if (selectedExams.length > 5) {
              const ok = window.confirm(`Anda akan mengunduh ${selectedExams.length} file terpisah. Browser mungkin meminta izin untuk mengunduh banyak file. Lanjutkan?`);
              if (!ok) return;
@@ -736,19 +731,16 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
 
         addToast(`Mulai mengunduh ${selectedExams.length} dokumen...`, 'info');
 
-        // Sequential download to prevent browser choking
         for (let i = 0; i < selectedExams.length; i++) {
-            await handleExportExam(selectedExams[i], format, true); // Silent mode
-            // Small delay between downloads
+            await handleExportExam(selectedExams[i], format, true);
             if (i < selectedExams.length - 1) {
-                // Fix: Ensure resolve is called properly for void
                 await new Promise<void>(resolve => setTimeout(() => resolve(), 500));
             }
         }
         
         addToast(`Selesai mengunduh ${selectedExams.length} dokumen.`, 'success');
         setSelectedExamIds(new Set<string>());
-        showDonationPrompt(); // Show for bulk export as well
+        showDonationPrompt();
     }, [examList, selectedExamIds, addToast, handleExportExam, showDonationPrompt]);
 
     const toggleSelection = (id: string) => {
@@ -774,153 +766,468 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
     );
 
     if (!settings) {
-        return <div className="app-loading-state">Memuat pengaturan...</div>;
+        return (
+            <div className="mx-auto w-full max-w-5xl flex items-center justify-center p-12 app-surface rounded-[var(--radius-card)]">
+                <div className="flex items-center gap-3 text-xs sm:text-sm text-[var(--text-secondary)]">
+                    <div className="w-5 h-5 border-2 border-[var(--bg-accent)] border-t-transparent rounded-full animate-spin"></div>
+                    <span>Memuat preferensi pengaturan...</span>
+                </div>
+            </div>
+        );
     }
 
-    const tabs: { id: SettingsTab; label: string; icon: React.ElementType }[] = [
-        { id: 'general', label: 'Umum', icon: SettingsIcon },
-        { id: 'header', label: 'Kop', icon: CardTextIcon },
-        { id: 'format', label: 'Kertas', icon: PrinterIcon },
-        { id: 'ai', label: 'AI / Cerdas', icon: StarsIcon },
-        { id: 'cloud', label: 'Cloud', icon: DropboxIcon },
-        { id: 'storage', label: 'Data', icon: HddIcon },
+    const tabs: { id: SettingsTab; label: string; sublabel: string; icon: React.ElementType }[] = [
+        { id: 'template', label: 'Preset Gaya', sublabel: 'Layout & tema naskah instan', icon: PaletteIcon },
+        { id: 'general', label: 'Tampilan & Offline', sublabel: 'Mode tema & cache browser', icon: SettingsIcon },
+        { id: 'header', label: 'Kop Surat', sublabel: 'Identitas sekolah & logo naskah', icon: CardTextIcon },
+        { id: 'format', label: 'Kertas & Tipografi', sublabel: 'Ukuran kertas, font & spasi', icon: PrinterIcon },
+        { id: 'ai', label: 'AI Gemini', sublabel: 'Model generatif & API Key', icon: StarsIcon },
+        { id: 'cloud', label: 'Cloud Dropbox', sublabel: 'Sinkron & pairing perangkat', icon: DropboxIcon },
+        { id: 'storage', label: 'Manajemen Data', sublabel: 'Backup, restore & arsip', icon: HddIcon },
     ];
-    const tabDescriptions: Record<SettingsTab, string> = {
-        general: 'Tema aplikasi dan kesiapan offline.',
-        header: 'Identitas sekolah, teks kop, dan logo.',
-        format: 'Ukuran kertas, font, spasi, dan margin.',
-        ai: 'Konfigurasi fitur AI dan kunci Gemini.',
-        cloud: 'Sinkronisasi Dropbox dan pairing perangkat.',
-        storage: 'Backup lokal, restore, dan penggunaan data.',
+
+    const getPresetIconElement = (id: string) => {
+        switch (id) {
+            case 'kemendikbud': return <MortarboardIcon className="text-xl text-blue-600 dark:text-blue-400" />;
+            case 'madrasah': return <MoonStarsIcon className="text-xl text-emerald-600 dark:text-emerald-400" />;
+            case 'cambridge': return <GlobeIcon className="text-xl text-purple-600 dark:text-purple-400" />;
+            case 'minimal': return <TreeIcon className="text-xl text-emerald-600 dark:text-emerald-400" />;
+            default: return <BuildingIcon className="text-xl text-slate-600 dark:text-slate-400" />;
+        }
     };
-    const activeTabMeta = tabs.find((tab) => tab.id === activeTab) ?? tabs[0];
-    const ActiveTabIcon = activeTabMeta.icon;
+
+    const handleApplyPreset = (presetId: TemplatePresetMeta['id']) => {
+        updateSettings(s => applyPresetToSettings(s, presetId, { updateHeaderLines: presetIncludeHeader }));
+        addToast(`Preset "${TEMPLATE_PRESETS.find(p => p.id === presetId)?.name}" berhasil diterapkan!`, 'success');
+    };
 
     const storagePercent = storageUsage ? Math.min(100, (storageUsage.usage / storageUsage.quota) * 100) : 0;
     const dropboxPercent = dropboxUsage ? Math.min(100, (dropboxUsage.used / dropboxUsage.allocation.allocated) * 100) : 0;
+
     return (
-        <div className="space-y-4 flex flex-col h-[calc(100vh-140px)]">
+        <div className="mx-auto w-full max-w-5xl flex flex-col space-y-5 pb-12 px-1 sm:px-2 md:px-4 animate-fade-in">
             <input type="file" ref={restoreInputRef} onChange={handleFileRestore} className="hidden" accept="application/json" />
 
             {/* QR Scanner Modal */}
             {isScanning && (
                 <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-                    <div className="bg-white w-full max-w-sm rounded-xl p-4 shadow-2xl">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="font-bold text-gray-800">Scan QR Code</h3>
-                            <button onClick={stopScanner}><CloseIcon className="text-gray-500 hover:text-red-500" /></button>
+                    <div className="app-surface w-full max-w-sm rounded-[var(--radius-card)] p-4 shadow-2xl border border-[var(--border-primary)]">
+                        <div className="flex justify-between items-center mb-3">
+                            <h3 className="font-bold text-xs sm:text-sm text-[var(--text-primary)] flex items-center gap-2">
+                                <ScanIcon className="text-base text-purple-600" />
+                                <span>Pindai QR Code Pairing</span>
+                            </h3>
+                            <button onClick={stopScanner} className="p-1 rounded-[var(--radius-control)] hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-red-500 transition-colors">
+                                <CloseIcon className="text-sm" />
+                            </button>
                         </div>
-                        <div id="reader" className="w-full"></div>
-                        <p className="text-xs text-center text-gray-500 mt-4">Arahkan kamera ke QR Code di perangkat utama (Menu Cloud).</p>
+                        <div id="reader" className="w-full rounded-[var(--radius-control)] overflow-hidden"></div>
+                        <p className="text-[11px] text-center text-[var(--text-secondary)] mt-3">Arahkan kamera ke QR Code di perangkat utama (Menu Cloud).</p>
                     </div>
                 </div>
             )}
 
-            <div className="flex-shrink-0">
-                <h2 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] mb-3">Pengaturan</h2>
-
-                <div className="md:hidden app-tab-shell p-3 space-y-3">
-                    <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-[var(--radius-control)] bg-[var(--bg-tertiary)] border border-[var(--border-primary)] flex items-center justify-center text-[var(--text-accent)]">
-                            <ActiveTabIcon className="text-lg" />
+            {/* Header Area with Title & Action Button */}
+            <div className="app-surface p-4 sm:p-5 rounded-[var(--radius-card)] space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                        <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-[var(--radius-control)] bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[11px] font-bold text-[var(--text-accent)] mb-1">
+                            <i className="bi bi-sliders text-xs"></i>
+                            <span>Konfigurasi & Personalisasi Sistem</span>
                         </div>
-                        <div className="min-w-0">
-                            <p className="text-xs uppercase tracking-[0.14em] text-[var(--text-muted)]">Section Aktif</p>
-                            <h3 className="text-base font-bold text-[var(--text-primary)]">{activeTabMeta.label}</h3>
-                            <p className="text-xs text-[var(--text-secondary)]">{tabDescriptions[activeTab]}</p>
-                        </div>
+                        <h2 className="text-xl sm:text-2xl font-extrabold text-[var(--text-primary)] tracking-tight">
+                            Pengaturan SoalGenius
+                        </h2>
+                        <p className="text-xs sm:text-sm text-[var(--text-secondary)] mt-0.5">
+                            Kustomisasi preset naskah, kop sekolah, ukuran kertas & tipografi, integrasi AI, hingga sinkronisasi cloud.
+                        </p>
                     </div>
 
-                    <div className="space-y-2">
-                        <label htmlFor="settings-tab-select" className="block text-sm font-medium text-[var(--text-secondary)]">
-                            Pindah section
-                        </label>
-                        <select
-                            id="settings-tab-select"
-                            value={activeTab}
-                            onChange={(e) => setActiveTab(e.target.value as SettingsTab)}
-                            className="w-full p-2.5 border border-[var(--border-secondary)] rounded-[var(--radius-control)] bg-[var(--bg-secondary)] text-[var(--text-primary)]"
+                    {/* Quick Save Header Button */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                        <button
+                            onClick={handleSave}
+                            disabled={isSaving}
+                            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-semibold rounded-[var(--radius-control)] bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] text-[var(--text-on-accent)] transition-all shadow-xs disabled:opacity-60"
                         >
-                            {tabs.map((tab) => (
-                                <option key={tab.id} value={tab.id}>
-                                    {tab.label}
-                                </option>
-                            ))}
-                        </select>
+                            {isSaving ? (
+                                <>
+                                    <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                                    <span>Menyimpan...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <CheckIcon className="text-base" />
+                                    <span>Simpan Pengaturan</span>
+                                </>
+                            )}
+                        </button>
                     </div>
                 </div>
 
-                <div className="hidden md:flex space-x-1 app-tab-shell p-1 overflow-x-auto">
-                    {tabs.map((tab) => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            className={`app-tab-button flex items-center space-x-2 px-3 py-2 text-sm font-semibold whitespace-nowrap flex-1 justify-center ${
-                                activeTab === tab.id
-                                    ? 'app-tab-button-active'
-                                    : ''
-                            }`}
-                        >
-                            <tab.icon className="text-lg" />
-                            <span>{tab.label}</span>
-                        </button>
-                    ))}
+                {/* Hint Notice */}
+                <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-[var(--radius-control)] bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs">
+                    <InfoIcon className="text-base flex-shrink-0 text-amber-600 dark:text-amber-400" />
+                    <span className="leading-snug">
+                        <strong>Pengingat:</strong> Jangan lupa klik tombol <strong>"Simpan Pengaturan"</strong> di atas setelah mengubah konfigurasi agar seluruh preferensi tersimpan permanen.
+                    </span>
+                </div>
+
+                {/* Unified Smooth Horizontal Scrollable Tab Navigation */}
+                <div className="app-tab-shell p-1 w-full overflow-x-auto no-scrollbar">
+                    <div className="flex items-stretch gap-1 min-w-max xl:min-w-0 xl:w-full xl:grid xl:grid-cols-7">
+                        {tabs.map((tab) => {
+                            const Icon = tab.icon;
+                            const isActive = activeTab === tab.id;
+                            return (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`app-tab-button flex flex-col items-start justify-center gap-0.5 px-3.5 py-2 text-xs font-semibold text-left transition-all flex-shrink-0 ${
+                                        isActive ? 'app-tab-button-active' : ''
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-1.5 w-full">
+                                        <Icon className={`text-sm flex-shrink-0 ${isActive ? 'text-white' : 'text-current'}`} />
+                                        <span className="truncate font-bold leading-tight">{tab.label}</span>
+                                    </div>
+                                    <div className={`text-[10px] truncate w-full ${isActive ? 'text-white/80' : 'text-[var(--text-muted)]'}`}>
+                                        {tab.sublabel}
+                                    </div>
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
             </div>
 
-            <div className="flex-grow overflow-y-auto pr-1">
-                {/* General Tab */}
-                {activeTab === 'general' && (
+            {/* Main Content Area */}
+            <div className="space-y-6">
+                {/* 1. PRESET TEMPLATE TAB */}
+                {activeTab === 'template' && (
                     <div className="space-y-6 animate-fade-in">
-                        <div className="app-surface p-4 sm:p-5">
-                            <h3 className="text-lg font-bold text-[var(--text-primary)] mb-3 border-b border-[var(--border-primary)] pb-2">Tampilan Aplikasi</h3>
-                            <div className="flex items-center justify-between">
-                                <label className="text-sm font-medium text-[var(--text-secondary)]">Mode Tema</label>
-                                <div className="flex items-center rounded-xl bg-[var(--bg-muted)] p-0.5">
-                                    <button
-                                        onClick={() => setTheme('light')}
-                                        className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${theme === 'light' ? 'bg-[var(--bg-secondary)] text-blue-600 dark:text-slate-100 shadow-sm' : 'text-[var(--text-secondary)]'}`}
-                                    >
-                                        Terang
-                                    </button>
-                                    <button
-                                        onClick={() => setTheme('dark')}
-                                        className={`px-3 py-1 text-sm font-semibold rounded-md transition-colors ${theme === 'dark' ? 'bg-[var(--bg-secondary)] text-blue-600 dark:text-slate-100 shadow-sm' : 'text-[var(--text-secondary)]'}`}
-                                    >
-                                        Gelap
-                                    </button>
+                        <div className="app-surface p-4 sm:p-5 rounded-[var(--radius-card)] space-y-5">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--border-primary)] pb-3">
+                                <div>
+                                    <h3 className="text-base sm:text-lg font-bold text-[var(--text-primary)] flex items-center gap-2">
+                                        <PaletteIcon className="text-blue-600 dark:text-blue-400" />
+                                        <span>Preset Tata Letak & Gaya Visual Ujian</span>
+                                    </h3>
+                                    <p className="text-xs sm:text-sm text-[var(--text-secondary)] mt-0.5">
+                                        Pilih preset 1-klik untuk otomatis menyesuaikan tipografi, font Arab/Latin, header, pembatas, dan format stimulus.
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                    <label className="flex items-center gap-2 text-xs text-[var(--text-secondary)] cursor-pointer bg-[var(--bg-tertiary)] px-3 py-1.5 rounded-[var(--radius-control)] border border-[var(--border-primary)] hover:border-[var(--border-secondary)] transition-all">
+                                        <input
+                                            type="checkbox"
+                                            checked={presetIncludeHeader}
+                                            onChange={(e) => setPresetIncludeHeader(e.target.checked)}
+                                            className="rounded border-[var(--border-secondary)] text-[var(--bg-accent)] focus:ring-[var(--bg-accent)] w-4 h-4 cursor-pointer"
+                                        />
+                                        <span>Terapkan juga teks Kop contoh</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            {/* Preset Cards Grid */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {TEMPLATE_PRESETS.map((preset) => {
+                                    const isCurrent = settings.templatePreset === preset.id;
+                                    return (
+                                        <div
+                                            key={preset.id}
+                                            className={`p-4 sm:p-4.5 rounded-[var(--radius-card)] border transition-all flex flex-col justify-between group shadow-xs ${
+                                                isCurrent
+                                                    ? 'border-[var(--bg-accent)] bg-blue-50/40 dark:bg-blue-950/20 shadow-sm ring-1 ring-[var(--bg-accent)]'
+                                                    : 'border-[var(--border-primary)] bg-[var(--bg-secondary)] hover:border-[var(--border-secondary)]'
+                                            }`}
+                                        >
+                                            <div>
+                                                <div className="flex items-start justify-between gap-2 mb-2">
+                                                    <div className="flex items-center gap-2.5">
+                                                        <div className="w-10 h-10 rounded-[var(--radius-control)] bg-[var(--bg-tertiary)] border border-[var(--border-primary)] flex items-center justify-center flex-shrink-0">
+                                                            {getPresetIconElement(preset.id)}
+                                                        </div>
+                                                        <div>
+                                                            <h4 className="font-bold text-xs sm:text-sm text-[var(--text-primary)] leading-tight">
+                                                                {preset.name}
+                                                            </h4>
+                                                            <p className="text-[11px] text-[var(--text-secondary)]">{preset.subtitle}</p>
+                                                        </div>
+                                                    </div>
+                                                    {isCurrent && (
+                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[var(--radius-control)] text-[10px] font-bold bg-[var(--bg-accent)] text-[var(--text-on-accent)] shadow-xs">
+                                                            <CheckIcon />
+                                                            <span>Aktif</span>
+                                                        </span>
+                                                    )}
+                                                </div>
+
+                                                <div className="my-2">
+                                                    <span className={`inline-block px-2 py-0.5 text-[11px] font-semibold rounded-[var(--radius-control)] ${preset.tagColor}`}>
+                                                        {preset.tag}
+                                                    </span>
+                                                </div>
+
+                                                <p className="text-xs text-[var(--text-secondary)] leading-relaxed mb-3">
+                                                    {preset.description}
+                                                </p>
+
+                                                <div className="space-y-1 mb-4 pt-2 border-t border-[var(--border-primary)]">
+                                                    {preset.highlights.map((h, i) => (
+                                                        <div key={i} className="flex items-start gap-1.5 text-[11px] text-[var(--text-secondary)]">
+                                                            <span className="text-[var(--text-accent)] font-bold">•</span>
+                                                            <span>{h}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            <button
+                                                onClick={() => handleApplyPreset(preset.id)}
+                                                disabled={isCurrent}
+                                                className={`w-full py-2 px-3 rounded-[var(--radius-control)] text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
+                                                    isCurrent
+                                                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 cursor-default font-bold'
+                                                        : 'bg-[var(--bg-tertiary)] hover:bg-[var(--bg-accent)] text-[var(--text-primary)] hover:text-[var(--text-on-accent)] border border-[var(--border-secondary)] shadow-xs'
+                                                }`}
+                                            >
+                                                {isCurrent ? (
+                                                    <>
+                                                        <CheckIcon />
+                                                        <span>Template Sedang Digunakan</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <SparklesIcon />
+                                                        <span>Terapkan Gaya {preset.name}</span>
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Fine-Tuning Granular Controls Card */}
+                            <div className="border-t border-[var(--border-primary)] pt-5 space-y-4">
+                                <h4 className="text-xs sm:text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
+                                    <SettingsIcon className="text-slate-500" />
+                                    <span>Penyesuaian Elemen Visual Khusus</span>
+                                </h4>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {/* Madrasah Toggles */}
+                                    <div className="p-4 rounded-[var(--radius-card)] border border-[var(--border-primary)] bg-[var(--bg-secondary)] space-y-3">
+                                        <h5 className="font-semibold text-xs text-[var(--text-primary)] uppercase tracking-wider flex items-center gap-1.5">
+                                            <MoonStarsIcon className="text-emerald-600" />
+                                            <span>Fitur Madrasah & Keagamaan</span>
+                                        </h5>
+
+                                        <label className="flex items-start gap-2.5 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={settings.showBasmalah ?? false}
+                                                onChange={(e) => updateSettings(s => ({ ...s, showBasmalah: e.target.checked }))}
+                                                className="mt-0.5 rounded border-[var(--border-secondary)] text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                                            />
+                                            <div>
+                                                <span className="text-xs font-semibold text-[var(--text-primary)]">Teks Basmalah di Awal Ujian</span>
+                                                <p className="text-[11px] text-[var(--text-secondary)]">Menampilkan kaligrafi Basmalah sebelum butir soal nomor 1.</p>
+                                            </div>
+                                        </label>
+
+                                        <label className="flex items-start gap-2.5 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={settings.showHamdalah ?? false}
+                                                onChange={(e) => updateSettings(s => ({ ...s, showHamdalah: e.target.checked }))}
+                                                className="mt-0.5 rounded border-[var(--border-secondary)] text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                                            />
+                                            <div>
+                                                <span className="text-xs font-semibold text-[var(--text-primary)]">Teks Hamdalah di Akhir Ujian</span>
+                                                <p className="text-[11px] text-[var(--text-secondary)]">Menampilkan kalimat syukur di penutup lembar soal terakhir.</p>
+                                            </div>
+                                        </label>
+
+                                        <div className="pt-1">
+                                            <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+                                                Penomoran Pilihan Ganda Arab
+                                            </label>
+                                            <select
+                                                value={settings.arabicOptionStyle || 'latin'}
+                                                onChange={(e) => updateSettings(s => ({ ...s, arabicOptionStyle: e.target.value as 'latin' | 'hijaiyah' }))}
+                                                className="w-full p-2 text-xs border border-[var(--border-secondary)] rounded-[var(--radius-control)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--bg-accent)]"
+                                            >
+                                                <option value="latin">Latin Baku (A, B, C, D, E)</option>
+                                                <option value="hijaiyah">Hijaiyah / Arab Pegon (أ, ب, ج, د, هـ)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {/* Stimulus & Layout Toggles */}
+                                    <div className="p-4 rounded-[var(--radius-card)] border border-[var(--border-primary)] bg-[var(--bg-secondary)] space-y-3">
+                                        <h5 className="font-semibold text-xs text-[var(--text-primary)] uppercase tracking-wider flex items-center gap-1.5">
+                                            <GlobeIcon className="text-purple-600" />
+                                            <span>Format Soal & Stimulus</span>
+                                        </h5>
+
+                                        <label className="flex items-start gap-2.5 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={settings.showPointsBadge ?? false}
+                                                onChange={(e) => updateSettings(s => ({ ...s, showPointsBadge: e.target.checked }))}
+                                                className="mt-0.5 rounded border-[var(--border-secondary)] text-purple-600 focus:ring-purple-500 w-4 h-4 cursor-pointer"
+                                            />
+                                            <div>
+                                                <span className="text-xs font-semibold text-[var(--text-primary)]">Badge Alokasi Poin / Marks</span>
+                                                <p className="text-[11px] text-[var(--text-secondary)]">Menampilkan bobot nilai [marks] di samping nomor soal (gaya Cambridge).</p>
+                                            </div>
+                                        </label>
+
+                                        <div>
+                                            <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+                                                Gaya Kotak Stimulus / Wacana Literasi
+                                            </label>
+                                            <select
+                                                value={settings.stimulusStyle || 'modern_card'}
+                                                onChange={(e) => updateSettings(s => ({ ...s, stimulusStyle: e.target.value as any }))}
+                                                className="w-full p-2 text-xs border border-[var(--border-secondary)] rounded-[var(--radius-control)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--bg-accent)]"
+                                            >
+                                                <option value="modern_card">Modern Callout Card (Kurikulum Merdeka)</option>
+                                                <option value="bordered">Bordered Box (Kotak Garis Utuh Klasik)</option>
+                                                <option value="minimal">Minimalist Line (Garis Pembatas Putus-putus)</option>
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+                                                Gaya Garis Pembatas Kop Surat
+                                            </label>
+                                            <select
+                                                value={settings.dividerStyle || 'modern'}
+                                                onChange={(e) => updateSettings(s => ({ ...s, dividerStyle: e.target.value as any }))}
+                                                className="w-full p-2 text-xs border border-[var(--border-secondary)] rounded-[var(--radius-control)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--bg-accent)]"
+                                            >
+                                                <option value="modern">Garis Modern Gradasi Halus</option>
+                                                <option value="double">Garis Ganda Dinas Tebal-Tipis (Double Rule)</option>
+                                                <option value="solid">Garis Tunggal Tegas (Single Solid)</option>
+                                                <option value="dashed">Garis Putus-Putus (Dashed)</option>
+                                            </select>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
+                    </div>
+                )}
 
-                        {/* Offline Mode Section */}
-                        <div className="app-surface p-4 sm:p-5">
-                            <h3 className="text-lg font-bold text-[var(--text-primary)] mb-3 border-b border-[var(--border-primary)] pb-2">Mode Offline</h3>
+                {/* 2. GENERAL / TAMPILAN & OFFLINE TAB */}
+                {activeTab === 'general' && (
+                    <div className="space-y-6 animate-fade-in">
+                        {/* Theme Mode Card */}
+                        <div className="app-surface p-4 sm:p-5 rounded-[var(--radius-card)] space-y-4">
+                            <div className="border-b border-[var(--border-primary)] pb-3">
+                                <h3 className="text-base sm:text-lg font-bold text-[var(--text-primary)] flex items-center gap-2">
+                                    <SettingsIcon className="text-blue-600 dark:text-blue-400" />
+                                    <span>Tampilan & Tema Aplikasi</span>
+                                </h3>
+                                <p className="text-xs sm:text-sm text-[var(--text-secondary)] mt-0.5">
+                                    Sesuaikan tema antarmuka sesuai kenyamanan visual saat menyusun naskah ujian.
+                                </p>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                                <button
+                                    onClick={() => setTheme('light')}
+                                    className={`p-4 rounded-[var(--radius-card)] border text-left transition-all flex items-center justify-between ${
+                                        theme === 'light'
+                                            ? 'border-[var(--bg-accent)] bg-blue-50/40 dark:bg-blue-950/20 shadow-xs ring-1 ring-[var(--bg-accent)]'
+                                            : 'border-[var(--border-primary)] bg-[var(--bg-secondary)] hover:border-[var(--border-secondary)]'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-9 h-9 rounded-[var(--radius-control)] bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center font-bold">
+                                            <i className="bi bi-sun-fill text-lg"></i>
+                                        </div>
+                                        <div>
+                                            <h4 className="text-xs sm:text-sm font-bold text-[var(--text-primary)]">Mode Terang (Light)</h4>
+                                            <p className="text-xs text-[var(--text-secondary)]">Kontras tinggi, cocok di siang hari atau saat mencetak.</p>
+                                        </div>
+                                    </div>
+                                    {theme === 'light' && (
+                                        <span className="w-5 h-5 rounded-full bg-[var(--bg-accent)] text-white flex items-center justify-center text-xs">
+                                            <CheckIcon />
+                                        </span>
+                                    )}
+                                </button>
+
+                                <button
+                                    onClick={() => setTheme('dark')}
+                                    className={`p-4 rounded-[var(--radius-card)] border text-left transition-all flex items-center justify-between ${
+                                        theme === 'dark'
+                                            ? 'border-[var(--bg-accent)] bg-blue-50/40 dark:bg-blue-950/20 shadow-xs ring-1 ring-[var(--bg-accent)]'
+                                            : 'border-[var(--border-primary)] bg-[var(--bg-secondary)] hover:border-[var(--border-secondary)]'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-9 h-9 rounded-[var(--radius-control)] bg-indigo-900/40 text-indigo-300 border border-indigo-700 flex items-center justify-center font-bold">
+                                            <i className="bi bi-moon-stars-fill text-base"></i>
+                                        </div>
+                                        <div>
+                                            <h4 className="text-xs sm:text-sm font-bold text-[var(--text-primary)]">Mode Gelap (Dark)</h4>
+                                            <p className="text-xs text-[var(--text-secondary)]">Nyaman untuk mata saat bekerja di ruangan redup.</p>
+                                        </div>
+                                    </div>
+                                    {theme === 'dark' && (
+                                        <span className="w-5 h-5 rounded-full bg-[var(--bg-accent)] text-white flex items-center justify-center text-xs">
+                                            <CheckIcon />
+                                        </span>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Offline Mode & Cache Section */}
+                        <div className="app-surface p-4 sm:p-5 rounded-[var(--radius-card)] space-y-4">
+                            <div className="border-b border-[var(--border-primary)] pb-3">
+                                <h3 className="text-base sm:text-lg font-bold text-[var(--text-primary)] flex items-center gap-2">
+                                    <ShieldCheckIcon className="text-emerald-600 dark:text-emerald-400" />
+                                    <span>Kesiapan Mode Offline (PWA & Cache)</span>
+                                </h3>
+                                <p className="text-xs sm:text-sm text-[var(--text-secondary)] mt-0.5">
+                                    SoalGenius dirancang dengan arsitektur Offline-First. Seluruh pustaka editor dan cetak dapat dijalankan tanpa internet.
+                                </p>
+                            </div>
+
                             <div className="space-y-4">
-                                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                                    <div className="space-y-2">
-                                        <p className="text-sm text-[var(--text-secondary)]">Status kesiapan aplikasi untuk dipakai tanpa internet.</p>
-                                        <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold ${
-                                            offlineStatus === 'ready'
-                                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-                                                : offlineStatus === 'checking'
-                                                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
-                                                    : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
-                                        }`}>
-                                            {offlineStatus === 'ready' ? <CheckIcon /> : <InfoIcon />}
-                                            <span>
-                                                {offlineStatus === 'ready'
-                                                    ? 'Aplikasi siap offline'
+                                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-4 rounded-[var(--radius-card)] border border-[var(--border-primary)] bg-[var(--bg-secondary)]">
+                                    <div className="space-y-1.5">
+                                        <span className="text-xs font-semibold text-[var(--text-secondary)]">Status Kesiapan Cache Offline:</span>
+                                        <div>
+                                            <div className={`inline-flex items-center gap-2 rounded-[var(--radius-control)] px-3 py-1 text-xs font-bold ${
+                                                offlineStatus === 'ready'
+                                                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
                                                     : offlineStatus === 'checking'
-                                                        ? 'Memeriksa status offline...'
-                                                        : 'Aplikasi belum siap offline'}
-                                            </span>
+                                                        ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+                                                        : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                                            }`}>
+                                                {offlineStatus === 'ready' ? <CheckIcon /> : <InfoIcon />}
+                                                <span>
+                                                    {offlineStatus === 'ready'
+                                                        ? 'Aplikasi 100% Siap Digunakan Tanpa Internet'
+                                                        : offlineStatus === 'checking'
+                                                            ? 'Memeriksa status cache browser...'
+                                                            : 'Library offline belum lengkap tersimpan'}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
                                     <button
                                         onClick={handleRefreshOfflineCache}
                                         disabled={isRefreshingOfflineCache}
-                                        className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold shadow-sm whitespace-nowrap bg-green-600 hover:bg-green-700 text-white disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                                        className="flex items-center justify-center gap-2 px-4 py-2 text-xs sm:text-sm rounded-[var(--radius-control)] font-semibold shadow-xs whitespace-nowrap bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-60 disabled:cursor-not-allowed transition-all"
                                     >
                                         {isRefreshingOfflineCache ? (
                                             <>
@@ -930,18 +1237,25 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
                                         ) : (
                                             <>
                                                 <CloudDownloadIcon />
-                                                <span>Unduh Library</span>
+                                                <span>Unduh & Perbarui Library Offline</span>
                                             </>
                                         )}
                                     </button>
                                 </div>
-                                <div className="app-surface-muted rounded-[var(--radius-control)] p-4 text-sm text-[var(--text-secondary)]">
+
+                                <div className="p-4 rounded-[var(--radius-card)] bg-[var(--bg-secondary)] border border-[var(--border-primary)] text-xs sm:text-sm text-[var(--text-secondary)] space-y-2">
                                     <div className="flex items-start gap-3">
-                                        <InfoIcon className="mt-0.5 text-blue-600" />
+                                        <div className="w-8 h-8 rounded-[var(--radius-control)] bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 border border-blue-200 dark:border-blue-800 flex items-center justify-center flex-shrink-0">
+                                            <InfoIcon className="text-base" />
+                                        </div>
                                         <div className="space-y-1">
-                                            <p className="font-semibold text-[var(--text-primary)]">Cara pakai sederhana</p>
-                                            <p>Klik <strong>Unduh Library</strong> saat internet aktif. Semua aset aplikasi (JS, CSS, font, ikon) akan disimpan ke cache browser.</p>
-                                            <p>Setelah status <strong>Aplikasi siap offline</strong>, tutup internet — aplikasi tetap dapat dibuka dan digunakan secara penuh.</p>
+                                            <p className="font-bold text-[var(--text-primary)]">Cara Pakai Mode Offline</p>
+                                            <p className="leading-relaxed">
+                                                Klik <strong>Unduh & Perbarui Library Offline</strong> saat internet aktif. Seluruh aset aplikasi (JS, CSS, font, ikon KaTeX, dan mesin DOCX/PDF) akan disimpan ke cache browser lokal Anda.
+                                            </p>
+                                            <p className="leading-relaxed text-[var(--text-muted)]">
+                                                Setelah berstatus siap offline, Anda bisa membuka aplikasi kapan saja tanpa perlu sinyal internet.
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
@@ -950,383 +1264,599 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
                     </div>
                 )}
 
-                {/* AI Tab */}
-                {activeTab === 'ai' && (
-                    <div className="app-surface p-4 sm:p-5 animate-fade-in">
-                        <div className="flex items-center gap-3 mb-4 border-b border-[var(--border-primary)] pb-2">
-                            <RobotIcon className="text-xl text-purple-600" />
-                            <h3 className="text-lg font-bold text-[var(--text-primary)]">Konfigurasi Kecerdasan Buatan (AI)</h3>
-                        </div>
-                        
-                        <div className="space-y-6">
-                            <div className="bg-purple-50 dark:bg-purple-900/20 p-3.5 rounded-[var(--radius-control)] border border-purple-100 dark:border-purple-800">
-                                <h4 className="font-semibold text-purple-800 dark:text-purple-300 mb-2">Google Gemini API (Opsional)</h4>
-                                <p className="text-sm text-[var(--text-secondary)] mb-4">
-                                    Masukkan API Key Anda untuk menggunakan model Gemini yang lebih canggih dan akurat dalam membuat soal.
-                                    Tanpa kunci ini, fitur AI akan menggunakan mode "Default" (Gratis/Pollinations).
+                {/* 3. HEADER / KOP SURAT TAB */}
+                {activeTab === 'header' && (
+                    <div className="space-y-6 animate-fade-in">
+                        <div className="app-surface p-4 sm:p-5 rounded-[var(--radius-card)] space-y-5">
+                            <div className="border-b border-[var(--border-primary)] pb-3">
+                                <h3 className="text-base sm:text-lg font-bold text-[var(--text-primary)] flex items-center gap-2">
+                                    <CardTextIcon className="text-blue-600 dark:text-blue-400" />
+                                    <span>Identitas Sekolah & Kop Surat Naskah</span>
+                                </h3>
+                                <p className="text-xs sm:text-sm text-[var(--text-secondary)] mt-0.5">
+                                    Atur susunan teks kop lembaga, kementerian/dinas, nama madrasah/sekolah, dan logo naskah ujian.
                                 </p>
-                                
-                                <div className="space-y-2">
-                                    <label className="block text-sm font-medium text-[var(--text-secondary)]">API Key Gemini</label>
-                                    <div className="flex gap-2">
+                            </div>
+                            
+                            {/* Lines Editor */}
+                            <div className="space-y-3">
+                                <label className="block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                                    Baris Teks Kop (Atas ke Bawah)
+                                </label>
+
+                                <div className="space-y-2.5">
+                                    {settings.examHeaderLines.map((line, idx) => (
+                                        <div key={line.id} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-3 border border-[var(--border-primary)] rounded-[var(--radius-control)] bg-[var(--bg-secondary)] shadow-xs">
+                                            <div className="w-6 h-6 rounded-[var(--radius-control)] bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[11px] font-bold text-[var(--text-secondary)] flex items-center justify-center flex-shrink-0">
+                                                {idx + 1}
+                                            </div>
+                                            <input 
+                                                type="text" 
+                                                value={line.text} 
+                                                onChange={(e) => handleHeaderChange(line.id, e.target.value)} 
+                                                placeholder={`Contoh: PEMERINTAH DAERAH PROVINSI...`} 
+                                                className="flex-grow px-3 py-2 text-xs sm:text-sm border border-[var(--border-secondary)] rounded-[var(--radius-control)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--bg-accent)]" 
+                                            />
+                                            <div className="flex items-center gap-2 justify-between sm:justify-start">
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="text-[11px] text-[var(--text-muted)] font-semibold">Ukuran:</span>
+                                                    <select 
+                                                        value={line.sizeMode || 'auto'} 
+                                                        onChange={(e) => updateSettings(s => ({...s, examHeaderLines: s.examHeaderLines.map(l => l.id === line.id ? {...l, sizeMode: e.target.value as 'auto'|'fixed'} : l)}))} 
+                                                        className="text-xs px-2 py-1.5 border border-[var(--border-secondary)] rounded-[var(--radius-control)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--bg-accent)]"
+                                                    >
+                                                        <option value="auto">Auto (Dinamis)</option>
+                                                        <option value="fixed">Fixed (Manual)</option>
+                                                    </select>
+                                                </div>
+                                                {line.sizeMode === 'fixed' && (
+                                                    <div className="flex items-center gap-1">
+                                                        <input 
+                                                            type="number" min={6} max={24} step={0.5} 
+                                                            value={line.sizePt ?? 12} 
+                                                            onChange={(e) => updateSettings(s => ({...s, examHeaderLines: s.examHeaderLines.map(l => l.id === line.id ? {...l, sizePt: parseFloat(e.target.value) || 12} : l)}))} 
+                                                            className="w-14 text-xs p-1.5 border border-[var(--border-secondary)] rounded-[var(--radius-control)] bg-[var(--bg-primary)] text-center text-[var(--text-primary)] font-mono" 
+                                                        />
+                                                        <span className="text-[11px] text-[var(--text-muted)]">pt</span>
+                                                    </div>
+                                                )}
+                                                <button 
+                                                    onClick={() => removeHeaderLine(line.id)} 
+                                                    disabled={settings.examHeaderLines.length <= 1}
+                                                    className="p-1.5 rounded-[var(--radius-control)] hover:bg-red-50 dark:hover:bg-red-950/30 text-[var(--text-muted)] hover:text-red-600 disabled:opacity-30 disabled:hover:text-[var(--text-muted)] transition-colors" 
+                                                    title="Hapus Baris"
+                                                >
+                                                    <TrashIcon className="text-sm" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <button 
+                                    onClick={addHeaderLine} 
+                                    className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-[var(--radius-control)] bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)] text-[var(--text-accent)] border border-[var(--border-secondary)] transition-all shadow-xs"
+                                >
+                                    <PlusIcon className="text-sm" />
+                                    <span>Tambah Baris Teks Kop</span>
+                                </button>
+                            </div>
+
+                            {/* Logos Upload Grid */}
+                            <div className="border-t border-[var(--border-primary)] pt-4">
+                                <label className="block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] mb-3">
+                                    Logo Lembaga & Sekolah
+                                </label>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    {[0, 1].map((index) => (
+                                        <div key={index} className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-xs font-semibold text-[var(--text-primary)]">
+                                                    {index === 0 ? 'Logo Kiri (Misal: Lambang Pemda/Kemenag)' : 'Logo Kanan (Misal: Logo Sekolah/Madrasah)'}
+                                                </span>
+                                            </div>
+                                            <div className="border-2 border-dashed border-[var(--border-secondary)] hover:border-[var(--bg-accent)] rounded-[var(--radius-card)] p-4 flex flex-col items-center justify-center min-h-[130px] bg-[var(--bg-secondary)] relative group transition-all">
+                                                {settings.logos[index] ? (
+                                                    <div className="flex flex-col items-center gap-2">
+                                                        <img src={settings.logos[index]!} alt="Logo Preview" className="max-h-20 max-w-[140px] object-contain rounded" />
+                                                        <button 
+                                                            type="button"
+                                                            onClick={(e) => { e.stopPropagation(); handleLogoRemove(index as 0 | 1); }} 
+                                                            className="absolute top-2 right-2 p-1.5 bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-300 rounded-full hover:bg-red-200 transition-colors shadow-xs"
+                                                            title="Hapus Logo"
+                                                        >
+                                                            <TrashIcon className="text-xs" />
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <div className="text-center space-y-1">
+                                                        <div className="w-8 h-8 rounded-full bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-muted)] mx-auto flex items-center justify-center">
+                                                            <CardTextIcon className="text-sm" />
+                                                        </div>
+                                                        <span className="text-xs text-[var(--text-muted)] block">Belum ada logo terunggah</span>
+                                                        <span className="text-[10px] text-[var(--text-secondary)] font-medium block">Klik untuk memilih berkas gambar (Maks. 1MB)</span>
+                                                    </div>
+                                                )}
+                                                <input 
+                                                    type="file" 
+                                                    accept="image/*" 
+                                                    onChange={(e) => handleLogoUpload(e, index as 0 | 1)} 
+                                                    className="absolute inset-0 opacity-0 cursor-pointer" 
+                                                />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* 4. FORMAT / KERTAS & TIPOGRAFI TAB */}
+                {activeTab === 'format' && (
+                    <div className="space-y-6 animate-fade-in">
+                        <div className="app-surface p-4 sm:p-5 rounded-[var(--radius-card)] space-y-5">
+                            <div className="border-b border-[var(--border-primary)] pb-3">
+                                <h3 className="text-base sm:text-lg font-bold text-[var(--text-primary)] flex items-center gap-2">
+                                    <PrinterIcon className="text-blue-600 dark:text-blue-400" />
+                                    <span>Format Kertas, Tipografi & Margin</span>
+                                </h3>
+                                <p className="text-xs sm:text-sm text-[var(--text-secondary)] mt-0.5">
+                                    Sesuaikan dimensi cetak, jenis huruf, spasi naskah, dan margin presisi milimeter.
+                                </p>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="block text-xs font-semibold text-[var(--text-secondary)]">Ukuran Kertas Standar</label>
+                                    <select 
+                                        value={settings.paperSize} 
+                                        onChange={(e) => updateSettings(s => ({...s, paperSize: e.target.value as Settings['paperSize']}))} 
+                                        className="w-full p-2.5 text-xs sm:text-sm border border-[var(--border-secondary)] rounded-[var(--radius-control)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--bg-accent)]"
+                                    >
+                                        <option value="A4">A4 (210 x 297 mm) — Standar Nasional & Ujian</option>
+                                        <option value="F4">F4 / Folio (215 x 330 mm) — Standar Sekolah Indonesia</option>
+                                        <option value="Legal">Legal (216 x 356 mm) — Panjang Ekstra</option>
+                                        <option value="Letter">Letter (216 x 279 mm) — Standar Internasional</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="block text-xs font-semibold text-[var(--text-secondary)]">Jenis Huruf Naskah (Font Family)</label>
+                                    <select 
+                                        value={settings.fontFamily} 
+                                        onChange={(e) => updateSettings(s => ({...s, fontFamily: e.target.value as Settings['fontFamily']}))} 
+                                        className="w-full p-2.5 text-xs sm:text-sm border border-[var(--border-secondary)] rounded-[var(--radius-control)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--bg-accent)]"
+                                    >
+                                        <option value="Liberation Serif">Liberation Serif (Serif Resmi Ujian / Mirip Times New Roman)</option>
+                                        <option value="Liberation Sans">Liberation Sans (Sans-Serif Modern / Mirip Arial)</option>
+                                        <option value="Amiri">Amiri (Arabic Naskh Klasik & Formal)</option>
+                                        <option value="Areef Ruqaa">Areef Ruqaa (Arabic Handwriting Style)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="block text-xs font-semibold text-[var(--text-secondary)]">Ukuran Font Dasar (pt)</label>
+                                    <div className="flex items-center gap-2">
                                         <input 
-                                            type="password" 
-                                            value={geminiApiKey} 
-                                            onChange={(e) => setGeminiApiKey(e.target.value)} 
-                                            placeholder="Tempel API Key di sini (AIza...)"
-                                            className="flex-grow p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)] text-[var(--text-primary)] font-mono text-sm"
+                                            type="number" min="8" max="24" step="0.5" 
+                                            value={settings.fontSize} 
+                                            onChange={(e) => updateSettings(s => ({...s, fontSize: Number(e.target.value)}))} 
+                                            className="w-full p-2 text-xs sm:text-sm border border-[var(--border-secondary)] rounded-[var(--radius-control)] bg-[var(--bg-primary)] text-[var(--text-primary)] font-mono focus:outline-none focus:border-[var(--bg-accent)]" 
                                         />
+                                        <span className="text-xs text-[var(--text-muted)] font-semibold">pt</span>
                                     </div>
-                                    <p className="text-xs text-[var(--text-muted)]">
-                                        Data ini disimpan lokal di browser Anda. Dapatkan kunci gratis di <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Google AI Studio</a>.
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="block text-xs font-semibold text-[var(--text-secondary)]">Kerapatan Spasi Baris (Line Spacing)</label>
+                                    <div className="flex items-center gap-2">
+                                        <input 
+                                            type="number" min="1" max="3" step="0.05" 
+                                            value={settings.lineSpacing} 
+                                            onChange={(e) => updateSettings(s => ({...s, lineSpacing: Number(e.target.value)}))} 
+                                            className="w-full p-2 text-xs sm:text-sm border border-[var(--border-secondary)] rounded-[var(--radius-control)] bg-[var(--bg-primary)] text-[var(--text-primary)] font-mono focus:outline-none focus:border-[var(--bg-accent)]" 
+                                        />
+                                        <span className="text-xs text-[var(--text-muted)] font-semibold">x</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="border-t border-[var(--border-primary)] pt-4 space-y-3">
+                                <label className="block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                                    Batas Margin Halaman (Milimeter)
+                                </label>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                    <div className="p-3 rounded-[var(--radius-control)] border border-[var(--border-primary)] bg-[var(--bg-secondary)] space-y-1">
+                                        <label className="text-[11px] font-semibold text-[var(--text-muted)] uppercase">Margin Atas</label>
+                                        <div className="flex items-center gap-1.5">
+                                            <input type="number" name="top" value={settings.margins.top} onChange={handleMarginChange} className="w-full p-1.5 text-xs font-mono border border-[var(--border-secondary)] rounded bg-[var(--bg-primary)] text-[var(--text-primary)]" />
+                                            <span className="text-[11px] text-[var(--text-muted)]">mm</span>
+                                        </div>
+                                    </div>
+                                    <div className="p-3 rounded-[var(--radius-control)] border border-[var(--border-primary)] bg-[var(--bg-secondary)] space-y-1">
+                                        <label className="text-[11px] font-semibold text-[var(--text-muted)] uppercase">Margin Bawah</label>
+                                        <div className="flex items-center gap-1.5">
+                                            <input type="number" name="bottom" value={settings.margins.bottom} onChange={handleMarginChange} className="w-full p-1.5 text-xs font-mono border border-[var(--border-secondary)] rounded bg-[var(--bg-primary)] text-[var(--text-primary)]" />
+                                            <span className="text-[11px] text-[var(--text-muted)]">mm</span>
+                                        </div>
+                                    </div>
+                                    <div className="p-3 rounded-[var(--radius-control)] border border-[var(--border-primary)] bg-[var(--bg-secondary)] space-y-1">
+                                        <label className="text-[11px] font-semibold text-[var(--text-muted)] uppercase">Margin Kiri</label>
+                                        <div className="flex items-center gap-1.5">
+                                            <input type="number" name="left" value={settings.margins.left} onChange={handleMarginChange} className="w-full p-1.5 text-xs font-mono border border-[var(--border-secondary)] rounded bg-[var(--bg-primary)] text-[var(--text-primary)]" />
+                                            <span className="text-[11px] text-[var(--text-muted)]">mm</span>
+                                        </div>
+                                    </div>
+                                    <div className="p-3 rounded-[var(--radius-control)] border border-[var(--border-primary)] bg-[var(--bg-secondary)] space-y-1">
+                                        <label className="text-[11px] font-semibold text-[var(--text-muted)] uppercase">Margin Kanan</label>
+                                        <div className="flex items-center gap-1.5">
+                                            <input type="number" name="right" value={settings.margins.right} onChange={handleMarginChange} className="w-full p-1.5 text-xs font-mono border border-[var(--border-secondary)] rounded bg-[var(--bg-primary)] text-[var(--text-primary)]" />
+                                            <span className="text-[11px] text-[var(--text-muted)]">mm</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* 5. AI / CERDAS TAB */}
+                {activeTab === 'ai' && (
+                    <div className="space-y-6 animate-fade-in">
+                        <div className="app-surface p-4 sm:p-5 rounded-[var(--radius-card)] space-y-5">
+                            <div className="border-b border-[var(--border-primary)] pb-3">
+                                <h3 className="text-base sm:text-lg font-bold text-[var(--text-primary)] flex items-center gap-2">
+                                    <RobotIcon className="text-purple-600 dark:text-purple-400" />
+                                    <span>Integrasi Kecerdasan Buatan (Google Gemini API)</span>
+                                </h3>
+                                <p className="text-xs sm:text-sm text-[var(--text-secondary)] mt-0.5">
+                                    Konfigurasikan kunci API resmi untuk pembuatan butir soal otomatis, penulisan stimulus wacana, dan perumusan KaTeX.
+                                </p>
+                            </div>
+                            
+                            <div className="p-4 rounded-[var(--radius-card)] bg-purple-50/50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800 space-y-4">
+                                <div className="space-y-1">
+                                    <h4 className="text-xs sm:text-sm font-bold text-purple-900 dark:text-purple-200">
+                                        Google Gemini API Key (Opsional / Disarankan)
+                                    </h4>
+                                    <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                                        Memasukkan API Key Gemini pribadi memberikan performa pembuatan soal yang jauh lebih cepat, stabil, dan berakurasi tinggi. Jika dikosongkan, fitur AI menggunakan penyedia gratis bawaan.
                                     </p>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Header Tab */}
-                {activeTab === 'header' && (
-                    <div className="app-surface p-4 sm:p-5 animate-fade-in">
-                        <h3 className="text-lg font-bold text-[var(--text-primary)] mb-3 border-b border-[var(--border-primary)] pb-2">Kop Surat</h3>
-                        
-                        <div className="space-y-4 mb-6">
-                            <label className="block text-sm font-medium text-[var(--text-secondary)]">Teks Kop (Baris demi Baris)</label>
-                            <div className="space-y-3">
-                                {settings.examHeaderLines.map((line) => (
-                                    <div key={line.id} className="flex flex-col gap-2 p-3 border border-[var(--border-primary)] rounded-lg bg-[var(--bg-tertiary)]">
-                                        <div className="flex items-center gap-2">
-                                            <input type="text" value={line.text} onChange={(e) => handleHeaderChange(line.id, e.target.value)} placeholder="Teks baris kop" className="flex-grow p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]" />
-                                            <button onClick={() => removeHeaderLine(line.id)} className="text-[var(--text-muted)] hover:text-red-500 p-2" disabled={settings.examHeaderLines.length <= 1}><TrashIcon /></button>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <label className="text-xs font-medium text-[var(--text-secondary)]">Mode Ukuran:</label>
-                                            <select 
-                                                value={line.sizeMode || 'auto'} 
-                                                onChange={(e) => updateSettings(s => ({...s, examHeaderLines: s.examHeaderLines.map(l => l.id === line.id ? {...l, sizeMode: e.target.value as 'auto'|'fixed'} : l)}))} 
-                                                className="text-xs p-1 border border-[var(--border-secondary)] rounded bg-[var(--bg-secondary)] text-[var(--text-primary)]"
-                                            >
-                                                <option value="auto">Auto (Dinamis)</option>
-                                                <option value="fixed">Fixed (Tetap)</option>
-                                            </select>
-                                            {line.sizeMode === 'fixed' && (
-                                                <>
-                                                    <input 
-                                                        type="number" min={6} max={24} step={0.5} 
-                                                        value={line.sizePt ?? 12} 
-                                                        onChange={(e) => updateSettings(s => ({...s, examHeaderLines: s.examHeaderLines.map(l => l.id === line.id ? {...l, sizePt: parseFloat(e.target.value) || 12} : l)}))} 
-                                                        className="w-16 text-xs p-1 border border-[var(--border-secondary)] rounded bg-[var(--bg-secondary)] text-center text-[var(--text-primary)]" 
-                                                    />
-                                                    <span className="text-xs text-[var(--text-muted)]">pt</span>
-                                                </>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                            <button onClick={addHeaderLine} className="text-blue-600 font-semibold text-sm flex items-center space-x-1 pt-2"><PlusIcon /> <span>Tambah Baris</span></button>
-                        </div>
-
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {[0, 1].map((index) => (
-                                <div key={index} className="space-y-2">
-                                    <label className="block text-sm font-medium text-[var(--text-secondary)]">Logo {index === 0 ? 'Kiri' : 'Kanan'}</label>
-                                    <div className="border-2 border-dashed border-[var(--border-secondary)] rounded-lg p-4 flex flex-col items-center justify-center min-h-[120px] bg-[var(--bg-tertiary)] relative group">
-                                        {settings.logos[index] ? (
-                                            <>
-                                                <img src={settings.logos[index]!} alt="Logo" className="max-h-20 object-contain mb-2" />
-                                                <button onClick={() => handleLogoRemove(index as 0 | 1)} className="absolute top-2 right-2 p-1 bg-red-100 text-red-600 rounded-full hover:bg-red-200"><TrashIcon className="text-sm" /></button>
-                                            </>
-                                        ) : (
-                                            <span className="text-[var(--text-muted)] text-sm">Tidak ada logo</span>
-                                        )}
-                                        <input type="file" accept="image/*" onChange={(e) => handleLogoUpload(e, index as 0 | 1)} className="absolute inset-0 opacity-0 cursor-pointer" />
-                                    </div>
-                                    <p className="text-xs text-[var(--text-muted)] text-center">Klik untuk upload (Max 1MB)</p>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {/* Format Tab */}
-                {activeTab === 'format' && (
-                    <div className="app-surface p-4 sm:p-5 animate-fade-in space-y-5">
-                        <h3 className="text-lg font-bold text-[var(--text-primary)] mb-3 border-b border-[var(--border-primary)] pb-2">Format Kertas & Huruf</h3>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Ukuran Kertas</label>
-                                <select value={settings.paperSize} onChange={(e) => updateSettings(s => ({...s, paperSize: e.target.value as Settings['paperSize']}))} className="w-full p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]">
-                                    <option value="A4">A4 (210 x 297 mm)</option>
-                                    <option value="F4">F4 (215 x 330 mm)</option>
-                                    <option value="Legal">Legal (216 x 356 mm)</option>
-                                    <option value="Letter">Letter (216 x 279 mm)</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Jenis Huruf (Font)</label>
-                                <select value={settings.fontFamily} onChange={(e) => updateSettings(s => ({...s, fontFamily: e.target.value as Settings['fontFamily']}))} className="w-full p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]">
-                                    <option value="Liberation Serif">Liberation Serif (Serif)</option>
-                                    <option value="Liberation Sans">Liberation Sans (Sans-Serif)</option>
-                                    <option value="Amiri">Amiri (Arabic Serif)</option>
-                                    <option value="Areef Ruqaa">Areef Ruqaa (Arabic Handwriting)</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                             <div>
-                                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Ukuran Font (pt)</label>
-                                <input type="number" min="8" max="24" value={settings.fontSize} onChange={(e) => updateSettings(s => ({...s, fontSize: Number(e.target.value)}))} className="w-full p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]" />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Spasi Baris</label>
-                                <input type="number" min="1" max="3" step="0.1" value={settings.lineSpacing} onChange={(e) => updateSettings(s => ({...s, lineSpacing: Number(e.target.value)}))} className="w-full p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]" />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Margin (mm)</label>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <div><label className="text-xs text-[var(--text-muted)]">Atas</label><input type="number" name="top" value={settings.margins.top} onChange={handleMarginChange} className="w-full p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]" /></div>
-                                <div><label className="text-xs text-[var(--text-muted)]">Bawah</label><input type="number" name="bottom" value={settings.margins.bottom} onChange={handleMarginChange} className="w-full p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]" /></div>
-                                <div><label className="text-xs text-[var(--text-muted)]">Kiri</label><input type="number" name="left" value={settings.margins.left} onChange={handleMarginChange} className="w-full p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]" /></div>
-                                <div><label className="text-xs text-[var(--text-muted)]">Kanan</label><input type="number" name="right" value={settings.margins.right} onChange={handleMarginChange} className="w-full p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]" /></div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Cloud Tab */}
-                {activeTab === 'cloud' && (
-                    <div className="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-md animate-fade-in space-y-6">
-                        <div className="flex items-center gap-3 mb-4 border-b border-[var(--border-primary)] pb-2">
-                            <DropboxIcon className="text-2xl text-blue-600" />
-                            <h3 className="text-xl font-bold text-[var(--text-primary)]">Sinkronisasi Cloud (Dropbox)</h3>
-                        </div>
-
-                        {!isDropboxConnected ? (
-                            <div className="space-y-6">
-                                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg text-sm text-blue-800 dark:text-blue-200">
-                                    Hubungkan ke Dropbox untuk menyimpan backup data ujian Anda secara otomatis dan mengaksesnya dari perangkat lain.
-                                </div>
-
-                                <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-lg border border-amber-200 dark:border-amber-800">
-                                    <div className="flex items-start gap-3">
-                                        <InfoIcon className="text-amber-600 dark:text-amber-300 text-lg mt-0.5 flex-shrink-0" />
-                                        <div className="space-y-2 text-sm text-amber-900 dark:text-amber-100">
-                                            <p className="font-semibold">Model keamanan Dropbox di SoalGenius: client-first, bukan server-managed.</p>
-                                            <p>Kredensial Dropbox disimpan lokal di browser ini agar aplikasi bisa sinkron tanpa backend tambahan. Ini praktis, tetapi berarti keamanan akun Dropbox mengikuti keamanan perangkat dan browser yang digunakan.</p>
-                                            <p className="text-xs opacity-90">Saran: gunakan fitur ini di perangkat pribadi, lindungi browser dengan akun OS yang aman, dan hindari pairing cepat pada perangkat publik atau milik bersama.</p>
-                                        </div>
-                                    </div>
-                                </div>
                                 
-                                <div className="space-y-6">
-                                    <div className="app-surface overflow-hidden">
-                                        <div className="px-4 py-3 border-b border-[var(--border-primary)] flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
-                                            <div className="flex items-start gap-3 min-w-0">
-                                                <div className="w-7 h-7 rounded-full bg-blue-600 text-white text-sm font-bold flex items-center justify-center">1</div>
-                                                <div className="min-w-0">
-                                                    <h4 className="font-semibold text-[var(--text-primary)]">Setup Perangkat Utama</h4>
-                                                    <p className="text-xs text-[var(--text-secondary)]">Lakukan ini terlebih dahulu di perangkat utama Anda.</p>
-                                                </div>
-                                            </div>
-                                            <span className="text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200">Wajib</span>
+                                <div className="space-y-2">
+                                    <label className="block text-xs font-semibold text-[var(--text-primary)]">
+                                        Kunci API Gemini (AI Studio Key)
+                                    </label>
+                                    <div className="flex gap-2">
+                                        <div className="relative flex-grow">
+                                            <input 
+                                                type={showApiKey ? "text" : "password"} 
+                                                value={geminiApiKey} 
+                                                onChange={(e) => setGeminiApiKey(e.target.value)} 
+                                                placeholder="Tempel API Key di sini (misal: AIzaSy...)"
+                                                className="w-full pr-10 px-3 py-2 text-xs sm:text-sm border border-[var(--border-secondary)] rounded-[var(--radius-control)] bg-[var(--bg-primary)] text-[var(--text-primary)] font-mono focus:outline-none focus:border-[var(--bg-accent)]"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowApiKey(!showApiKey)}
+                                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1 text-sm"
+                                                title={showApiKey ? "Sembunyikan" : "Tampilkan"}
+                                            >
+                                                <EyeIcon />
+                                            </button>
                                         </div>
-                                        <div className="p-4 space-y-4" id="auth-section">
-                                            <p className="text-sm text-[var(--text-secondary)]">Masukkan konfigurasi Dropbox lalu lakukan otorisasi langsung di perangkat utama. Setelah perangkat utama berhasil terhubung, barulah pairing cepat dipakai untuk perangkat kedua.</p>
+                                    </div>
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 pt-1 text-[11px] text-[var(--text-muted)]">
+                                        <span>Kunci ini disimpan 100% aman di penyimpanan lokal browser Anda.</span>
+                                        <a 
+                                            href="https://aistudio.google.com/app/apikey" 
+                                            target="_blank" 
+                                            rel="noopener noreferrer" 
+                                            className="font-bold text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1"
+                                        >
+                                            <span>Dapatkan API Key Gratis di Google AI Studio</span>
+                                            <i className="bi bi-box-arrow-up-right text-[9px]"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* 6. CLOUD / DROPBOX TAB */}
+                {activeTab === 'cloud' && (
+                    <div className="space-y-6 animate-fade-in">
+                        <div className="app-surface p-4 sm:p-5 rounded-[var(--radius-card)] space-y-5">
+                            <div className="border-b border-[var(--border-primary)] pb-3">
+                                <h3 className="text-base sm:text-lg font-bold text-[var(--text-primary)] flex items-center gap-2">
+                                    <DropboxIcon className="text-blue-600 dark:text-blue-400 text-xl" />
+                                    <span>Sinkronisasi Cloud & Pairing Perangkat (Dropbox)</span>
+                                </h3>
+                                <p className="text-xs sm:text-sm text-[var(--text-secondary)] mt-0.5">
+                                    Hubungkan akun Dropbox untuk mencadangkan seluruh bank naskah secara otomatis dan berpindah perangkat secara instan.
+                                </p>
+                            </div>
+
+                            {!isDropboxConnected ? (
+                                <div className="space-y-5">
+                                    <div className="p-4 rounded-[var(--radius-card)] bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 flex items-start gap-3">
+                                        <InfoIcon className="text-amber-600 dark:text-amber-400 text-lg mt-0.5 flex-shrink-0" />
+                                        <div className="space-y-1 text-xs sm:text-sm text-amber-900 dark:text-amber-100">
+                                            <p className="font-bold">Model Keamanan Client-First</p>
+                                            <p className="leading-relaxed">
+                                                Kredensial Dropbox dikelola langsung di browser Anda tanpa server perantara. Gunakan fitur ini pada laptop atau smartphone pribadi terpercaya Anda.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="space-y-4">
+                                        {/* Step 1 Card */}
+                                        <div className="p-4 sm:p-5 rounded-[var(--radius-card)] border border-[var(--border-primary)] bg-[var(--bg-secondary)] space-y-4" id="auth-section">
+                                            <div className="flex items-center justify-between border-b border-[var(--border-primary)] pb-2.5">
+                                                <div className="flex items-center gap-2.5">
+                                                    <div className="w-7 h-7 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center">1</div>
+                                                    <div>
+                                                        <h4 className="font-bold text-xs sm:text-sm text-[var(--text-primary)]">Setup Perangkat Utama</h4>
+                                                        <p className="text-[11px] text-[var(--text-secondary)]">Lakukan langkah ini terlebih dahulu di perangkat utama.</p>
+                                                    </div>
+                                                </div>
+                                                <span className="text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-[var(--radius-control)] bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200">Wajib</span>
+                                            </div>
+
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-[var(--text-secondary)]">App Key</label>
-                                                    <input type="text" value={dropboxAppKey} onChange={e => setDropboxAppKey(e.target.value)} className="w-full min-w-0 p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]" placeholder="Masukkan Dropbox App Key" />
+                                                <div className="space-y-1.5">
+                                                    <label className="block text-xs font-semibold text-[var(--text-secondary)]">Dropbox App Key</label>
+                                                    <input 
+                                                        type="text" 
+                                                        value={dropboxAppKey} 
+                                                        onChange={e => setDropboxAppKey(e.target.value)} 
+                                                        className="w-full p-2 text-xs border border-[var(--border-secondary)] rounded-[var(--radius-control)] bg-[var(--bg-primary)] text-[var(--text-primary)] font-mono" 
+                                                        placeholder="Masukkan Dropbox App Key" 
+                                                    />
                                                 </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-[var(--text-secondary)]">App Secret</label>
-                                                    <input type="password" value={dropboxAppSecret} onChange={e => setDropboxAppSecret(e.target.value)} className="w-full min-w-0 p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]" placeholder="Masukkan Dropbox App Secret" />
+                                                <div className="space-y-1.5">
+                                                    <label className="block text-xs font-semibold text-[var(--text-secondary)]">Dropbox App Secret</label>
+                                                    <input 
+                                                        type="password" 
+                                                        value={dropboxAppSecret} 
+                                                        onChange={e => setDropboxAppSecret(e.target.value)} 
+                                                        className="w-full p-2 text-xs border border-[var(--border-secondary)] rounded-[var(--radius-control)] bg-[var(--bg-primary)] text-[var(--text-primary)] font-mono" 
+                                                        placeholder="Masukkan Dropbox App Secret" 
+                                                    />
                                                 </div>
                                             </div>
-                                            <div className="flex flex-col gap-2">
-                                                <p className="text-sm font-bold text-[var(--text-primary)]">Langkah 1: Dapatkan Kode Otorisasi</p>
-                                                <button onClick={handleGetAuthCode} className="w-full md:w-auto bg-blue-100 text-blue-700 hover:bg-blue-200 px-4 py-2 rounded-md font-semibold text-sm text-left">Buka Dropbox & Salin Kode</button>
+
+                                            <div className="p-3 rounded-[var(--radius-control)] bg-[var(--bg-tertiary)] border border-[var(--border-primary)] space-y-2">
+                                                <p className="text-xs font-bold text-[var(--text-primary)]">Langkah A: Dapatkan Kode Otorisasi</p>
+                                                <button 
+                                                    onClick={handleGetAuthCode} 
+                                                    className="inline-flex items-center gap-2 bg-blue-100 hover:bg-blue-200 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200 px-3.5 py-2 rounded-[var(--radius-control)] font-semibold text-xs transition-colors"
+                                                >
+                                                    <i className="bi bi-box-arrow-up-right text-xs"></i>
+                                                    <span>Buka Dropbox & Salin Kode Otorisasi</span>
+                                                </button>
                                             </div>
-                                            <div className="flex flex-col gap-2">
-                                                <p className="text-sm font-bold text-[var(--text-primary)]">Langkah 2: Masukkan Kode</p>
-                                                <div className="flex flex-col gap-2 sm:flex-row">
-                                                    <input type="text" value={dropboxAuthCode} onChange={e => setDropboxAuthCode(e.target.value)} className="flex-grow min-w-0 p-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-secondary)]" placeholder="Tempel kode di sini..." />
-                                                    <button onClick={handleConnectWithCode} disabled={isExchangingCode} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-semibold text-sm disabled:opacity-50">
-                                                        {isExchangingCode ? 'Menghubungkan...' : 'Hubungkan'}
+
+                                            <div className="p-3 rounded-[var(--radius-control)] bg-[var(--bg-tertiary)] border border-[var(--border-primary)] space-y-2">
+                                                <p className="text-xs font-bold text-[var(--text-primary)]">Langkah B: Masukkan Kode & Hubungkan</p>
+                                                <div className="flex flex-col sm:flex-row gap-2">
+                                                    <input 
+                                                        type="text" 
+                                                        value={dropboxAuthCode} 
+                                                        onChange={e => setDropboxAuthCode(e.target.value)} 
+                                                        className="flex-grow p-2 text-xs border border-[var(--border-secondary)] rounded-[var(--radius-control)] bg-[var(--bg-primary)] text-[var(--text-primary)] font-mono" 
+                                                        placeholder="Tempel kode otorisasi Dropbox di sini..." 
+                                                    />
+                                                    <button 
+                                                        onClick={handleConnectWithCode} 
+                                                        disabled={isExchangingCode} 
+                                                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-[var(--radius-control)] font-semibold text-xs transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
+                                                    >
+                                                        {isExchangingCode ? (
+                                                            <>
+                                                                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                                <span>Menghubungkan...</span>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <CheckIcon />
+                                                                <span>Hubungkan Akun</span>
+                                                            </>
+                                                        )}
                                                     </button>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
 
-                                    <div className="app-surface-muted overflow-hidden">
-                                        <div className="px-4 py-3 border-b border-[var(--border-primary)] flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
-                                            <div className="flex items-start gap-3 min-w-0">
-                                                <div className="w-7 h-7 rounded-full bg-purple-600 text-white text-sm font-bold flex items-center justify-center">2</div>
-                                                <div className="min-w-0">
-                                                    <h4 className="font-semibold text-[var(--text-primary)]">Pairing Perangkat Kedua</h4>
-                                                    <p className="text-xs text-[var(--text-secondary)]">Gunakan setelah perangkat utama sudah berhasil terhubung.</p>
+                                        {/* Step 2 Card */}
+                                        <div className="p-4 sm:p-5 rounded-[var(--radius-card)] border border-[var(--border-primary)] bg-[var(--bg-secondary)] space-y-4">
+                                            <div className="flex items-center justify-between border-b border-[var(--border-primary)] pb-2.5">
+                                                <div className="flex items-center gap-2.5">
+                                                    <div className="w-7 h-7 rounded-full bg-purple-600 text-white text-xs font-bold flex items-center justify-center">2</div>
+                                                    <div>
+                                                        <h4 className="font-bold text-xs sm:text-sm text-[var(--text-primary)]">Pairing Cepat Perangkat Kedua</h4>
+                                                        <p className="text-[11px] text-[var(--text-secondary)]">Salin koneksi cloud ke HP/laptop lain tanpa setup ulang.</p>
+                                                    </div>
                                                 </div>
+                                                <span className="text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-[var(--radius-control)] bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-200">Instan</span>
                                             </div>
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <span className="text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded-full bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-200">Butuh perangkat utama aktif</span>
-                                                <span className="text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-200">Opsional</span>
-                                            </div>
-                                        </div>
-                                        <div className="p-4 space-y-4">
-                                            <div className="flex items-start gap-3 rounded-[var(--radius-control)] bg-[var(--bg-secondary)] border border-[var(--border-primary)] p-3">
-                                                <div className="mt-0.5 text-green-600 dark:text-green-400">
-                                                    <CheckIcon className="text-base" />
-                                                </div>
-                                                <div className="text-xs text-[var(--text-secondary)]">
-                                                    <p className="font-semibold text-[var(--text-primary)]">Syarat sebelum pairing</p>
-                                                    <p>Pastikan perangkat utama sudah berhasil login dan terhubung ke Dropbox terlebih dahulu.</p>
-                                                </div>
-                                            </div>
-                                            <p className="text-sm text-[var(--text-secondary)]">Jika Anda sudah punya perangkat utama yang aktif, gunakan pairing cepat ini untuk menyalin akses ke perangkat kedua milik Anda tanpa setup ulang dari nol.</p>
-                                            <div className="text-xs rounded-[var(--radius-control)] bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 p-3 text-purple-900 dark:text-purple-100">
-                                                Pairing cepat paling cocok antar perangkat pribadi yang sama-sama Anda percaya. Hindari memakai alur ini pada perangkat publik atau bersama.
-                                            </div>
-                                            
-                                            <div className="flex gap-2 flex-wrap">
-                                                <button onClick={startScanner} className="w-full sm:flex-1 flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm">
-                                                    <ScanIcon className="text-lg" /> Scan QR Code
+
+                                            <div className="flex flex-col sm:flex-row items-stretch gap-2.5">
+                                                <button 
+                                                    onClick={startScanner} 
+                                                    className="flex-1 flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2.5 rounded-[var(--radius-control)] font-semibold text-xs transition-all shadow-xs"
+                                                >
+                                                    <ScanIcon className="text-base" />
+                                                    <span>Pindai QR Code Pairing</span>
                                                 </button>
                                             </div>
 
-                                            <div className="text-center text-xs text-[var(--text-muted)]">- ATAU -</div>
-
-                                            <div className="flex flex-col gap-2 sm:flex-row">
+                                            <div className="flex flex-col sm:flex-row gap-2 pt-1">
                                                 <input 
                                                     type="text" 
                                                     value={inputPairingCode} 
                                                     onChange={(e) => setInputPairingCode(e.target.value)} 
-                                                    className="flex-grow min-w-0 p-2 text-sm border border-[var(--border-secondary)] rounded bg-[var(--bg-secondary)]"
-                                                    placeholder="Tempel kode teks pairing..."
+                                                    className="flex-grow p-2 text-xs border border-[var(--border-secondary)] rounded-[var(--radius-control)] bg-[var(--bg-primary)] text-[var(--text-primary)] font-mono" 
+                                                    placeholder="Atau tempel teks kode pairing di sini..."
                                                 />
-                                                <button onClick={handleApplyPairingCode} className="w-full sm:w-auto bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] border border-[var(--border-secondary)] px-3 py-2 rounded text-sm font-bold">Masuk dengan Kode</button>
+                                                <button 
+                                                    onClick={handleApplyPairingCode} 
+                                                    className="px-4 py-2 bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-[var(--radius-control)] text-xs font-bold transition-all"
+                                                >
+                                                    Terapkan Kode
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        ) : (
-                            <div className="space-y-6">
-                                {/* Connected Status & Storage Indicator */}
-                                <div className="app-surface-muted p-4">
-                                    <div className="flex flex-col gap-3 mb-3 sm:flex-row sm:justify-between sm:items-start">
-                                        <div className="flex items-start gap-3 min-w-0">
-                                            <div className="bg-green-100 dark:bg-green-800 p-2 rounded-full text-green-600 dark:text-green-300"><CheckIcon className="text-lg" /></div>
+                            ) : (
+                                <div className="space-y-5">
+                                    {/* Connected Status Card */}
+                                    <div className="p-4 rounded-[var(--radius-card)] border border-emerald-200 dark:border-emerald-800 bg-emerald-50/40 dark:bg-emerald-950/20 space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-[var(--radius-control)] bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center font-bold">
+                                                    <CheckIcon className="text-xl" />
+                                                </div>
+                                                <div>
+                                                    <h4 className="text-xs sm:text-sm font-bold text-[var(--text-primary)]">Dropbox Terhubung & Siap Sinkron</h4>
+                                                    <p className="text-xs text-[var(--text-secondary)]">Data naskah ujian dapat dicadangkan dan disinkronkan ke cloud.</p>
+                                                </div>
+                                            </div>
+                                            <button 
+                                                onClick={handleDisconnectDropbox} 
+                                                className="text-xs font-semibold text-red-600 hover:text-red-700 dark:text-red-400 hover:underline px-2 py-1 rounded"
+                                            >
+                                                Putuskan Hubungan
+                                            </button>
+                                        </div>
+
+                                        {dropboxUsage && (
+                                            <div className="pt-2 border-t border-emerald-200 dark:border-emerald-800/60 space-y-1.5">
+                                                <div className="flex justify-between text-xs font-semibold text-[var(--text-secondary)]">
+                                                    <span>Kapasitas Cloud Terpakai: {formatBytes(dropboxUsage.used)}</span>
+                                                    <span>Total: {formatBytes(dropboxUsage.allocation.allocated)}</span>
+                                                </div>
+                                                <div className="w-full bg-[var(--bg-muted)] rounded-full h-2 overflow-hidden border border-[var(--border-secondary)]">
+                                                    <div 
+                                                        className={`h-full rounded-full transition-all duration-500 ${dropboxPercent > 90 ? 'bg-red-500' : 'bg-emerald-600'}`} 
+                                                        style={{ width: `${dropboxPercent}%` }}
+                                                    ></div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Action Cards Grid */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <button 
+                                            onClick={handleUploadToCloud} 
+                                            disabled={isSyncing} 
+                                            className="flex items-center gap-3 p-4 rounded-[var(--radius-card)] border border-[var(--border-primary)] bg-[var(--bg-secondary)] hover:border-[var(--bg-accent)] hover:bg-[var(--bg-hover)] transition-all text-left shadow-xs group"
+                                        >
+                                            <div className="w-10 h-10 rounded-[var(--radius-control)] bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 border border-blue-200 dark:border-blue-800 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+                                                <CloudUploadIcon className="text-xl" />
+                                            </div>
                                             <div className="min-w-0">
-                                                <p className="font-bold text-[var(--text-primary)]">Terhubung ke Dropbox</p>
-                                                <p className="text-xs text-[var(--text-secondary)]">Akun Anda siap untuk sinkronisasi.</p>
+                                                <h4 className="font-bold text-xs sm:text-sm text-[var(--text-primary)]">Unggah Data ke Cloud</h4>
+                                                <p className="text-[11px] text-[var(--text-secondary)]">Kirim cadangan database lokal ke Dropbox.</p>
                                             </div>
-                                        </div>
-                                        <button onClick={handleDisconnectDropbox} className="self-start text-red-500 hover:text-red-700 text-sm font-semibold hover:underline">Putuskan</button>
+                                        </button>
+
+                                        <button 
+                                            onClick={handleDownloadFromCloud} 
+                                            disabled={isSyncing} 
+                                            className="flex items-center gap-3 p-4 rounded-[var(--radius-card)] border border-[var(--border-primary)] bg-[var(--bg-secondary)] hover:border-[var(--bg-accent)] hover:bg-[var(--bg-hover)] transition-all text-left shadow-xs group"
+                                        >
+                                            <div className="w-10 h-10 rounded-[var(--radius-control)] bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+                                                <CloudDownloadIcon className="text-xl" />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <h4 className="font-bold text-xs sm:text-sm text-[var(--text-primary)]">Unduh Data dari Cloud</h4>
+                                                <p className="text-[11px] text-[var(--text-secondary)]">Pulihkan data naskah dari cadangan Dropbox.</p>
+                                            </div>
+                                        </button>
                                     </div>
-                                    
-                                    {dropboxUsage && (
-                                        <div className="mt-2">
-                                            <div className="flex justify-between text-xs mb-1 font-medium text-[var(--text-secondary)]">
-                                                <span>Penyimpanan: {formatBytes(dropboxUsage.used)} terpakai</span>
-                                                <span>Total: {formatBytes(dropboxUsage.allocation.allocated)}</span>
-                                            </div>
-                                            <div className="w-full bg-[var(--bg-muted)] rounded-full h-2.5">
-                                                <div 
-                                                    className={`h-2.5 rounded-full ${dropboxPercent > 90 ? 'bg-red-500' : 'bg-green-600'}`} 
-                                                    style={{ width: `${dropboxPercent}%` }}
-                                                ></div>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
 
-                                <div className="app-surface-muted p-4">
-                                    <div className="flex items-start gap-3">
-                                        <InfoIcon className="text-slate-600 dark:text-slate-300 text-lg mt-0.5 flex-shrink-0" />
-                                        <div className="space-y-2 text-sm text-[var(--text-secondary)]">
-                                            <p className="font-semibold text-[var(--text-primary)]">Catatan arsitektur</p>
-                                            <p>Sinkronisasi Dropbox di SoalGenius memakai model client-first. Artinya proses otorisasi, token, dan pairing dikelola langsung di browser agar aplikasi bisa tetap sederhana, offline-friendly, dan tanpa backend sendiri.</p>
-                                            <p className="text-xs">Konsekuensinya, pairing cepat paling aman dipakai hanya antar perangkat pribadi yang Anda percaya.</p>
+                                    {/* Fast Pairing Host Card */}
+                                    <div className="p-4 rounded-[var(--radius-card)] border border-[var(--border-primary)] bg-[var(--bg-secondary)] space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <h4 className="font-bold text-xs sm:text-sm text-[var(--text-primary)] flex items-center gap-2">
+                                                <QrCodeIcon className="text-purple-600" />
+                                                <span>Pairing Cepat ke Perangkat Lain</span>
+                                            </h4>
                                         </div>
+                                        <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                                            Tampilkan barcode QR untuk menghubungkan laptop/HP kedua Anda tanpa perlu memasukkan App Key dan Secret secara manual.
+                                        </p>
+                                        
+                                        {!showPairingHost ? (
+                                            <button 
+                                                onClick={handleGeneratePairingCode} 
+                                                className="inline-flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-[var(--radius-control)] text-xs font-semibold transition-all shadow-xs"
+                                            >
+                                                <QrCodeIcon />
+                                                <span>Tampilkan Barcode QR Pairing</span>
+                                            </button>
+                                        ) : (
+                                            <div className="space-y-4 pt-2 border-t border-[var(--border-primary)]">
+                                                <div className="flex flex-col items-center gap-3 p-4 rounded-[var(--radius-card)] bg-[var(--bg-tertiary)] border border-[var(--border-primary)]">
+                                                    <div className="bg-white p-3 rounded-[var(--radius-card)] shadow-md">
+                                                        <img src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${generatedPairingCode}`} alt="QR Code Pairing" className="w-40 h-40" />
+                                                    </div>
+                                                    <p className="text-xs font-bold text-[var(--text-primary)] text-center">Pindai menggunakan tombol "Pindai QR" pada perangkat kedua</p>
+                                                </div>
+                                                
+                                                <div className="space-y-1.5">
+                                                    <label className="text-xs text-[var(--text-muted)] font-bold uppercase">Atau Salin Kode Teks Pairing:</label>
+                                                    <div className="flex gap-2">
+                                                        <input readOnly value={generatedPairingCode} className="flex-grow p-2 text-xs font-mono border border-[var(--border-secondary)] rounded-[var(--radius-control)] bg-[var(--bg-primary)] text-[var(--text-primary)]" />
+                                                        <button onClick={handleCopyPairingCode} className="px-3 py-2 bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-[var(--radius-control)] text-xs font-semibold flex items-center gap-1">
+                                                            <CopyIcon />
+                                                            <span>Salin</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <button onClick={() => setShowPairingHost(false)} className="text-xs text-red-500 hover:underline font-semibold">
+                                                    Sembunyikan QR Code
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
-
-                                {/* Host Pairing Section */}
-                                <div className="app-surface-muted p-4">
-                                    <h4 className="font-semibold text-[var(--text-primary)] mb-2 flex items-center gap-2"><QrCodeIcon /> Pairing Cepat Antar Perangkat</h4>
-                                    <p className="text-sm text-[var(--text-secondary)] mb-3">Gunakan ini untuk menghubungkan perangkat lain tanpa memasukkan App Key manual. Rekomendasi: hanya untuk perangkat Anda sendiri.</p>
-                                    
-                                    {!showPairingHost ? (
-                                        <button onClick={handleGeneratePairingCode} className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">Tampilkan Kode Pairing Cepat</button>
-                                    ) : (
-                                        <div className="space-y-4 animate-fade-in bg-[var(--bg-secondary)] p-4 rounded-[var(--radius-control)] border border-[var(--border-primary)]">
-                                            <div className="flex flex-col items-center gap-3">
-                                                <div className="bg-white p-2 rounded-lg shadow-sm border border-[var(--border-secondary)]">
-                                                    {/* External API for QR Code display */}
-                                                    <img src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${generatedPairingCode}`} alt="QR Code" className="w-40 h-40" />
-                                                </div>
-                                                <p className="text-xs font-bold text-[var(--text-secondary)] text-center">Scan menggunakan "Scan QR" di perangkat baru</p>
-                                            </div>
-                                            
-                                            <div className="space-y-2 pt-2 border-t border-[var(--border-primary)]">
-                                                <label className="text-xs text-[var(--text-muted)] font-bold uppercase">Atau salin kode teks</label>
-                                                <div className="flex flex-col gap-2 sm:flex-row">
-                                                    <input readOnly value={generatedPairingCode} className="flex-grow min-w-0 p-2 text-xs font-mono border rounded bg-[var(--bg-primary)]" />
-                                                    <button onClick={handleCopyPairingCode} className="w-full sm:w-auto p-2 bg-[var(--bg-hover)] rounded hover:bg-gray-300 dark:hover:bg-gray-600"><CopyIcon /></button>
-                                                </div>
-                                            </div>
-                                            <div className="text-xs rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 p-3 text-amber-900 dark:text-amber-100">
-                                                Jangan bagikan QR/kode ini ke orang lain. Kode pairing cepat dimaksudkan untuk memindahkan akses ke perangkat Anda yang lain, bukan untuk perangkat publik atau bersama.
-                                            </div>
-                                            <button onClick={() => setShowPairingHost(false)} className="text-xs text-red-500 hover:underline w-full text-center">Tutup</button>
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                    <button onClick={handleUploadToCloud} disabled={isSyncing} className="flex items-center justify-center gap-3 p-3.5 border border-[var(--border-secondary)] rounded-[var(--radius-control)] hover:bg-[var(--bg-hover)] transition-all group">
-                                        <div className="bg-blue-100 dark:bg-blue-900/50 p-2.5 rounded-full text-blue-600 dark:text-blue-300 group-hover:bg-blue-200 dark:group-hover:bg-blue-800"><CloudUploadIcon className="text-xl" /></div>
-                                        <div className="min-w-0 text-left">
-                                            <p className="font-bold text-[var(--text-primary)]">Upload ke Cloud</p>
-                                            <p className="text-xs text-[var(--text-secondary)]">Simpan data lokal ke Dropbox</p>
-                                        </div>
-                                    </button>
-                                    <button onClick={handleDownloadFromCloud} disabled={isSyncing} className="flex items-center justify-center gap-3 p-3.5 border border-[var(--border-secondary)] rounded-[var(--radius-control)] hover:bg-[var(--bg-hover)] transition-all group">
-                                        <div className="bg-green-100 dark:bg-green-900/50 p-2.5 rounded-full text-green-600 dark:text-green-300 group-hover:bg-green-200 dark:group-hover:bg-green-800"><CloudDownloadIcon className="text-xl" /></div>
-                                        <div className="min-w-0 text-left">
-                                            <p className="font-bold text-[var(--text-primary)]">Download dari Cloud</p>
-                                            <p className="text-xs text-[var(--text-secondary)]">Timpa data lokal dari Dropbox</p>
-                                        </div>
-                                    </button>
-                                </div>
-                            </div>
                             )}
                         </div>
+                    </div>
                 )}
 
-                {/* Storage Tab */}
+                {/* 7. STORAGE / MANAJEMEN DATA TAB */}
                 {activeTab === 'storage' && (
                     <div className="space-y-6 animate-fade-in">
-                        {/* Storage Usage Info */}
-                        <div className="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-md border border-[var(--border-primary)]">
-                            <h3 className="text-lg font-bold text-[var(--text-primary)] mb-4">Penyimpanan Lokal</h3>
+                        {/* Storage Usage Info Card */}
+                        <div className="app-surface p-4 sm:p-5 rounded-[var(--radius-card)] space-y-4">
+                            <div className="border-b border-[var(--border-primary)] pb-3">
+                                <h3 className="text-base sm:text-lg font-bold text-[var(--text-primary)] flex items-center gap-2">
+                                    <HddIcon className="text-blue-600 dark:text-blue-400" />
+                                    <span>Penyimpanan Lokal & Cadangan Data</span>
+                                </h3>
+                                <p className="text-xs sm:text-sm text-[var(--text-secondary)] mt-0.5">
+                                    Kelola kuota penyimpanan IndexedDB browser, unduh berkas backup JSON, dan ekspor arsip ujian.
+                                </p>
+                            </div>
                             
                             {storageUsage && (
-                                <div className="mb-6">
-                                    <div className="flex justify-between text-sm mb-1 font-medium text-[var(--text-secondary)]">
-                                        <span>Terpakai: {formatBytes(storageUsage.usage)}</span>
-                                        <span>Total: {formatBytes(storageUsage.quota)}</span>
+                                <div className="space-y-2">
+                                    <div className="flex justify-between text-xs font-semibold text-[var(--text-secondary)]">
+                                        <span>Total Memori Browser Terpakai: {formatBytes(storageUsage.usage)}</span>
+                                        <span>Alokasi Kuota: {formatBytes(storageUsage.quota)}</span>
                                     </div>
-                                    <div className="w-full bg-[var(--bg-muted)] rounded-full h-3 border border-[var(--border-secondary)]">
+                                    <div className="w-full bg-[var(--bg-muted)] rounded-full h-2.5 overflow-hidden border border-[var(--border-secondary)]">
                                         <div 
-                                            className={`h-full rounded-full transition-all duration-500 ${storagePercent > 90 ? 'bg-red-500' : storagePercent > 70 ? 'bg-yellow-500' : 'bg-blue-500'}`} 
+                                            className={`h-full rounded-full transition-all duration-500 ${storagePercent > 90 ? 'bg-red-500' : storagePercent > 70 ? 'bg-amber-500' : 'bg-blue-600'}`} 
                                             style={{ width: `${storagePercent}%` }}
                                         ></div>
                                     </div>
@@ -1334,67 +1864,73 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
                             )}
 
                             {storageBreakdown && (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
-                                    <div className="app-surface-muted rounded-[var(--radius-control)] p-3">
-                                        <p className="text-[11px] uppercase tracking-[0.12em] text-[var(--text-muted)]">Data ujian</p>
-                                        <p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">{formatBytes(storageBreakdown.examData)}</p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                                    <div className="p-3 rounded-[var(--radius-control)] border border-[var(--border-primary)] bg-[var(--bg-secondary)] space-y-0.5">
+                                        <p className="text-[11px] uppercase tracking-wider font-bold text-[var(--text-muted)]">Data Naskah Ujian</p>
+                                        <p className="text-sm font-extrabold text-[var(--text-primary)] font-mono">{formatBytes(storageBreakdown.examData)}</p>
                                     </div>
-                                    <div className="app-surface-muted rounded-[var(--radius-control)] p-3">
-                                        <p className="text-[11px] uppercase tracking-[0.12em] text-[var(--text-muted)]">Cache offline aplikasi</p>
-                                        <p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">{formatBytes(storageBreakdown.offlineCacheEstimate)}</p>
+                                    <div className="p-3 rounded-[var(--radius-control)] border border-[var(--border-primary)] bg-[var(--bg-secondary)] space-y-0.5">
+                                        <p className="text-[11px] uppercase tracking-wider font-bold text-[var(--text-muted)]">Cache PWA & Aset Offline</p>
+                                        <p className="text-sm font-extrabold text-[var(--text-primary)] font-mono">{formatBytes(storageBreakdown.offlineCacheEstimate)}</p>
                                     </div>
                                 </div>
                             )}
 
-                            <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-100 dark:border-blue-800 flex gap-3 mb-6">
-                                <InfoIcon className="text-blue-600 dark:text-blue-300 text-xl flex-shrink-0 mt-0.5" />
-                                <div className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
-                                    <p><strong>Penting:</strong> Angka terpakai di atas adalah total penyimpanan aplikasi di browser ini, bukan hanya ukuran soal.</p>
-                                    <p>Jadi kalau angka total terlihat besar padahal soal masih sedikit, biasanya penyebab utamanya adalah <strong>cache offline aplikasi</strong>.</p>
-                                    <p>Jika penyimpanan hampir penuh, sebaiknya <strong>hapus ujian lama</strong> yang tidak diperlukan atau gunakan fitur <strong>Cloud Sync (Dropbox)</strong> untuk memindahkan data ke cloud.</p>
-                                </div>
-                            </div>
-
-                            <div className="flex flex-col sm:flex-row gap-3">
-                                <button onClick={handleLocalBackup} className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-2.5 px-4 rounded-lg font-semibold transition-colors shadow-sm">
-                                    <BackupIcon /> Backup Data (JSON)
+                            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                                <button 
+                                    onClick={handleLocalBackup} 
+                                    className="flex-1 inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-2.5 px-4 rounded-[var(--radius-control)] text-xs sm:text-sm font-semibold transition-all shadow-xs"
+                                >
+                                    <BackupIcon />
+                                    <span>Backup Seluruh Data (JSON)</span>
                                 </button>
-                                <button onClick={handleRestoreClick} className="flex-1 flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-2.5 px-4 rounded-lg font-semibold transition-colors shadow-sm">
-                                    <RestoreIcon /> Restore Data (JSON)
+                                <button 
+                                    onClick={handleRestoreClick} 
+                                    className="flex-1 inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 px-4 rounded-[var(--radius-control)] text-xs sm:text-sm font-semibold transition-all shadow-xs"
+                                >
+                                    <RestoreIcon />
+                                    <span>Pulihkan Data dari Cadangan (Restore)</span>
                                 </button>
                             </div>
                         </div>
 
-                        {/* Exam Data Management */}
-                        <div className="bg-[var(--bg-secondary)] rounded-lg shadow-md border border-[var(--border-primary)] overflow-hidden">
-                            <div className="p-4 border-b border-[var(--border-primary)] flex flex-col sm:flex-row justify-between items-center gap-4">
-                                <h3 className="text-lg font-bold text-[var(--text-primary)] flex items-center gap-2"><HddIcon/> Data Ujian ({filteredExamList.length})</h3>
+                        {/* Exam Data Management Table Card */}
+                        <div className="app-surface rounded-[var(--radius-card)] overflow-hidden border border-[var(--border-primary)] shadow-xs">
+                            <div className="p-4 border-b border-[var(--border-primary)] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                                <div>
+                                    <h3 className="text-xs sm:text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
+                                        <HddIcon className="text-[var(--text-accent)]" />
+                                        <span>Daftar Naskah Tersimpan ({filteredExamList.length})</span>
+                                    </h3>
+                                </div>
                                 <div className="relative w-full sm:w-64">
+                                    <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] text-sm" />
                                     <input 
                                         type="text" 
-                                        placeholder="Cari data..." 
+                                        placeholder="Cari judul / mapel..." 
                                         value={storageSearchTerm}
                                         onChange={(e) => setStorageSearchTerm(e.target.value)}
-                                        className="w-full pl-9 pr-3 py-2 text-sm border border-[var(--border-secondary)] rounded-lg bg-[var(--bg-primary)] focus:ring-1 focus:ring-blue-500 outline-none"
+                                        className="w-full pl-9 pr-3 py-1.5 text-xs rounded-[var(--radius-control)] border border-[var(--border-primary)] bg-[var(--bg-primary)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--bg-accent)]"
                                     />
-                                    <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] text-sm" />
                                 </div>
                             </div>
                             
                             {selectedExamIds.size > 0 && (
-                                <div className="bg-blue-50 dark:bg-blue-900/20 p-2 px-4 flex justify-between items-center border-b border-blue-100 dark:border-blue-900 overflow-x-auto">
-                                    <span className="text-sm text-blue-700 dark:text-blue-300 font-semibold whitespace-nowrap mr-4">{selectedExamIds.size} dipilih</span>
+                                <div className="bg-blue-50 dark:bg-blue-900/30 p-2.5 px-4 flex flex-wrap justify-between items-center gap-2 border-b border-blue-200 dark:border-blue-800">
+                                    <span className="text-xs text-blue-700 dark:text-blue-300 font-bold whitespace-nowrap">
+                                        {selectedExamIds.size} naskah terpilih
+                                    </span>
                                     <div className="flex gap-2 flex-nowrap">
-                                        <button onClick={handleBulkBackup} className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded flex items-center gap-1 whitespace-nowrap">
+                                        <button onClick={handleBulkBackup} className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1 rounded-[var(--radius-control)] flex items-center gap-1 font-semibold">
                                             <DownloadIcon className="text-xs"/> JSON
                                         </button>
-                                        <button onClick={() => handleBulkExportFiles('docx')} className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded flex items-center gap-1 whitespace-nowrap">
+                                        <button onClick={() => handleBulkExportFiles('docx')} className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1 rounded-[var(--radius-control)] flex items-center gap-1 font-semibold">
                                             <WordIcon className="text-xs"/> Word
                                         </button>
-                                        <button onClick={() => handleBulkExportFiles('html')} className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded flex items-center gap-1 whitespace-nowrap">
+                                        <button onClick={() => handleBulkExportFiles('html')} className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1 rounded-[var(--radius-control)] flex items-center gap-1 font-semibold">
                                             <FileCodeIcon className="text-xs"/> HTML
                                         </button>
-                                        <button onClick={handleBulkDelete} className="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded flex items-center gap-1 whitespace-nowrap">
+                                        <button onClick={handleBulkDelete} className="text-xs bg-red-600 hover:bg-red-700 text-white px-2.5 py-1 rounded-[var(--radius-control)] flex items-center gap-1 font-semibold">
                                             <TrashIcon className="text-xs"/> Hapus
                                         </button>
                                     </div>
@@ -1402,47 +1938,49 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
                             )}
 
                             <div className="max-h-80 overflow-y-auto">
-                                <table className="w-full text-sm text-left">
-                                    <thead className="text-xs text-[var(--text-secondary)] uppercase bg-[var(--bg-tertiary)] sticky top-0">
+                                <table className="w-full text-xs text-left">
+                                    <thead className="text-[11px] text-[var(--text-secondary)] uppercase tracking-wider bg-[var(--bg-tertiary)] sticky top-0 border-b border-[var(--border-primary)]">
                                         <tr>
-                                            <th className="p-4 w-4">
-                                                <input type="checkbox" checked={filteredExamList.length > 0 && selectedExamIds.size === filteredExamList.length} onChange={toggleSelectAll} className="rounded border-[var(--border-secondary)]" />
+                                            <th className="p-3.5 w-4">
+                                                <input type="checkbox" checked={filteredExamList.length > 0 && selectedExamIds.size === filteredExamList.length} onChange={toggleSelectAll} className="rounded border-[var(--border-secondary)] text-[var(--bg-accent)] focus:ring-[var(--bg-accent)] cursor-pointer" />
                                             </th>
-                                            <th className="px-4 py-3">Judul Ujian</th>
-                                            <th className="px-4 py-3">Mapel</th>
-                                            <th className="px-4 py-3 text-right">Ukuran</th>
-                                            <th className="px-4 py-3 text-center">Aksi / Unduh</th>
+                                            <th className="px-3 py-3">Judul Naskah</th>
+                                            <th className="px-3 py-3">Mata Pelajaran</th>
+                                            <th className="px-3 py-3 text-right">Ukuran</th>
+                                            <th className="px-3 py-3 text-center">Aksi Cepat</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-[var(--border-primary)]">
                                         {filteredExamList.length > 0 ? filteredExamList.map((exam) => (
-                                            <tr key={exam.id} className="hover:bg-[var(--bg-hover)]">
-                                                <td className="p-4 w-4">
-                                                    <input type="checkbox" checked={selectedExamIds.has(exam.id)} onChange={() => toggleSelection(exam.id)} className="rounded border-[var(--border-secondary)]" />
+                                            <tr key={exam.id} className="hover:bg-[var(--bg-hover)] transition-colors">
+                                                <td className="p-3.5 w-4">
+                                                    <input type="checkbox" checked={selectedExamIds.has(exam.id)} onChange={() => toggleSelection(exam.id)} className="rounded border-[var(--border-secondary)] text-[var(--bg-accent)] focus:ring-[var(--bg-accent)] cursor-pointer" />
                                                 </td>
-                                                <td className="px-4 py-3 font-medium text-[var(--text-primary)]">{exam.title}</td>
-                                                <td className="px-4 py-3 text-[var(--text-secondary)]">{exam.subject}</td>
-                                                <td className="px-4 py-3 text-right text-[var(--text-muted)] font-mono text-xs">{formatBytes(exam.size, 0)}</td>
-                                                <td className="px-4 py-3 text-center">
+                                                <td className="px-3 py-3 font-semibold text-[var(--text-primary)]">{exam.title}</td>
+                                                <td className="px-3 py-3 text-[var(--text-secondary)]">{exam.subject}</td>
+                                                <td className="px-3 py-3 text-right text-[var(--text-muted)] font-mono text-[11px]">{formatBytes(exam.size, 0)}</td>
+                                                <td className="px-3 py-3 text-center">
                                                     <div className="flex justify-center items-center gap-1">
-                                                        <button onClick={() => handleExportExam(exam, 'json')} className="p-1.5 rounded hover:bg-blue-100 text-blue-600 dark:hover:bg-blue-900/30 dark:text-blue-400" title="Backup (JSON)">
-                                                            <DownloadIcon className="text-sm"/>
+                                                        <button onClick={() => handleExportExam(exam, 'json')} className="p-1 rounded-[var(--radius-control)] hover:bg-blue-50 text-blue-600 dark:hover:bg-blue-900/30 dark:text-blue-400 transition-colors" title="Backup (JSON)">
+                                                            <DownloadIcon className="text-xs"/>
                                                         </button>
-                                                        <button onClick={() => handleExportExam(exam, 'docx')} className="p-1.5 rounded hover:bg-blue-100 text-blue-600 dark:hover:bg-blue-900/30 dark:text-blue-400" title="Ekspor Word">
-                                                            <WordIcon className="text-sm"/>
+                                                        <button onClick={() => handleExportExam(exam, 'docx')} className="p-1 rounded-[var(--radius-control)] hover:bg-blue-50 text-blue-600 dark:hover:bg-blue-900/30 dark:text-blue-400 transition-colors" title="Ekspor Word .docx">
+                                                            <WordIcon className="text-xs"/>
                                                         </button>
-                                                        <button onClick={() => handleExportExam(exam, 'html')} className="p-1.5 rounded hover:bg-gray-100 text-gray-600 dark:hover:bg-gray-800 dark:text-gray-400" title="Ekspor HTML">
-                                                            <FileCodeIcon className="text-sm"/>
+                                                        <button onClick={() => handleExportExam(exam, 'html')} className="p-1 rounded-[var(--radius-control)] hover:bg-slate-100 text-slate-600 dark:hover:bg-slate-800 dark:text-slate-400 transition-colors" title="Ekspor HTML Mandiri">
+                                                            <FileCodeIcon className="text-xs"/>
                                                         </button>
-                                                        <button onClick={() => handleDeleteExam(exam.id, exam.title)} className="p-1.5 rounded hover:bg-red-100 text-red-500 dark:hover:bg-red-900/30 dark:text-red-400" title="Hapus Permanen">
-                                                            <TrashIcon className="text-sm"/>
+                                                        <button onClick={() => handleDeleteExam(exam.id, exam.title)} className="p-1 rounded-[var(--radius-control)] hover:bg-red-50 text-red-500 dark:hover:bg-red-900/30 dark:text-red-400 transition-colors" title="Hapus Permanen">
+                                                            <TrashIcon className="text-xs"/>
                                                         </button>
                                                     </div>
                                                 </td>
                                             </tr>
                                         )) : (
                                             <tr>
-                                                <td colSpan={5} className="text-center py-8 text-[var(--text-muted)]">Tidak ada data ujian.</td>
+                                                <td colSpan={5} className="text-center py-8 text-[var(--text-muted)]">
+                                                    Tidak ada data naskah yang ditemukan.
+                                                </td>
                                             </tr>
                                         )}
                                     </tbody>
@@ -1451,12 +1989,6 @@ const SettingsView: React.FC<{ initialTab?: SettingsTab }> = ({ initialTab = 'ge
                         </div>
                     </div>
                 )}
-            </div>
-
-            <div className="flex-shrink-0 pt-4 flex items-center justify-end border-t border-[var(--border-primary)] bg-[var(--bg-primary)]">
-                <button onClick={handleSave} className="bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] text-[var(--text-on-accent)] font-semibold py-2 px-6 rounded-lg transition-all duration-200 shadow hover:shadow-lg disabled:opacity-70 w-full md:w-auto" disabled={isSaving}>
-                    {isSaving ? 'Menyimpan...' : 'Simpan Semua Pengaturan'}
-                </button>
             </div>
         </div>
     );

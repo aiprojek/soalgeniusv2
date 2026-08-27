@@ -12,23 +12,24 @@ import EditorView from './views/EditorView';
 import PreviewView from './views/PreviewView';
 import SettingsView from './views/SettingsView';
 import QuestionBankView from './views/QuestionBankView';
+import CommunityView from './views/CommunityView';
 import HelpView from './views/HelpView';
 import { saveExam } from './lib/storage';
 
-export type View = 'archive' | 'editor' | 'bank' | 'settings' | 'preview' | 'help';
+export type View = 'archive' | 'editor' | 'bank' | 'community' | 'settings' | 'preview' | 'help';
 
 // Gabungkan semua state navigasi ke dalam satu objek agar update bersifat atomik
 interface NavState {
     view: View;
     examId: string | null;
-    settingsTab: 'general' | 'header' | 'format' | 'cloud' | 'storage';
+    settingsTab: 'template' | 'general' | 'header' | 'format' | 'ai' | 'cloud' | 'storage';
 }
 
 // Interface untuk state history browser
 interface HistoryState {
     view: View;
     examId?: string | null;
-    settingsTab?: 'general' | 'header' | 'format' | 'cloud' | 'storage';
+    settingsTab?: 'template' | 'general' | 'header' | 'format' | 'ai' | 'cloud' | 'storage';
 }
 
 const defaultNav: NavState = { view: 'archive', examId: null, settingsTab: 'general' };
@@ -252,8 +253,9 @@ function AppContent() {
         >
             {nav.view === 'archive' && <ArchiveView onEditExam={handleEditExam} onCreateExam={handleCreateExam} onPreviewExam={handlePreviewExam} />}
             {nav.view === 'settings' && <SettingsView initialTab={nav.settingsTab} />}
-            {nav.view === 'bank' && <QuestionBankView />}
-            {nav.view === 'help' && <HelpView />}
+            {nav.view === 'bank' && <QuestionBankView onNavigateToCommunity={() => handleNavigate('community')} />}
+            {nav.view === 'community' && <CommunityView onEditExam={handleEditExam} onNavigateToBank={() => handleNavigate('bank')} />}
+            {nav.view === 'help' && <HelpView onNavigate={handleNavigate} />}
         </MainLayout>
     );
 }

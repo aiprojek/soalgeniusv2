@@ -17,21 +17,25 @@ import ReactQuill from 'react-quill';
 import Quill from 'quill';
 import { validateExam } from '../lib/examValidator';
 import ExamValidationModal from '../components/ExamValidationModal';
+import LjkGeneratorModal from '../components/LjkGeneratorModal';
+import LjkScannerModal from '../components/LjkScannerModal';
 import { 
     PlusIcon, TrashIcon, PrinterIcon, EditIcon, ChevronLeftIcon, SaveIcon, CheckIcon, BookmarkPlusIcon, CloseIcon,
     ZoomInIcon, ZoomOutIcon, BankIcon, UndoIcon, RedoIcon, CardTextIcon, LayoutSplitIcon, StarsIcon,
-    CardTextIcon as StimulusIcon, LightningIcon, ShieldCheckIcon, EyeIcon
+    CardTextIcon as StimulusIcon, LightningIcon, ShieldCheckIcon, EyeIcon, ScanIcon
 } from '../components/Icons';
 
 // --- Start Custom Quill Icons ---
-const MATH_SVG_ICON = `<svg viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path stroke-width="1.8" d="M2.5 10.5h2l2.5 5 3.5-12h5.5"/><path stroke-width="1.6" d="M12.5 8l3 3m0-3l-3 3"/></svg>`;
+const MATH_SVG_ICON = `<svg viewBox="0 0 18 18" width="18" height="18"><path class="ql-stroke" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M2.5 10.5h2l2.5 5 3.5-12h5.5"/><path class="ql-stroke" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M12.5 8l3 3m0-3l-3 3"/></svg>`;
 
-const AI_IMAGE_SVG_ICON = `<svg viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor"><rect x="2" y="4.5" width="10" height="9.5" rx="1.5" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 11.5l3-3 2.5 2.5 2-2 2.5 2.5" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="5" cy="7.5" r="1" fill="currentColor" stroke="none"/><path d="M14.5 1.5l.6 1.8 1.8.6-1.8.6-.6 1.8-.6-1.8-1.8-.6 1.8-.6.6-1.8z" fill="currentColor" stroke="none"/><path d="M16 8l.3.9.9.3-.9.3-.3.9-.3-.9-.9-.3.9-.3.3-.9z" fill="currentColor" stroke="none"/></svg>`;
+const AI_IMAGE_SVG_ICON = `<svg viewBox="0 0 18 18" width="18" height="18"><rect class="ql-stroke" x="2" y="4.5" width="10" height="9.5" rx="1.5" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path class="ql-stroke" d="M2 11.5l3-3 2.5 2.5 2-2 2.5 2.5" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><circle class="ql-fill" cx="5" cy="7.5" r="1"/><path class="ql-fill" d="M14.5 1.5l.6 1.8 1.8.6-1.8.6-.6 1.8-.6-1.8-1.8-.6 1.8-.6.6-1.8z"/><path class="ql-fill" d="M16 8l.3.9.9.3-.9.3-.3.9-.3-.9-.9-.3.9-.3.3-.9z"/></svg>`;
 
 const icons = Quill.import('ui/icons') as any;
 if (icons) {
     icons['math'] = MATH_SVG_ICON;
     icons['aiImage'] = AI_IMAGE_SVG_ICON;
+    icons['aiimage'] = AI_IMAGE_SVG_ICON;
+    icons['ai-image'] = AI_IMAGE_SVG_ICON;
 }
 // --- End Custom Quill Icons ---
 
@@ -227,17 +231,13 @@ const RichTextEditor: React.FC<{
             if (mathBtn) {
                 mathBtn.setAttribute('title', direction === 'rtl' ? 'إدراج معادلة رياضية (LaTeX / KaTeX)' : 'Sisipkan Rumus Matematika (LaTeX / KaTeX)');
                 mathBtn.setAttribute('aria-label', 'KaTeX Math Formula');
-                if (!mathBtn.querySelector('svg')) {
-                    mathBtn.innerHTML = MATH_SVG_ICON;
-                }
+                mathBtn.innerHTML = MATH_SVG_ICON;
             }
-            const aiImgBtn = toolbar.container.querySelector('.ql-aiImage') as HTMLElement | null;
+            const aiImgBtn = (toolbar.container.querySelector('.ql-aiImage') || toolbar.container.querySelector('.ql-aiimage') || toolbar.container.querySelector('.ql-ai-image')) as HTMLElement | null;
             if (aiImgBtn) {
                 aiImgBtn.setAttribute('title', direction === 'rtl' ? 'إنشاء صورة بالذكاء الاصطناعي' : 'Generate Gambar dengan AI (Gemini)');
                 aiImgBtn.setAttribute('aria-label', 'AI Image Generator');
-                if (!aiImgBtn.querySelector('svg')) {
-                    aiImgBtn.innerHTML = AI_IMAGE_SVG_ICON;
-                }
+                aiImgBtn.innerHTML = AI_IMAGE_SVG_ICON;
             }
             const imgBtn = toolbar.container.querySelector('.ql-image') as HTMLElement | null;
             if (imgBtn) {
@@ -686,46 +686,69 @@ const QuestionEditor: React.FC<{
     
     // Determine card background color: lighter for stimulus to differentiate
     const cardBgClass = question.type === QuestionType.STIMULUS 
-        ? "bg-blue-50/80 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800"
-        : "bg-[var(--bg-secondary)] border-[var(--border-primary)]";
+        ? "bg-blue-50/70 dark:bg-blue-950/20 border-blue-200/80 dark:border-blue-900/50"
+        : "app-surface";
 
     return (
-        <div id={`question-${question.id}`} className={`${cardBgClass} rounded-[22px] border shadow-[var(--shadow-soft)] overflow-hidden transition-all duration-300`}>
-            <div className="border-b border-[var(--border-primary)] bg-[color:color-mix(in_srgb,var(--bg-tertiary)_72%,transparent)] px-4 py-3 sm:px-5">
-            <div className="flex justify-between items-start gap-3">
-                 <div className="min-w-0 flex items-center">
+        <div id={`question-${question.id}`} className={`${cardBgClass} rounded-2xl border shadow-xs overflow-hidden transition-all duration-200 hover:border-[var(--border-secondary)]`}>
+            <div className="border-b border-[var(--border-primary)] bg-[color:color-mix(in_srgb,var(--bg-tertiary)_65%,transparent)] px-3.5 py-2.5 sm:px-5 sm:py-3">
+            <div className="flex justify-between items-center gap-3">
+                 <div className="min-w-0 flex items-center gap-2.5">
                     {/* Hide number input for STIMULUS type */}
                     {question.type !== QuestionType.STIMULUS && (
                         <input 
                             type="text" 
                             value={question.number} 
                             onChange={(e) => updateField('number', e.target.value)}
-                            className="me-3 h-9 w-12 rounded-full border border-slate-600 bg-slate-700 text-center font-bold text-white outline-none transition-colors focus:ring-2 focus:ring-blue-500" 
+                            className="h-8 w-11 rounded-xl border border-slate-700 dark:border-slate-600 bg-slate-900 dark:bg-slate-800 text-center font-bold text-xs text-white outline-none transition-all focus:ring-2 focus:ring-blue-500 shadow-xs" 
                             aria-label={T.questionNumberAria.replace('{number}', question.number)} 
-                            title="Nomor soal"
+                            title="Nomor butir soal"
                         />
                     )}
-                    <div className="min-w-0">
-                        <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${question.type === QuestionType.STIMULUS ? 'border-blue-200 bg-blue-100/80 text-blue-800 dark:border-blue-800 dark:bg-blue-900/40 dark:text-blue-300' : 'border-[var(--border-primary)] bg-[var(--bg-secondary)] text-[var(--text-secondary)]'}`}>
-                            {question.type === QuestionType.STIMULUS ? <StimulusIcon/> : null}
+                    <div className="min-w-0 flex items-center gap-2 flex-wrap">
+                        <span className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] sm:text-xs font-bold ${
+                            question.type === QuestionType.STIMULUS 
+                                ? 'border-blue-200 bg-blue-100/90 text-blue-800 dark:border-blue-800 dark:bg-blue-950/60 dark:text-blue-300' 
+                                : question.type === QuestionType.MULTIPLE_CHOICE || question.type === QuestionType.COMPLEX_MULTIPLE_CHOICE
+                                    ? 'border-indigo-200 bg-indigo-50 dark:border-indigo-900/50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300'
+                                    : question.type === QuestionType.ESSAY || question.type === QuestionType.SHORT_ANSWER
+                                        ? 'border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300'
+                                        : 'border-[var(--border-primary)] bg-[var(--bg-secondary)] text-[var(--text-secondary)]'
+                        }`}>
+                            {question.type === QuestionType.STIMULUS ? <StimulusIcon className="text-xs" /> : null}
                             {T.questionTypes[question.type]}
                         </span>
-                        <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-[var(--text-muted)]">
-                            {choiceCount > 0 && <span>{choiceCount} opsi</span>}
-                            {matchingCount > 0 && <span>{matchingCount} pasangan</span>}
-                            {(question.type === QuestionType.TABLE || question.type === QuestionType.TABLE_MULTIPLE_CHOICE || question.type === QuestionType.TABLE_COMPLEX_MULTIPLE_CHOICE) && <span>Mode tabel</span>}
+                        
+                        <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-[var(--text-muted)]">
+                            {choiceCount > 0 && <span className="px-2 py-0.5 rounded-md bg-[var(--bg-tertiary)] border border-[var(--border-primary)]">{choiceCount} Opsi</span>}
+                            {matchingCount > 0 && <span className="px-2 py-0.5 rounded-md bg-[var(--bg-tertiary)] border border-[var(--border-primary)]">{matchingCount} Pasangan</span>}
+                            {(question.type === QuestionType.TABLE || question.type === QuestionType.TABLE_MULTIPLE_CHOICE || question.type === QuestionType.TABLE_COMPLEX_MULTIPLE_CHOICE) && <span className="px-2 py-0.5 rounded-md bg-[var(--bg-tertiary)] border border-[var(--border-primary)]">Tabel</span>}
                         </div>
                     </div>
                 </div>
-                 <div className="flex items-center space-x-1">
+                 <div className="flex items-center gap-1 flex-shrink-0">
                     {question.type !== QuestionType.STIMULUS && (
-                        <button onClick={() => onSaveToBank(question)} title={T.saveToBank} aria-label={T.saveToBank} className="rounded-full p-2 text-blue-500 transition-colors hover:bg-blue-100 hover:text-blue-700 dark:text-blue-400 dark:hover:bg-blue-900/50 dark:hover:text-blue-300"><BookmarkPlusIcon className="text-xl" /></button>
+                        <button 
+                            onClick={() => onSaveToBank(question)} 
+                            title={T.saveToBank} 
+                            aria-label={T.saveToBank} 
+                            className="flex h-8 w-8 items-center justify-center rounded-xl border border-[var(--border-primary)] bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:text-amber-600 hover:border-amber-200 dark:hover:border-amber-900/50 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors shadow-2xs"
+                        >
+                            <BookmarkPlusIcon className="text-sm" />
+                        </button>
                     )}
-                    <button onClick={() => onQuestionDelete(sectionId, question.id)} title={T.deleteQuestion} aria-label={T.deleteQuestion} className="rounded-full p-2 text-red-500 transition-colors hover:bg-red-100 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-900/50 dark:hover:text-red-300"><TrashIcon className="text-xl" /></button>
+                    <button 
+                        onClick={() => onQuestionDelete(sectionId, question.id)} 
+                        title={T.deleteQuestion} 
+                        aria-label={T.deleteQuestion} 
+                        className="flex h-8 w-8 items-center justify-center rounded-xl border border-[var(--border-primary)] bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:text-rose-600 hover:border-rose-200 dark:hover:border-rose-900/50 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors shadow-2xs"
+                    >
+                        <TrashIcon className="text-sm" />
+                    </button>
                 </div>
             </div>
             </div>
-            <div className="space-y-4 px-4 py-4 sm:px-5 sm:py-5">
+            <div className="space-y-4 px-3.5 py-3.5 sm:px-5 sm:py-4">
             <RichTextEditor 
                 value={question.text} 
                 onChange={(newText) => updateField('text', newText)} 
@@ -735,43 +758,118 @@ const QuestionEditor: React.FC<{
             
             {/* Options Render Block */}
             {(question.type === QuestionType.MULTIPLE_CHOICE || question.type === QuestionType.COMPLEX_MULTIPLE_CHOICE || question.type === QuestionType.TABLE_MULTIPLE_CHOICE || question.type === QuestionType.TABLE_COMPLEX_MULTIPLE_CHOICE) && (
-                <div className="rounded-[18px] border border-[var(--border-primary)] bg-[var(--bg-tertiary)] p-3 sm:p-4">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                    <h4 className="text-sm font-semibold text-[var(--text-secondary)]">Opsi Jawaban</h4>
-                    <span className="text-xs text-[var(--text-muted)]">{choiceCount} opsi</span>
+                <div className="rounded-xl border border-[var(--border-primary)] bg-[var(--bg-tertiary)]/60 p-3 sm:p-4 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                    <h4 className="text-xs sm:text-sm font-bold text-[var(--text-primary)]">Opsi Jawaban ({choiceCount})</h4>
+                    <span className="text-[11px] text-[var(--text-muted)]">Pilih kunci jawaban di bawah</span>
                 </div>
-                <div className="space-y-3 ps-3 border-s-2 border-[var(--border-primary)]">
+                <div className="space-y-2.5 ps-1 sm:ps-2">
                     {(question.choices || []).map((choice, choiceIndex) => (
-                        <div key={choice.id} className="flex items-start space-x-2">
-                            <span className="font-mono mt-2">{String.fromCharCode(97 + choiceIndex)}.</span>
-                             <div className="flex-grow min-w-0"><RichTextEditor isOption={true} value={choice.text} onChange={(newText) => handleChoiceChange(choice.id, newText)} placeholder={`${T.optionPlaceholder} ${String.fromCharCode(65 + choiceIndex)}`} direction={T === translations.rtl ? 'rtl' : 'ltr'} /></div>
-                            <button onClick={() => deleteChoice(choice.id)} aria-label={T.deleteOptionAria.replace('{letter}', String.fromCharCode(65 + choiceIndex))} className="text-[var(--text-muted)] hover:text-red-500 dark:hover:text-red-400 p-1 mt-1" disabled={(question.choices || []).length <= 1}><TrashIcon className="text-base" /></button>
+                        <div key={choice.id} className="flex items-start gap-2 sm:gap-2.5">
+                            <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-primary)] text-xs font-bold text-[var(--text-secondary)] mt-1 shadow-2xs">
+                                {String.fromCharCode(65 + choiceIndex)}
+                            </span>
+                            <div className="flex-grow min-w-0">
+                                <RichTextEditor 
+                                    isOption={true} 
+                                    value={choice.text} 
+                                    onChange={(newText) => handleChoiceChange(choice.id, newText)} 
+                                    placeholder={`${T.optionPlaceholder} ${String.fromCharCode(65 + choiceIndex)}`} 
+                                    direction={T === translations.rtl ? 'rtl' : 'ltr'} 
+                                />
+                            </div>
+                            <button 
+                                onClick={() => deleteChoice(choice.id)} 
+                                aria-label={T.deleteOptionAria.replace('{letter}', String.fromCharCode(65 + choiceIndex))} 
+                                className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-[var(--text-muted)] hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors mt-0.5 disabled:opacity-30 disabled:hover:text-[var(--text-muted)] disabled:hover:bg-transparent" 
+                                disabled={(question.choices || []).length <= 1}
+                            >
+                                <TrashIcon className="text-sm" />
+                            </button>
                         </div>
                     ))}
-                    <button onClick={addChoice} className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-semibold text-sm flex items-center space-x-1 pt-2"><PlusIcon className="text-base" /> <span>{T.addOption}</span></button>
+                </div>
+                <div className="pt-2 flex flex-wrap items-center justify-between gap-2">
+                    <button 
+                        onClick={addChoice} 
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-[var(--border-secondary)] bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] text-blue-600 dark:text-blue-400 font-bold px-3 py-1.5 text-xs transition-colors shadow-2xs"
+                    >
+                        <PlusIcon className="text-xs" />
+                        <span>{T.addOption}</span>
+                    </button>
                     {(question.type === QuestionType.MULTIPLE_CHOICE || question.type === QuestionType.COMPLEX_MULTIPLE_CHOICE) && (
-                        <div className="pt-2"><label className="flex items-center space-x-2 text-sm text-[var(--text-secondary)]"><input type="checkbox" checked={!!question.isTwoColumns} onChange={e => updateField('isTwoColumns', e.target.checked)} className="form-checkbox rounded text-blue-600 bg-transparent border-[var(--border-secondary)] focus:ring-blue-500" /><span>{T.twoColumnLayout}</span></label></div>
+                        <label className="flex items-center gap-2 text-xs font-semibold text-[var(--text-secondary)] cursor-pointer select-none">
+                            <input 
+                                type="checkbox" 
+                                checked={!!question.isTwoColumns} 
+                                onChange={e => updateField('isTwoColumns', e.target.checked)} 
+                                className="form-checkbox rounded text-blue-600 bg-transparent border-[var(--border-secondary)] focus:ring-blue-500" 
+                            />
+                            <span>{T.twoColumnLayout}</span>
+                        </label>
                     )}
                 </div>
                 </div>
             )}
-            {question.type === QuestionType.ESSAY && (<div className="mt-3"><label className="flex items-center space-x-2 text-sm text-[var(--text-secondary)]"><input type="checkbox" checked={!!question.hasAnswerSpace} onChange={e => updateField('hasAnswerSpace', e.target.checked)} className="form-checkbox text-blue-600 bg-transparent border-[var(--border-secondary)]" /><span>{T.provideAnswerSpace}</span></label></div>)}
-            {question.type === QuestionType.MATCHING && (
-                <div className="rounded-[18px] border border-[var(--border-primary)] bg-[var(--bg-tertiary)] p-3 sm:p-4">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                    <h4 className="text-sm font-semibold text-[var(--text-secondary)]">Pasangan Jawaban</h4>
-                    <span className="text-xs text-[var(--text-muted)]">{matchingCount} pernyataan</span>
+            {question.type === QuestionType.ESSAY && (
+                <div className="pt-1">
+                    <label className="flex items-center gap-2 text-xs font-semibold text-[var(--text-secondary)] cursor-pointer">
+                        <input 
+                            type="checkbox" 
+                            checked={!!question.hasAnswerSpace} 
+                            onChange={e => updateField('hasAnswerSpace', e.target.checked)} 
+                            className="form-checkbox text-blue-600 bg-transparent border-[var(--border-secondary)] rounded" 
+                        />
+                        <span>{T.provideAnswerSpace}</span>
+                    </label>
                 </div>
-                <div className="flex flex-col md:flex-row gap-6">
-                    <div className="w-full md:w-1/2 space-y-2">
-                        <h4 className="font-semibold text-[var(--text-secondary)]">{T.matchingColumnA}</h4>
-                        {(question.matchingPrompts || []).map((prompt, index) => (<div key={prompt.id} className="flex items-start space-x-2"><span className="font-mono mt-2">{index + 1}.</span><div className="w-full min-w-0"><RichTextEditor isOption={true} value={prompt.text} onChange={newText => updateMatchingList('matchingPrompts', prompt.id, newText)} placeholder={T.statementPlaceholder} direction={T === translations.rtl ? 'rtl' : 'ltr'} /></div><button onClick={() => deleteMatchingItem('matchingPrompts', prompt.id)} aria-label={T.deleteMatchingPromptAria.replace('{index}', String(index + 1))} className="text-[var(--text-muted)] hover:text-red-500 dark:hover:text-red-400 p-1 mt-1" disabled={(question.matchingPrompts || []).length <= 1}><TrashIcon /></button></div>))}
-                        <button onClick={() => addMatchingItem('matchingPrompts')} className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-semibold text-sm flex items-center space-x-1 pt-2"><PlusIcon /><span>{T.addStatement}</span></button>
+            )}
+            {question.type === QuestionType.MATCHING && (
+                <div className="rounded-xl border border-[var(--border-primary)] bg-[var(--bg-tertiary)]/60 p-3.5 sm:p-4 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                    <h4 className="text-xs sm:text-sm font-bold text-[var(--text-primary)]">Pasangan Jawaban</h4>
+                    <span className="text-[11px] text-[var(--text-muted)]">{matchingCount} pernyataan</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2.5">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">{T.matchingColumnA}</h4>
+                        {(question.matchingPrompts || []).map((prompt, index) => (
+                            <div key={prompt.id} className="flex items-start gap-2">
+                                <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-primary)] text-xs font-bold text-[var(--text-secondary)] mt-1 shadow-2xs">
+                                    {index + 1}
+                                </span>
+                                <div className="w-full min-w-0">
+                                    <RichTextEditor isOption={true} value={prompt.text} onChange={newText => updateMatchingList('matchingPrompts', prompt.id, newText)} placeholder={T.statementPlaceholder} direction={T === translations.rtl ? 'rtl' : 'ltr'} />
+                                </div>
+                                <button onClick={() => deleteMatchingItem('matchingPrompts', prompt.id)} aria-label={T.deleteMatchingPromptAria.replace('{index}', String(index + 1))} className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-[var(--text-muted)] hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors mt-0.5 disabled:opacity-30" disabled={(question.matchingPrompts || []).length <= 1}>
+                                    <TrashIcon className="text-sm" />
+                                </button>
+                            </div>
+                        ))}
+                        <button onClick={() => addMatchingItem('matchingPrompts')} className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-[var(--border-secondary)] bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] text-blue-600 dark:text-blue-400 font-bold px-3 py-1.5 text-xs transition-colors shadow-2xs">
+                            <PlusIcon className="text-xs" />
+                            <span>{T.addStatement}</span>
+                        </button>
                     </div>
-                    <div className="w-full md:w-1/2 space-y-2">
-                        <h4 className="font-semibold text-[var(--text-secondary)]">{T.matchingColumnB}</h4>
-                        {(question.matchingAnswers || []).map((answer, index) => (<div key={answer.id} className="flex items-start space-x-2"><span className="font-mono mt-2">{String.fromCharCode(65 + index)}.</span><div className="w-full min-w-0"><RichTextEditor isOption={true} value={answer.text} onChange={newText => updateMatchingList('matchingAnswers', answer.id, newText)} placeholder={T.answerPlaceholder} direction={T === translations.rtl ? 'rtl' : 'ltr'} /></div><button onClick={() => deleteMatchingItem('matchingAnswers', answer.id)} aria-label={T.deleteMatchingAnswerAria.replace('{letter}', String.fromCharCode(65 + index))} className="text-[var(--text-muted)] hover:text-red-500 dark:hover:text-red-400 p-1 mt-1" disabled={(question.matchingAnswers || []).length <= 1}><TrashIcon /></button></div>))}
-                         <button onClick={() => addMatchingItem('matchingAnswers')} className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-semibold text-sm flex items-center space-x-1 pt-2"><PlusIcon /><span>{T.addAnswer}</span></button>
+                    <div className="space-y-2.5">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">{T.matchingColumnB}</h4>
+                        {(question.matchingAnswers || []).map((answer, index) => (
+                            <div key={answer.id} className="flex items-start gap-2">
+                                <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-primary)] text-xs font-bold text-[var(--text-secondary)] mt-1 shadow-2xs">
+                                    {String.fromCharCode(65 + index)}
+                                </span>
+                                <div className="w-full min-w-0">
+                                    <RichTextEditor isOption={true} value={answer.text} onChange={newText => updateMatchingList('matchingAnswers', answer.id, newText)} placeholder={T.answerPlaceholder} direction={T === translations.rtl ? 'rtl' : 'ltr'} />
+                                </div>
+                                <button onClick={() => deleteMatchingItem('matchingAnswers', answer.id)} aria-label={T.deleteMatchingAnswerAria.replace('{letter}', String.fromCharCode(65 + index))} className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-[var(--text-muted)] hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors mt-0.5 disabled:opacity-30" disabled={(question.matchingAnswers || []).length <= 1}>
+                                    <TrashIcon className="text-sm" />
+                                </button>
+                            </div>
+                        ))}
+                        <button onClick={() => addMatchingItem('matchingAnswers')} className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-[var(--border-secondary)] bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] text-blue-600 dark:text-blue-400 font-bold px-3 py-1.5 text-xs transition-colors shadow-2xs">
+                            <PlusIcon className="text-xs" />
+                            <span>{T.addAnswer}</span>
+                        </button>
                     </div>
                 </div>
                 </div>
@@ -780,9 +878,15 @@ const QuestionEditor: React.FC<{
             
             {/* Answer Key Block: Hidden for Stimulus */}
             {question.type !== QuestionType.STIMULUS && (
-                <div className="rounded-[18px] border border-[var(--border-primary)] bg-[var(--bg-tertiary)] p-3 sm:p-4">
-                    <h4 className="mb-2 text-sm font-semibold text-[var(--text-secondary)]">{T.answerKeyTitle}</h4>
-                    <div className="space-y-2">{renderAnswerKeyInput()}</div>
+                <div className="rounded-xl border border-emerald-200/70 dark:border-emerald-900/40 bg-emerald-50/40 dark:bg-emerald-950/20 p-3.5 sm:p-4 space-y-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                        <h4 className="text-xs sm:text-sm font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
+                            <ShieldCheckIcon className="text-sm" />
+                            <span>{T.answerKeyTitle}</span>
+                        </h4>
+                        <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">Verifikasi Kunci</span>
+                    </div>
+                    <div className="space-y-2 pt-1">{renderAnswerKeyInput()}</div>
                 </div>
             )}
             </div>
@@ -804,7 +908,6 @@ const SectionEditor: React.FC<{
     onOpenSmartImport: (sectionId: string) => void;
 }> = ({ section, T, onSectionUpdate, onSectionDelete, onAddQuestionsFromBank, onOpenAiModal, onOpenSmartImport, ...questionCallbacks }) => {
     const [isAddQuestionOpen, setAddQuestionOpen] = useState(false);
-    // Deprecated: old stimulus state removed
     const addQuestionRef = useRef<HTMLDivElement>(null);
     
     const addQuestionAndClose = (type: QuestionType) => {
@@ -847,40 +950,118 @@ const SectionEditor: React.FC<{
     };
 
     return (
-        <div className="app-surface rounded-[28px] p-4 shadow-[var(--shadow-soft)] sm:p-6">
+        <div className="app-surface rounded-2xl p-4 shadow-xs sm:p-6 space-y-5">
             <div className="border-b border-[var(--border-primary)] pb-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div className="flex flex-1 items-start gap-3">
-                     <input type="text" value={title} onChange={(e) => handleInstructionChange(e.target.value, instructionText)} aria-label={T.sectionNumberAria} className="mt-0.5 w-16 rounded-full border border-[var(--border-primary)] bg-[var(--bg-tertiary)] px-2 py-2 text-center text-base font-bold text-[var(--text-primary)] outline-none transition-colors hover:bg-[var(--bg-hover)] focus:bg-[var(--bg-hover)] focus:ring-2 focus:ring-[var(--border-focus)]" />
-                     <div className="min-w-0 flex-1 space-y-3">
-                        <input type="text" value={instructionText} onChange={(e) => handleInstructionChange(title, e.target.value)} placeholder={T.instructionPlaceholder} aria-label={T.sectionInstructionAria} className="w-full rounded-[var(--radius-control)] bg-[var(--bg-tertiary)] px-3 py-2 text-base font-bold text-[var(--text-primary)] outline-none transition-colors hover:bg-[var(--bg-hover)] focus:bg-[var(--bg-hover)] focus:ring-2 focus:ring-[var(--border-focus)] sm:text-lg" />
-                        <div className="flex flex-wrap gap-2 text-[11px] sm:text-xs">
-                            <span className="rounded-full border border-[var(--border-primary)] bg-[var(--bg-tertiary)] px-3 py-1 text-[var(--text-secondary)]">{section.questions.length} soal di bagian ini</span>
+                <div className="flex flex-1 items-start gap-2.5 sm:gap-3.5">
+                     <input 
+                        type="text" 
+                        value={title} 
+                        onChange={(e) => handleInstructionChange(e.target.value, instructionText)} 
+                        aria-label={T.sectionNumberAria} 
+                        className="mt-0.5 w-14 sm:w-16 rounded-xl border border-[var(--border-primary)] bg-[var(--bg-tertiary)] px-2 py-2 text-center text-sm sm:text-base font-bold text-[var(--text-primary)] outline-none transition-all hover:bg-[var(--bg-hover)] focus:bg-[var(--bg-secondary)] focus:ring-2 focus:ring-blue-500 shadow-2xs" 
+                        placeholder="I"
+                    />
+                     <div className="min-w-0 flex-1 space-y-2">
+                        <input 
+                            type="text" 
+                            value={instructionText} 
+                            onChange={(e) => handleInstructionChange(title, e.target.value)} 
+                            placeholder={T.instructionPlaceholder} 
+                            aria-label={T.sectionInstructionAria} 
+                            className="w-full rounded-xl border border-[var(--border-primary)] bg-[var(--bg-tertiary)] px-3 py-2 text-sm sm:text-base font-bold text-[var(--text-primary)] outline-none transition-all hover:bg-[var(--bg-hover)] focus:bg-[var(--bg-secondary)] focus:ring-2 focus:ring-blue-500 shadow-2xs" 
+                        />
+                        <div className="flex items-center gap-2">
+                            <span className="rounded-md border border-[var(--border-primary)] bg-[var(--bg-secondary)] px-2.5 py-0.5 text-[11px] font-semibold text-[var(--text-secondary)]">
+                                {section.questions.length} Butir Soal di Bagian Ini
+                            </span>
                         </div>
                      </div>
                 </div>
-                <div className="flex items-center justify-end gap-2">
-                    <button onClick={() => onSectionDelete(section.id)} aria-label={T.deleteSectionAria} className="rounded-full p-2 text-red-500 transition-colors hover:bg-red-100 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-900/50 dark:hover:text-red-300 flex-shrink-0"><TrashIcon className="text-xl" /></button>
+                <div className="flex items-center justify-end">
+                    <button 
+                        onClick={() => onSectionDelete(section.id)} 
+                        aria-label={T.deleteSectionAria} 
+                        className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--border-primary)] bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:text-rose-600 hover:border-rose-200 dark:hover:border-rose-900/50 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors shadow-2xs flex-shrink-0"
+                        title="Hapus Bagian"
+                    >
+                        <TrashIcon className="text-base" />
+                    </button>
                 </div>
                 </div>
             </div>
             
-            <div className="space-y-4 pt-4">
-            {section.questions.map((q) => <QuestionEditor key={q.id} sectionId={section.id} question={q} T={T} {...questionCallbacks} />)}
+            <div className="space-y-4">
+                {section.questions.map((q) => <QuestionEditor key={q.id} sectionId={section.id} question={q} T={T} {...questionCallbacks} />)}
             </div>
 
-            <div className="pt-5">
-            <div ref={addQuestionRef} className="relative inline-block text-center">
-                 <button onClick={() => setAddQuestionOpen(p => !p)} aria-haspopup="true" aria-expanded={isAddQuestionOpen} className="flex items-center space-x-2 rounded-full bg-blue-100 px-4 py-2.5 font-semibold text-blue-800 transition-all duration-200 hover:bg-blue-200 dark:bg-blue-900/50 dark:text-blue-300 dark:hover:bg-blue-900"><PlusIcon /><span>{T.addQuestion}</span></button>
+            <div className="pt-2">
+            <div ref={addQuestionRef} className="relative inline-block text-start">
+                 <button 
+                    onClick={() => setAddQuestionOpen(p => !p)} 
+                    aria-haspopup="true" 
+                    aria-expanded={isAddQuestionOpen} 
+                    className="inline-flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 text-xs sm:text-sm font-bold transition-all shadow-sm active:scale-95"
+                 >
+                    <PlusIcon className="text-sm" />
+                    <span>{T.addQuestion}</span>
+                    <i className={`bi bi-chevron-down text-[10px] transition-transform ${isAddQuestionOpen ? 'rotate-180' : ''}`}></i>
+                 </button>
+
                 {isAddQuestionOpen && (
-                    <div className="absolute start-0 z-20 mt-2 w-[min(320px,calc(100vw-2rem))] overflow-y-auto rounded-[20px] border border-[var(--border-secondary)] bg-[var(--bg-secondary)] text-start shadow-lg">
-                        <ul className="py-1">
-                            <li><a href="#" onClick={(e) => { e.preventDefault(); addFromBankAndClose(); }} className="flex items-center space-x-2 block px-4 py-2 text-sm font-semibold text-blue-600 dark:text-blue-300 hover:bg-[var(--bg-hover)]"><BankIcon /> <span>{T.getFromBank}</span></a></li>
-                            <li><a href="#" onClick={(e) => { e.preventDefault(); openSmartImportAndClose(); }} className="flex items-center space-x-2 block px-4 py-2 text-sm font-semibold text-yellow-600 dark:text-yellow-400 hover:bg-[var(--bg-hover)]"><LightningIcon /> <span>{T.smartImport}</span></a></li>
-                            <li><a href="#" onClick={(e) => { e.preventDefault(); openAiAndClose(); }} className="flex items-center space-x-2 block px-4 py-2 text-sm font-semibold text-purple-600 dark:text-purple-300 hover:bg-[var(--bg-hover)]"><StarsIcon /> <span>{T.createWithAi}</span></a></li>
-                            <li className="border-t border-[var(--border-primary)] my-1"></li>
-                            {Object.entries(T.questionTypes).map(([type, label]) => (<li key={type}><a href="#" onClick={(e) => { e.preventDefault(); addQuestionAndClose(type as QuestionType); }} className="block px-4 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-hover)]">{label}</a></li>))}
-                        </ul>
+                    <div className="absolute start-0 z-30 mt-2 w-72 sm:w-80 rounded-2xl border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-2 text-start shadow-2xl animate-scale-in origin-top-left">
+                        <div className="px-3 py-1.5 border-b border-[var(--border-primary)] mb-1">
+                            <p className="text-xs font-bold text-[var(--text-primary)]">Pilihan Metode & Tipe Soal</p>
+                        </div>
+                        <div className="space-y-1">
+                            <button 
+                                onClick={addFromBankAndClose} 
+                                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 rounded-xl transition-colors text-left"
+                            >
+                                <BankIcon className="text-base" />
+                                <div>
+                                    <span className="block font-bold">{T.getFromBank}</span>
+                                    <span className="block text-[10px] text-[var(--text-muted)]">Pilih dari koleksi bank soal</span>
+                                </div>
+                            </button>
+                            <button 
+                                onClick={openSmartImportAndClose} 
+                                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-xl transition-colors text-left"
+                            >
+                                <LightningIcon className="text-base" />
+                                <div>
+                                    <span className="block font-bold">{T.smartImport}</span>
+                                    <span className="block text-[10px] text-[var(--text-muted)]">Salin-tempel naskah mentah</span>
+                                </div>
+                            </button>
+                            <button 
+                                onClick={openAiAndClose} 
+                                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/30 rounded-xl transition-colors text-left"
+                            >
+                                <StarsIcon className="text-base" />
+                                <div>
+                                    <span className="block font-bold">{T.createWithAi}</span>
+                                    <span className="block text-[10px] text-[var(--text-muted)]">Generate otomatis dengan AI</span>
+                                </div>
+                            </button>
+
+                            <div className="border-t border-[var(--border-primary)] my-1 pt-1"></div>
+
+                            <p className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Tipe Butir Manual</p>
+                            
+                            <div className="max-h-52 overflow-y-auto space-y-0.5 scrollbar-thin">
+                                {Object.entries(T.questionTypes).map(([type, label]) => (
+                                    <button 
+                                        key={type} 
+                                        onClick={() => addQuestionAndClose(type as QuestionType)} 
+                                        className="w-full flex items-center justify-between px-3 py-1.5 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-hover)] rounded-lg transition-colors text-left"
+                                    >
+                                        <span>{label}</span>
+                                        <PlusIcon className="text-xs text-[var(--text-muted)]" />
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>
@@ -897,6 +1078,8 @@ const EditorView: React.FC<{ examId: string; onBack: () => void; onPreview?: () 
     const [isBankModalOpen, setBankModalOpen] = useState(false);
     const [isSmartImportOpen, setSmartImportOpen] = useState(false);
     const [isValidationModalOpen, setValidationModalOpen] = useState(false);
+    const [isLjkModalOpen, setIsLjkModalOpen] = useState(false);
+    const [isLjkScannerOpen, setIsLjkScannerOpen] = useState(false);
     const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
     const [lastSaved, setLastSaved] = useState<Date | null>(null);
     const [isSaving, setIsSaving] = useState(false); // State for auto-save indicator
@@ -1453,6 +1636,16 @@ const EditorView: React.FC<{ examId: string; onBack: () => void; onPreview?: () 
                             <StarsIcon className="text-xs text-purple-600 dark:text-purple-400" />
                             <span>AI Generator</span>
                         </button>
+
+                        {/* LJK Sheet & Scanner */}
+                        <button
+                            onClick={() => setIsLjkModalOpen(true)}
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-blue-200 dark:border-blue-900/50 bg-blue-50/60 dark:bg-blue-950/20 text-blue-700 dark:text-blue-300 hover:bg-blue-100 text-[11px] sm:text-xs font-semibold transition-colors"
+                            title="Cetak Lembar Jawab Komputer (LJK) & Koreksi"
+                        >
+                            <i className="bi bi-grid-3x3-gap-fill text-xs text-blue-600 dark:text-blue-400"></i>
+                            <span>Lembar Jawab (LJK)</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -1568,21 +1761,39 @@ const EditorView: React.FC<{ examId: string; onBack: () => void; onPreview?: () 
                     />
                 ))}
 
-                <button onClick={handleAddSection} className="w-full py-4 border-2 border-dashed border-[var(--border-secondary)] rounded-[var(--radius-control)] text-[var(--text-secondary)] hover:border-blue-500 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all font-bold flex items-center justify-center gap-2">
-                    <PlusIcon className="text-xl" />
+                <button 
+                    onClick={handleAddSection} 
+                    className="w-full py-4 border-2 border-dashed border-[var(--border-secondary)] rounded-2xl text-[var(--text-secondary)] hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 transition-all font-bold flex items-center justify-center gap-2 shadow-2xs group"
+                >
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--bg-tertiary)] group-hover:bg-blue-100 dark:group-hover:bg-blue-900/50 transition-colors">
+                        <PlusIcon className="text-base" />
+                    </div>
                     <span>{T.addSection}</span>
                 </button>
             </div>
 
             {/* Modals */}
             {isBankModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                    <div className="bg-[var(--bg-secondary)] w-full max-w-4xl h-[80vh] rounded-xl shadow-2xl flex flex-col overflow-hidden">
-                         <div className="p-4 border-b border-[var(--border-primary)] flex justify-between items-center">
-                            <h3 className="text-lg font-bold text-[var(--text-primary)]">{T.getFromBank}</h3>
-                            <button onClick={() => setBankModalOpen(false)} className="text-[var(--text-secondary)]"><CloseIcon /></button>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-[var(--bg-secondary)] border border-[var(--border-primary)] w-full max-w-4xl h-[85vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-scale-in">
+                         <div className="px-5 py-3.5 border-b border-[var(--border-primary)] flex justify-between items-center bg-[var(--bg-tertiary)]/50">
+                            <div className="flex items-center gap-2.5">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400">
+                                    <BankIcon className="text-base" />
+                                </div>
+                                <div>
+                                    <h3 className="text-sm sm:text-base font-bold text-[var(--text-primary)]">{T.getFromBank}</h3>
+                                    <p className="text-[11px] text-[var(--text-secondary)]">Pilih dan sisipkan soal ke dalam naskah ujian</p>
+                                </div>
+                            </div>
+                            <button 
+                                onClick={() => setBankModalOpen(false)} 
+                                className="flex h-8 w-8 items-center justify-center rounded-xl border border-[var(--border-primary)] bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors"
+                            >
+                                <CloseIcon className="text-base" />
+                            </button>
                         </div>
-                        <div className="flex-grow overflow-hidden p-4">
+                        <div className="flex-grow overflow-hidden p-3 sm:p-4">
                             <QuestionBankView isModalMode={true} onAddQuestions={handleAddFromBank} onClose={() => setBankModalOpen(false)} />
                         </div>
                     </div>
@@ -1620,6 +1831,27 @@ const EditorView: React.FC<{ examId: string; onBack: () => void; onPreview?: () 
                             }, 100);
                         }
                     }}
+                />
+            )}
+
+            {/* LJK Generator Modal */}
+            {exam && settings && (
+                <LjkGeneratorModal
+                    isOpen={isLjkModalOpen}
+                    onClose={() => setIsLjkModalOpen(false)}
+                    exam={exam}
+                    settings={settings}
+                    onOpenScanner={() => setIsLjkScannerOpen(true)}
+                />
+            )}
+
+            {/* LJK Scanner & Grader Modal */}
+            {exam && settings && (
+                <LjkScannerModal
+                    isOpen={isLjkScannerOpen}
+                    onClose={() => setIsLjkScannerOpen(false)}
+                    exam={exam}
+                    settings={settings}
                 />
             )}
         </div>

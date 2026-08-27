@@ -121,3 +121,14 @@ export const SparklesIcon = ({ className }: IconProps) => <i className={`bi bi-s
 
 // Icons for Storage Settings
 export const HddIcon = ({ className }: IconProps) => <i className={`bi bi-hdd-fill ${className || ''}`}></i>;
+
+// Icons for Visual Presets & Templates
+export const PaletteIcon = ({ className }: IconProps) => <i className={`bi bi-palette-fill ${className || ''}`}></i>;
+export const MortarboardIcon = ({ className }: IconProps) => <i className={`bi bi-mortarboard-fill ${className || ''}`}></i>;
+export const MoonStarsIcon = ({ className }: IconProps) => <i className={`bi bi-moon-stars-fill ${className || ''}`}></i>;
+export const GlobeIcon = ({ className }: IconProps) => <i className={`bi bi-globe-americas ${className || ''}`}></i>;
+export const TreeIcon = ({ className }: IconProps) => <i className={`bi bi-tree-fill ${className || ''}`}></i>;
+export const LayoutTemplateIcon = ({ className }: IconProps) => <i className={`bi bi-layout-text-window-reverse ${className || ''}`}></i>;
+export const CheckCircleIcon = CheckIcon;
+export const ArrowLeftIcon = ChevronLeftIcon;
+

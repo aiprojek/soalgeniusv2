@@ -1,235 +1,335 @@
 import React, { useState } from 'react';
-import { CoffeeIcon, GithubIcon, DiscussionIcon } from '../../components/Icons';
+import {
+    AppMarkIcon, CoffeeIcon, GithubIcon, DiscussionIcon,
+    ShieldCheckIcon, SparklesIcon, GlobeIcon, ServerIcon,
+    HddIcon, CheckIcon, CloseIcon
+} from '../../components/Icons';
+import type { View } from '../../App';
+import type { HelpTab } from '../HelpView';
 
-const QuickFact: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-    <div className="app-surface-muted rounded-[var(--radius-control)] px-4 py-3 text-left border border-[var(--border-primary)]/50">
-        <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--text-muted)] font-bold">{label}</p>
-        <p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">{value}</p>
-    </div>
-);
+interface AboutTabProps {
+    onNavigate?: (view: View) => void;
+    onSwitchTab?: (tab: HelpTab, query?: string) => void;
+}
 
-const ValuePoint: React.FC<{ title: string; description: string }> = ({ title, description }) => (
-    <div className="rounded-[var(--radius-control)] border border-[var(--border-primary)] bg-[var(--bg-secondary)] px-4 py-3.5 shadow-sm hover:shadow-md transition-shadow duration-200">
-        <h4 className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-[var(--bg-accent)]"></span>
-            {title}
-        </h4>
-        <p className="mt-1.5 text-xs sm:text-sm leading-relaxed text-[var(--text-secondary)]">{description}</p>
-    </div>
-);
+interface FaqItemData {
+    q: string;
+    a: string;
+    category: string;
+}
 
-const SocialButton: React.FC<{ href: string; icon: React.ElementType; label: string; subLabel: string; colorClass: string }> = ({ href, icon: Icon, label, subLabel, colorClass }) => (
-    <a
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={`flex items-center gap-3.5 p-4 rounded-[20px] transition-all duration-300 transform hover:-translate-y-0.5 border border-transparent ${colorClass} group shadow-sm`}
-    >
-        <div className="p-2.5 bg-white/20 rounded-[16px]">
-            <Icon className="text-xl text-white" />
-        </div>
-        <div className="text-left">
-            <div className="font-bold text-white text-base leading-tight">{label}</div>
-            <div className="text-white/85 text-xs font-medium mt-0.5 leading-relaxed">{subLabel}</div>
-        </div>
-    </a>
-);
+const AboutTab: React.FC<AboutTabProps> = ({ onNavigate, onSwitchTab }) => {
+    const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
 
-const FaqItem: React.FC<{ question: string; answer: React.ReactNode }> = ({ question, answer }) => {
-    const [isOpen, setIsOpen] = useState(false);
+    const rawBuildVersion = (import.meta as any).env?.VITE_APP_BUILD_VERSION;
+    const displayVersion = rawBuildVersion ? `Build ${rawBuildVersion}` : 'v1.4.0 (Latest)';
+
+    const faqs: FaqItemData[] = [
+        {
+            category: 'Penyimpanan & Keamanan',
+            q: 'Di mana seluruh naskah ujian dan butir soal saya disimpan?',
+            a: 'Seluruh naskah ujian, butir soal, kunci jawaban, dan konfigurasi disimpan secara lokal di dalam browser Anda menggunakan database IndexedDB (Dexie.js). Data tidak dikirimkan ke server pengembang mana pun sehingga privasi naskah ujian rahasia Anda terjamin 100% aman.'
+        },
+        {
+            category: 'Penyimpanan & Keamanan',
+            q: 'Bagaimana cara mencegah data hilang jika ganti laptop atau browser dibersihkan?',
+            a: 'Anda dapat memanfaatkan fitur Sinkronisasi Dropbox di menu Pengaturan untuk pencadangan otomatis ke cloud pribadi Anda. Selain itu, Anda juga dapat mengekspor berkas Backup Arsip (.json) atau mengekspor paket bank soal (.sgpkg) secara berkala untuk disimpan di flashdisk atau Google Drive.'
+        },
+        {
+            category: 'Kolaborasi & MGMP',
+            q: 'Bagaimana cara berbagi paket bank soal ke rekan guru atau komunitas MGMP?',
+            a: 'Gunakan fitur Pusat Berbagi MGMP. Pilih butir soal yang ingin dibagikan, lengkapi metadata mata pelajaran & penyusun, lalu unduh berkas .sgpkg. Berkas ini berukuran sangat ringan dan dapat dibagikan langsung melalui WhatsApp, Telegram, email, atau flashdisk.'
+        },
+        {
+            category: 'Gaya & Efisiensi',
+            q: 'Bagaimana cara membuat naskah ujian dengan teks Basmalah dan opsi huruf Arab?',
+            a: 'Buka menu Pengaturan → Preset Gaya, lalu pilih preset "Madrasah / Kemenag". Sistem akan otomatis menyematkan teks Basmalah & Hamdalah di naskah, mengubah opsi menjadi abjad Arab (أ, ب, ج, د), serta menerapkan font formal Amiri yang rapi.'
+        },
+        {
+            category: 'Akses & Instalasi',
+            q: 'Apakah aplikasi ini dapat diakses secara offline tanpa internet?',
+            a: 'Ya. SoalGenius mendukung teknologi Progressive Web App (PWA) dan arsitektur Offline-First. Setelah dibuka pertama kali, seluruh aset aplikasi tersimpan di cache perangkat. Anda dapat menginstalnya sebagai aplikasi mandiri dan menggunakannya kapan saja tanpa sambungan internet.'
+        },
+        {
+            category: 'Lisensi & Hak Cipta',
+            q: 'Apakah aplikasi SoalGenius dapat digunakan bebas untuk kebutuhan sekolah?',
+            a: 'Ya, SoalGenius dikembangkan oleh AI Projek di bawah lisensi resmi GNU General Public License v3.0 (GNU GPL v3). Anda bebas menggunakan, memodifikasi, dan mendistribusikan aplikasi ini secara gratis untuk seluruh kegiatan pendidikan sekolah, madrasah, dan komunitas guru.'
+        }
+    ];
+
+    const toggleFaq = (index: number) => {
+        setOpenFaqIndex(openFaqIndex === index ? null : index);
+    };
+
     return (
-        <div className="border border-[var(--border-primary)] rounded-[var(--radius-card)] bg-[var(--bg-secondary)] overflow-hidden transition-all duration-200">
-            <button
-                onClick={() => setIsOpen(!isOpen)}
-                className="w-full flex items-center justify-between gap-4 px-4 py-3.5 text-left font-bold text-sm sm:text-base text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors duration-150"
-            >
-                <span>{question}</span>
-                <i className={`bi bi-chevron-down text-xs text-[var(--text-secondary)] transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}></i>
-            </button>
-            <div className={`transition-all duration-200 ease-in-out ${isOpen ? 'max-h-60 border-t border-[var(--border-primary)]' : 'max-h-0'} overflow-hidden`}>
-                <div className="p-4 text-xs sm:text-sm leading-relaxed text-[var(--text-secondary)] bg-[var(--bg-tertiary)]/30">
-                    {answer}
+        <div className="space-y-6 max-w-4xl mx-auto">
+            {/* Hero Identity Card */}
+            <div className="app-surface p-5 sm:p-7 rounded-[var(--radius-card)] border border-[var(--border-primary)] space-y-5 shadow-xs">
+                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-5 text-center sm:text-left">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-800 p-3 shadow-md flex items-center justify-center flex-shrink-0">
+                        <AppMarkIcon className="w-full h-full text-white" />
+                    </div>
+
+                    <div className="space-y-2 flex-grow">
+                        <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                            <h2 className="text-xl sm:text-2xl font-extrabold text-[var(--text-primary)]">
+                                SoalGenius
+                            </h2>
+                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-[var(--radius-control)] bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-mono">
+                                {displayVersion}
+                            </span>
+                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-[var(--radius-control)] bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                100% Offline-First
+                            </span>
+                        </div>
+
+                        <p className="text-xs sm:text-sm text-[var(--text-secondary)] leading-relaxed">
+                            Aplikasi pembuat soal yang dibuat agar guru dapat fokus pada penyusunan butir soal berkualitas, tanpa terganggu oleh masalah format, tata letak halaman, atau penomoran yang rumit.
+                        </p>
+
+                        <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 pt-1 text-xs text-[var(--text-muted)]">
+                            <span className="inline-flex items-center gap-1">
+                                <i className="bi bi-shield-lock-fill text-[var(--text-accent)]"></i> Privasi Lokal
+                            </span>
+                            <span className="inline-flex items-center gap-1">
+                                <i className="bi bi-cpu-fill text-[var(--text-accent)]"></i> Render KaTeX
+                            </span>
+                            <span className="inline-flex items-center gap-1">
+                                <i className="bi bi-file-earmark-zip-fill text-[var(--text-accent)]"></i> Portabel .sgpkg
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* 3 Core Pillars */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-[var(--border-primary)]">
+                    <div className="p-3 rounded-[var(--radius-control)] bg-[var(--bg-secondary)] border border-[var(--border-primary)] space-y-1">
+                        <div className="font-bold text-xs text-[var(--text-primary)] flex items-center gap-1.5">
+                            <ShieldCheckIcon className="text-emerald-500 text-sm" />
+                            <span>Privasi & Nol Server</span>
+                        </div>
+                        <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
+                            Data naskah soal tersimpan di memori browser lokal perangkat Anda, aman dan bebas risiko kebocoran.
+                        </p>
+                    </div>
+
+                    <div className="p-3 rounded-[var(--radius-control)] bg-[var(--bg-secondary)] border border-[var(--border-primary)] space-y-1">
+                        <div className="font-bold text-xs text-[var(--text-primary)] flex items-center gap-1.5">
+                            <SparklesIcon className="text-blue-500 text-sm" />
+                            <span>Otomasi Tata Letak</span>
+                        </div>
+                        <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
+                            Preset visual 1-klik, smart page fit hemat kertas, dan penomoran otomatis tanpa ribet.
+                        </p>
+                    </div>
+
+                    <div className="p-3 rounded-[var(--radius-control)] bg-[var(--bg-secondary)] border border-[var(--border-primary)] space-y-1">
+                        <div className="font-bold text-xs text-[var(--text-primary)] flex items-center gap-1.5">
+                            <GlobeIcon className="text-purple-500 text-sm" />
+                            <span>Ekosistem MGMP</span>
+                        </div>
+                        <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
+                            Distribusi paket bank soal portabel (.sgpkg) antar-pendidik secara mandiri dan cepat.
+                        </p>
+                    </div>
                 </div>
             </div>
-        </div>
-    );
-};
 
-const AppLogo = ({ className }: { className?: string }) => (
-    <svg
-        viewBox="0 0 512 512"
-        className={className}
-        xmlns="http://www.w3.org/2000/svg"
-        fill="none"
-    >
-        <g transform="matrix(8.5333333,0,0,8.5333333,-17.066666,34.133334)">
-            <path d="M 32,6 2,20 32,34 62,20 Z" fill="white" fillOpacity="0.95" />
-            <path d="m 6,22 v 18 c 0,0 10,6 26,6 16,0 26,-6 26,-6 V 22" fill="white" fillOpacity="0.8" />
-            <path d="m 24,33 6,6 14,-14" stroke="#3b82f6" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-            <line x1="50" y1="20" x2="50" y2="30" stroke="#fbbf24" strokeWidth="2.5" strokeLinecap="round" />
-            <path d="m 50,30 c -2,2 2,2 0,4 -2,2 2,2 0,4" stroke="#fbbf24" strokeWidth="2" fill="none" strokeLinecap="round" />
-        </g>
-    </svg>
-);
+            {/* System Status & Architecture Specs */}
+            <div className="app-surface p-4 sm:p-5 rounded-[var(--radius-card)] border border-[var(--border-primary)] space-y-3">
+                <h3 className="font-extrabold text-sm text-[var(--text-primary)] flex items-center gap-2">
+                    <ServerIcon className="text-[var(--text-accent)] text-base" />
+                    <span>Spesifikasi Arsitektur Sistem</span>
+                </h3>
 
-const AboutTab: React.FC = () => {
-    const buildVersion = import.meta.env.VITE_APP_BUILD_VERSION || 'dev';
-
-    return (
-        <div className="max-w-4xl mx-auto space-y-5 animate-fade-in pb-8 px-1">
-            {/* Hero Card */}
-            <section className="relative overflow-hidden rounded-[24px] border border-[var(--border-primary)] bg-[linear-gradient(135deg,rgba(59,130,246,0.08),rgba(255,255,255,0.16))] px-5 py-6 sm:px-8 sm:py-8 shadow-sm">
-                <div className="absolute right-10 top-10 hidden md:block opacity-60">
-                    <div className="grid grid-cols-2 gap-2 rotate-6">
-                        <div className="h-14 w-14 rounded-2xl border border-blue-200/70 bg-white/35 backdrop-blur-sm"></div>
-                        <div className="h-10 w-10 rounded-xl border border-amber-200/70 bg-white/30 backdrop-blur-sm mt-6"></div>
-                        <div className="h-8 w-8 rounded-lg border border-blue-200/70 bg-white/25 backdrop-blur-sm ml-5"></div>
-                        <div className="h-12 w-12 rounded-2xl border border-blue-200/70 bg-white/35 backdrop-blur-sm"></div>
-                    </div>
-                </div>
-                <div className="relative grid grid-cols-1 gap-5 md:grid-cols-[1.1fr_0.9fr] md:items-center">
-                    <div className="space-y-4">
-                        <div className="inline-flex items-center gap-2 rounded-full border border-[var(--border-primary)] bg-[var(--bg-secondary)]/70 px-3.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--text-secondary)] backdrop-blur-sm">
-                            Tentang Aplikasi
-                        </div>
-                        <div className="space-y-3">
-                            <div className="relative inline-flex items-center justify-center p-4 rounded-[28px] bg-gradient-to-br from-[#2d60df] to-[#4f7ff4] shadow-[var(--shadow-soft)]">
-                                <div className="absolute inset-0 rounded-[28px] ring-1 ring-white/30"></div>
-                                <div className="absolute -right-2 -top-2 h-5 w-5 rounded-full bg-amber-300/90 blur-[1px]"></div>
-                                <AppLogo className="relative w-14 h-14 drop-shadow-md" />
-                            </div>
-                            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[var(--text-primary)]">
-                                Soal<span className="text-transparent bg-clip-text bg-gradient-to-r from-[#2457d6] to-[#5f86ec]">Genius</span>
-                            </h2>
-                            <p className="max-w-xl text-sm leading-relaxed text-[var(--text-secondary)]">
-                                Aplikasi pembuat soal yang dibuat agar guru dapat fokus pada penyusunan butir soal berkualitas, tanpa terganggu oleh masalah format, tata letak halaman, atau penomoran yang rumit.
-                            </p>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                            <span className="app-status-pill app-status-info font-bold">Versi {buildVersion}</span>
-                            <span className="app-status-pill font-bold" style={{ background: 'rgba(124, 58, 237, 0.12)', color: 'rgb(109, 40, 217)' }}>Open Source</span>
-                        </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                    <div className="p-2.5 rounded-[var(--radius-control)] bg-[var(--bg-secondary)] border border-[var(--border-primary)]">
+                        <span className="text-[10px] text-[var(--text-muted)] uppercase font-bold block">Database Mesin</span>
+                        <span className="font-bold text-[var(--text-primary)] mt-0.5 block">IndexedDB (Dexie.js)</span>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 md:grid-cols-1">
-                        <QuickFact label="Filosofi Utama" value="Prioritaskan Isi & Konten" />
-                        <QuickFact label="Penyimpanan" value="Browser Lokal (IndexedDB)" />
-                        <QuickFact label="Tujuan Desain" value="Rapi, Presisi, Siap Cetak" />
+                    <div className="p-2.5 rounded-[var(--radius-control)] bg-[var(--bg-secondary)] border border-[var(--border-primary)]">
+                        <span className="text-[10px] text-[var(--text-muted)] uppercase font-bold block">Mesin Rumus</span>
+                        <span className="font-bold text-[var(--text-primary)] mt-0.5 block">KaTeX High-Speed</span>
+                    </div>
+
+                    <div className="p-2.5 rounded-[var(--radius-control)] bg-[var(--bg-secondary)] border border-[var(--border-primary)]">
+                        <span className="text-[10px] text-[var(--text-muted)] uppercase font-bold block">Mode Offline</span>
+                        <span className="font-bold text-emerald-600 dark:text-emerald-400 mt-0.5 block">Aktif (PWA Ready)</span>
+                    </div>
+
+                    <div className="p-2.5 rounded-[var(--radius-control)] bg-[var(--bg-secondary)] border border-[var(--border-primary)]">
+                        <span className="text-[10px] text-[var(--text-muted)] uppercase font-bold block">Paket Soal</span>
+                        <span className="font-bold text-[var(--text-primary)] mt-0.5 block">.sgpkg (Standard v1)</span>
                     </div>
                 </div>
-            </section>
+            </div>
 
-            {/* Why SoalGenius */}
-            <section className="app-surface rounded-[var(--radius-card)] p-5 sm:p-6 space-y-4">
-                <h3 className="font-bold text-[var(--text-primary)] text-lg sm:text-xl border-b border-[var(--border-primary)] pb-3">Kenapa SoalGenius dibuat?</h3>
-                <div className="space-y-3 text-xs sm:text-sm leading-relaxed text-[var(--text-secondary)]">
-                    <p>
-                        Pembuatan naskah soal ujian di sekolah seringkali memakan waktu lama hanya untuk merapikan spasi, menyelaraskan nomor, menyusun tata letak opsi Pilihan Ganda agar hemat kertas, atau menggabungkan baris tabel secara manual di Word.
-                    </p>
-                    <p>
-                        <strong>SoalGenius</strong> hadir sebagai solusi mandiri berbasis peramban (browser) yang menangani seluruh tata letak dokumen secara otomatis. Semua naskah soal tersimpan dengan aman di penyimpanan lokal komputer Anda.
-                    </p>
+            {/* Interactive FAQ Section */}
+            <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h3 className="font-extrabold text-sm sm:text-base text-[var(--text-primary)] flex items-center gap-2">
+                            <i className="bi bi-question-circle-fill text-[var(--text-accent)]"></i>
+                            <span>Pertanyaan yang Sering Diajukan (FAQ)</span>
+                        </h3>
+                        <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                            Jawaban praktis seputar privasi data, pencadangan, dan penggunaan fitur.
+                        </p>
+                    </div>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2 pt-1">
-                    <ValuePoint
-                        title="Instan & Otomatis"
-                        description="Kelola bagian naskah ujian, atur kolom ganda, dan buat varian paket soal acak hanya dalam satu kali klik."
-                    />
-                    <ValuePoint
-                        title="Privasi & Keamanan Penuh"
-                        description="Data Anda tidak pernah terkirim ke server mana pun. Kendali penuh penyimpanan lokal ada di browser perangkat Anda."
-                    />
-                </div>
-            </section>
 
-            {/* FAQ Section */}
-            <section className="app-surface rounded-[var(--radius-card)] p-5 sm:p-6 space-y-4">
-                <h3 className="font-bold text-[var(--text-primary)] text-lg sm:text-xl border-b border-[var(--border-primary)] pb-3">Pertanyaan Umum (FAQ)</h3>
                 <div className="space-y-2">
-                    <FaqItem
-                        question="Di mana file soal dan data ujian saya disimpan?"
-                        answer={
-                            <p>
-                                Seluruh data disimpan secara lokal pada browser perangkat Anda menggunakan teknologi database <strong>IndexedDB</strong> (dikelola lewat Dexie.js). Aplikasi ini bekerja 100% secara lokal dan tidak menyimpan data di server kami.
-                            </p>
-                        }
-                    />
-                    <FaqItem
-                        question="Apakah data saya bisa terhapus dengan sendirinya?"
-                        answer={
-                            <div className="space-y-2">
-                                <p>
-                                    Secara umum tidak, namun data Anda <strong>bisa terhapus</strong> jika Anda melakukan tindakan berikut:
-                                </p>
-                                <ul className="list-disc list-inside space-y-1 ml-2">
-                                    <li>Melakukan "Hapus Data Situs" atau pembersihan cache browser secara menyeluruh.</li>
-                                    <li>Menggunakan aplikasi pembersih pihak ketiga (seperti CCleaner atau fitur pembersih disk otomatis bawaan OS) yang menargetkan cache browser.</li>
-                                </ul>
-                                <p className="font-semibold text-blue-600 dark:text-blue-400 mt-1.5">
-                                    Sangat direkomendasikan untuk rutin mengekspor cadangan JSON lokal atau menghubungkan integrasi Dropbox di menu Pengaturan.
-                                </p>
-                            </div>
-                        }
-                    />
-                    <FaqItem
-                        question="Bagaimana cara kerja mode offline?"
-                        answer={
-                            <p>
-                                SoalGenius dirancang sebagai <strong>Progressive Web App (PWA)</strong>. Saat pertama kali Anda memuat aplikasi ini dengan internet, Service Worker (`sw.js`) akan otomatis menyimpan seluruh file aplikasi ke dalam cache browser Anda. Kunjungan berikutnya dapat diakses tanpa koneksi internet sama sekali.
-                            </p>
-                        }
-                    />
-                    <FaqItem
-                        question="Apakah aplikasi ini berbayar?"
-                        answer={
-                            <p>
-                                Tidak. SoalGenius berstatus <strong>100% gratis dan Open Source</strong> di bawah lisensi GNU GPL v3. Siapa pun (guru maupun sekolah) dapat memanfaatkannya secara gratis tanpa batasan fitur.
-                            </p>
-                        }
-                    />
-                </div>
-            </section>
+                    {faqs.map((faq, index) => {
+                        const isOpen = openFaqIndex === index;
+                        return (
+                            <div
+                                key={index}
+                                className="app-surface rounded-[var(--radius-card)] border border-[var(--border-primary)] overflow-hidden transition-all shadow-xs"
+                            >
+                                <button
+                                    onClick={() => toggleFaq(index)}
+                                    className="w-full flex items-center justify-between gap-3 p-4 text-left hover:bg-[var(--bg-hover)] transition-colors"
+                                >
+                                    <div className="min-w-0">
+                                        <span className="text-[10px] font-bold text-[var(--text-accent)] uppercase tracking-wider block mb-0.5">
+                                            {faq.category}
+                                        </span>
+                                        <h4 className="font-bold text-xs sm:text-sm text-[var(--text-primary)] leading-tight">
+                                            {faq.q}
+                                        </h4>
+                                    </div>
+                                    <i className={`bi bi-chevron-down text-xs text-[var(--text-muted)] transition-transform duration-200 ${isOpen ? 'rotate-180 text-[var(--text-primary)]' : ''}`}></i>
+                                </button>
 
-            {/* Social Support */}
-            <section className="space-y-3.5 pt-2">
-                <div className="text-center space-y-1">
-                    <h3 className="font-bold text-[var(--text-primary)] text-lg">Dukung & Bergabung</h3>
-                    <p className="text-xs sm:text-sm text-[var(--text-secondary)]">Kembangkan ekosistem SoalGenius bersama komunitas pendidik dan pengembang lainnya.</p>
+                                {isOpen && (
+                                    <div className="p-4 border-t border-[var(--border-primary)] bg-[var(--bg-primary)]/40 text-xs text-[var(--text-secondary)] leading-relaxed animate-fade-in">
+                                        {faq.a}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
                 </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                    <SocialButton
-                        href="https://lynk.id/aiprojek/s/bvBJvdA"
-                        icon={CoffeeIcon}
-                        label="Traktir Kopi"
-                        subLabel="Dukung pengembangan"
-                        colorClass="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600"
-                    />
-                    <SocialButton
-                        href="https://github.com/aiprojek/soalgeniusv2"
-                        icon={GithubIcon}
-                        label="GitHub"
-                        subLabel="Beri Bintang & Kontribusi"
-                        colorClass="bg-gradient-to-r from-gray-700 to-gray-900 hover:from-gray-800 hover:to-black"
-                    />
-                    <SocialButton
-                        href="https://t.me/aiprojek_community/32"
-                        icon={DiscussionIcon}
-                        label="Telegram"
-                        subLabel="Komunitas & Diskusi"
-                        colorClass="bg-gradient-to-r from-blue-400 to-blue-600 hover:from-blue-500 hover:to-blue-700"
-                    />
-                </div>
-                <div className="flex flex-col gap-2 rounded-[var(--radius-card)] border border-[var(--border-primary)] bg-[var(--bg-secondary)] px-4 py-3 text-xs sm:text-sm text-[var(--text-secondary)] sm:flex-row sm:items-center sm:justify-between shadow-sm">
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                        <span>Dikembangkan oleh <a href="https://www.aiprojek01.my.id/" target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-600 dark:text-blue-400 hover:underline">AI Projek</a></span>
-                        <span className="hidden sm:inline text-[var(--text-muted)]">•</span>
-                        <span>Lisensi <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-600 dark:text-blue-400 hover:underline">GNU GPL v3</a></span>
+            </div>
+
+            {/* Community, Links & Support Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-2">
+                <a
+                    href="https://www.aiprojek01.my.id/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="app-surface p-4 rounded-[var(--radius-card)] border border-[var(--border-primary)] hover:border-[var(--border-secondary)] transition-all flex flex-col justify-between group shadow-xs"
+                >
+                    <div className="space-y-2">
+                        <div className="w-9 h-9 rounded-[var(--radius-control)] bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 border border-blue-200 dark:border-blue-800 flex items-center justify-center">
+                            <GlobeIcon className="text-base" />
+                        </div>
+                        <h4 className="font-bold text-xs sm:text-sm text-[var(--text-primary)] group-hover:text-[var(--text-accent)] transition-colors">
+                            AI Projek (Pengembang)
+                        </h4>
+                        <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                            Kunjungi situs AI Projek untuk melihat portofolio dan proyek lainnya.
+                        </p>
                     </div>
-                    <a href="https://github.com/aiprojek/soalgeniusv2" target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-600 dark:text-blue-400 hover:underline">
-                        Lihat Repositori Proyek
-                    </a>
-                </div>
-            </section>
+                    <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 inline-flex items-center gap-1 mt-3">
+                        <span>Kunjungi Situs</span>
+                        <i className="bi bi-arrow-right text-[10px]"></i>
+                    </span>
+                </a>
+
+                <a
+                    href="https://www.gnu.org/licenses/gpl-3.0.html"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="app-surface p-4 rounded-[var(--radius-card)] border border-[var(--border-primary)] hover:border-[var(--border-secondary)] transition-all flex flex-col justify-between group shadow-xs"
+                >
+                    <div className="space-y-2">
+                        <div className="w-9 h-9 rounded-[var(--radius-control)] bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center">
+                            <ShieldCheckIcon className="text-base" />
+                        </div>
+                        <h4 className="font-bold text-xs sm:text-sm text-[var(--text-primary)] group-hover:text-[var(--text-accent)] transition-colors">
+                            Lisensi GNU GPL v3
+                        </h4>
+                        <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                            Perangkat lunak bebas & sumber terbuka. Hak cipta dilindungi di bawah lisensi GNU General Public License v3.
+                        </p>
+                    </div>
+                    <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1 mt-3">
+                        <span>Lihat Dokumen Lisensi</span>
+                        <i className="bi bi-arrow-right text-[10px]"></i>
+                    </span>
+                </a>
+
+                <a
+                    href="https://github.com/aiprojek/soalgeniusv2"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="app-surface p-4 rounded-[var(--radius-card)] border border-[var(--border-primary)] hover:border-[var(--border-secondary)] transition-all flex flex-col justify-between group shadow-xs"
+                >
+                    <div className="space-y-2">
+                        <div className="w-9 h-9 rounded-[var(--radius-control)] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 flex items-center justify-center">
+                            <GithubIcon className="text-base" />
+                        </div>
+                        <h4 className="font-bold text-xs sm:text-sm text-[var(--text-primary)] group-hover:text-[var(--text-accent)] transition-colors">
+                            GitHub Repository
+                        </h4>
+                        <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                            Beri bintang, laporkan kendala teknis (bug issue), atau berkontribusi dalam kode sumber.
+                        </p>
+                    </div>
+                    <span className="text-xs font-semibold text-[var(--text-primary)] inline-flex items-center gap-1 mt-3">
+                        <span>Buka Repositori</span>
+                        <i className="bi bi-arrow-right text-[10px]"></i>
+                    </span>
+                </a>
+
+                <a
+                    href="https://t.me/aiprojek_community/32"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="app-surface p-4 rounded-[var(--radius-card)] border border-[var(--border-primary)] hover:border-[var(--border-secondary)] transition-all flex flex-col justify-between group shadow-xs"
+                >
+                    <div className="space-y-2">
+                        <div className="w-9 h-9 rounded-[var(--radius-control)] bg-sky-50 dark:bg-sky-900/30 text-sky-600 dark:text-sky-300 border border-sky-200 dark:border-sky-800 flex items-center justify-center">
+                            <DiscussionIcon className="text-base" />
+                        </div>
+                        <h4 className="font-bold text-xs sm:text-sm text-[var(--text-primary)] group-hover:text-[var(--text-accent)] transition-colors">
+                            Komunitas Telegram
+                        </h4>
+                        <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                            Bergabung dalam grup diskusi Telegram sesama pengguna dan ikuti pembaruan terkini.
+                        </p>
+                    </div>
+                    <span className="text-xs font-semibold text-sky-600 dark:text-sky-400 inline-flex items-center gap-1 mt-3">
+                        <span>Gabung Telegram</span>
+                        <i className="bi bi-arrow-right text-[10px]"></i>
+                    </span>
+                </a>
+
+                <a
+                    href="https://lynk.id/aiprojek/s/bvBJvdA"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="app-surface p-4 rounded-[var(--radius-card)] border border-[var(--border-primary)] hover:border-[var(--border-secondary)] transition-all flex flex-col justify-between group shadow-xs sm:col-span-2 lg:col-span-2"
+                >
+                    <div className="space-y-2">
+                        <div className="w-9 h-9 rounded-[var(--radius-control)] bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex items-center justify-center">
+                            <CoffeeIcon className="text-base" />
+                        </div>
+                        <h4 className="font-bold text-xs sm:text-sm text-[var(--text-primary)] group-hover:text-[var(--text-accent)] transition-colors">
+                            Traktir Kopi
+                        </h4>
+                        <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                            Dukung pengembang agar aplikasi ini tetap gratis, bebas iklan, dan terus diperbarui untuk seluruh pendidik di Indonesia.
+                        </p>
+                    </div>
+                    <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 inline-flex items-center gap-1 mt-3">
+                        <span>Traktir Pengembang (Lynk.id)</span>
+                        <i className="bi bi-arrow-right text-[10px]"></i>
+                    </span>
+                </a>
+            </div>
         </div>
     );
 };

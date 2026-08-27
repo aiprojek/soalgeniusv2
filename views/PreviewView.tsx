@@ -8,10 +8,13 @@ import { validateExam } from '../lib/examValidator';
 import ExamValidationModal from '../components/ExamValidationModal';
 import LmsExportModal from '../components/LmsExportModal';
 import SmartPageFitModal from '../components/SmartPageFitModal';
+import LjkGeneratorModal from '../components/LjkGeneratorModal';
+import LjkScannerModal from '../components/LjkScannerModal';
+import TemplatePresetModal from '../components/TemplatePresetModal';
 import {
     ChevronLeftIcon, ZoomInIcon, ZoomOutIcon, DownloadIcon, PrinterIcon, 
     WordIcon, ServerIcon, ShieldCheckIcon, ExclamationTriangleIcon, CheckIcon,
-    SparklesIcon
+    SparklesIcon, ScanIcon, PaletteIcon
 } from '../components/Icons';
 import { useToast } from '../contexts/ToastContext';
 import { useModal } from '../contexts/ModalContext';
@@ -27,6 +30,9 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
     const [isLmsModalOpen, setIsLmsModalOpen] = useState(false);
     const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
     const [isSmartFitModalOpen, setIsSmartFitModalOpen] = useState(false);
+    const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+    const [isLjkModalOpen, setIsLjkModalOpen] = useState(false);
+    const [isLjkScannerOpen, setIsLjkScannerOpen] = useState(false);
     const [pageCount, setPageCount] = useState<number>(1);
     const [iframeHeight, setIframeHeight] = useState<string | number>('297mm');
     const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -230,18 +236,16 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
                 sheets.forEach(sheet => {
                     sheetsTotalHeight += (sheet as HTMLElement).offsetHeight || 0;
                 });
-                // 1.5rem (24px) gap between sheets + 2rem (32px) top and bottom padding
-                sheetsTotalHeight += Math.max(0, sheets.length - 1) * 24 + 80;
+                // 2rem (32px) gap between multiple sheets + top (1.5rem/24px) & bottom (2rem/32px) padding (total 56px) + 8px tolerance
+                sheetsTotalHeight += Math.max(0, sheets.length - 1) * 32 + 64;
             } else {
                 setPageCount(prev => (prev !== 1 ? 1 : prev));
             }
 
-            const nextHeight = Math.max(
-                sheetsTotalHeight,
-                (container as HTMLElement)?.scrollHeight || 0,
-                html?.scrollHeight || 0,
-                body?.scrollHeight || 0,
-            );
+            const nextHeight = sheetsTotalHeight > 0 
+                ? sheetsTotalHeight 
+                : Math.max((container as HTMLElement)?.scrollHeight || 0, html?.scrollHeight || 0, body?.scrollHeight || 0);
+
             if (nextHeight > 0) {
                 setIframeHeight(prev => (prev !== nextHeight ? nextHeight : prev));
             }
@@ -278,9 +282,9 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
                     <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3.5">
                         <button 
                             onClick={onBack} 
-                            className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl border border-[var(--border-primary)] bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors sm:h-10 sm:w-10"
+                            className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl border border-[var(--border-primary)] bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors sm:h-10 sm:w-10 shadow-2xs"
                             title="Kembali ke Editor"
-                            aria-label="Kembali"
+                            aria-label="Kembali ke Editor"
                         >
                             <ChevronLeftIcon className="text-base sm:text-lg" />
                         </button>
@@ -325,46 +329,76 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
                             {isActionsMenuOpen && (
                                 <div ref={actionsMenuRef} className="animate-scale-in absolute right-0 top-[calc(100%+0.5rem)] z-[120] w-80 sm:w-92 rounded-2xl border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-2 shadow-2xl origin-top-right">
                                     <div className="px-3 pb-2 pt-1 border-b border-[var(--border-primary)] mb-1">
-                                        <p className="text-sm font-bold text-[var(--text-primary)]">Format Ekspor & Dokumen</p>
-                                        <p className="text-xs text-[var(--text-secondary)]">Pilih format unduhan naskah ujian atau kuis online</p>
+                                        <p className="text-xs font-bold text-[var(--text-primary)]">Format Ekspor & Dokumen</p>
+                                        <p className="text-[11px] text-[var(--text-secondary)]">Pilih format unduhan naskah ujian atau kuis online</p>
                                     </div>
                                     <div className="space-y-1">
-                                        <button onClick={(e) => { e.stopPropagation(); handleExportWord(); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[var(--bg-hover)] text-blue-600 dark:text-blue-400 rounded-xl">
-                                            {isExportingWord ? <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></div> : <WordIcon className="text-lg" />}
+                                        <button onClick={(e) => { e.stopPropagation(); handleExportWord(); setActionsMenuOpen(false); }} className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-[var(--bg-hover)] text-blue-600 dark:text-blue-400 rounded-xl transition-colors">
+                                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex-shrink-0">
+                                                {isExportingWord ? <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></div> : <WordIcon className="text-base" />}
+                                            </div>
                                             <div className="min-w-0 flex-1">
-                                                <span className="font-semibold text-sm block">Dokumen Word (.docx)</span>
-                                                <span className="text-[11px] text-[var(--text-secondary)] block">Format standar cetak & kunci terpisah</span>
+                                                <span className="font-bold text-xs sm:text-sm block">Dokumen Word (.docx)</span>
+                                                <span className="text-[10px] sm:text-[11px] text-[var(--text-secondary)] block">Format standar cetak & kunci terpisah</span>
                                             </div>
                                         </button>
-                                        <button onClick={(e) => { e.stopPropagation(); setIsLmsModalOpen(true); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[var(--bg-hover)] text-orange-600 dark:text-orange-400 rounded-xl">
-                                            <ServerIcon className="text-lg" />
+                                        <button onClick={(e) => { e.stopPropagation(); setIsLmsModalOpen(true); setActionsMenuOpen(false); }} className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-[var(--bg-hover)] text-orange-600 dark:text-orange-400 rounded-xl transition-colors">
+                                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 flex-shrink-0">
+                                                <ServerIcon className="text-base" />
+                                            </div>
                                             <div className="min-w-0 flex-1">
-                                                <span className="font-semibold text-sm block">Ekspor LMS & Bank Soal</span>
-                                                <span className="text-[11px] text-[var(--text-secondary)] block">Moodle, Canvas, GIFT, Quizizz, Excel</span>
+                                                <span className="font-bold text-xs sm:text-sm block">Ekspor LMS & Bank Soal</span>
+                                                <span className="text-[10px] sm:text-[11px] text-[var(--text-secondary)] block">Moodle, Canvas, GIFT, Quizizz, Excel</span>
                                             </div>
                                         </button>
-                                        <button onClick={(e) => { e.stopPropagation(); handleExportHtml(); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[var(--bg-hover)] text-[var(--text-primary)] rounded-xl">
-                                            <DownloadIcon className="text-lg text-emerald-600" />
+                                        <button onClick={(e) => { e.stopPropagation(); handleExportHtml(); setActionsMenuOpen(false); }} className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-[var(--bg-hover)] text-[var(--text-primary)] rounded-xl transition-colors">
+                                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex-shrink-0">
+                                                <DownloadIcon className="text-base" />
+                                            </div>
                                             <div className="min-w-0 flex-1">
-                                                <span className="font-semibold text-sm block">Ekspor Web HTML</span>
-                                                <span className="text-[11px] text-[var(--text-secondary)] block">Naskah halaman web mandiri</span>
+                                                <span className="font-bold text-xs sm:text-sm block">Ekspor Web HTML</span>
+                                                <span className="text-[10px] sm:text-[11px] text-[var(--text-secondary)] block">Naskah halaman web mandiri</span>
                                             </div>
                                         </button>
-                                        <button onClick={() => { handlePrint(); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[var(--bg-hover)] text-[var(--text-primary)] rounded-xl">
-                                            <PrinterIcon className="text-lg text-indigo-600" />
+                                        <button onClick={() => { handlePrint(); setActionsMenuOpen(false); }} className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-[var(--bg-hover)] text-[var(--text-primary)] rounded-xl transition-colors">
+                                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex-shrink-0">
+                                                <PrinterIcon className="text-base" />
+                                            </div>
                                             <div className="min-w-0 flex-1">
-                                                <span className="font-semibold text-sm block">Cetak / Simpan PDF</span>
-                                                <span className="text-[11px] text-[var(--text-secondary)] block">Cetak langsung atau simpan PDF per halaman</span>
+                                                <span className="font-bold text-xs sm:text-sm block">Cetak / Simpan PDF</span>
+                                                <span className="text-[10px] sm:text-[11px] text-[var(--text-secondary)] block">Cetak langsung atau simpan PDF per halaman</span>
                                             </div>
                                         </button>
 
                                         <div className="border-t border-[var(--border-primary)] my-1 pt-1"></div>
 
-                                        <button onClick={() => { setIsValidationModalOpen(true); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[var(--bg-hover)] text-teal-600 dark:text-teal-400 rounded-xl">
-                                            <ShieldCheckIcon className="text-lg" />
+                                        <button onClick={() => { setIsValidationModalOpen(true); setActionsMenuOpen(false); }} className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-[var(--bg-hover)] text-teal-600 dark:text-teal-400 rounded-xl transition-colors">
+                                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 flex-shrink-0">
+                                                <ShieldCheckIcon className="text-base" />
+                                            </div>
                                             <div className="min-w-0 flex-1">
-                                                <span className="font-semibold text-sm block">Audit & Validasi Naskah</span>
-                                                <span className="text-[11px] text-[var(--text-secondary)] block">Cek kelengkapan kunci & kesiapan soal</span>
+                                                <span className="font-bold text-xs sm:text-sm block">Audit & Validasi Naskah</span>
+                                                <span className="text-[10px] sm:text-[11px] text-[var(--text-secondary)] block">Cek kelengkapan kunci & kesiapan soal</span>
+                                            </div>
+                                        </button>
+
+                                        <button onClick={() => { setIsLjkModalOpen(true); setActionsMenuOpen(false); }} className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-[var(--bg-hover)] text-blue-600 dark:text-blue-400 rounded-xl transition-colors">
+                                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex-shrink-0">
+                                                <i className="bi bi-grid-3x3-gap-fill text-base"></i>
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <span className="font-bold text-xs sm:text-sm block">Lembar Jawab (LJK)</span>
+                                                <span className="text-[10px] sm:text-[11px] text-[var(--text-secondary)] block">Cetak template LJK hemat kertas (1-lembar, 2-lembar)</span>
+                                            </div>
+                                        </button>
+
+                                        <button onClick={() => { setIsLjkScannerOpen(true); setActionsMenuOpen(false); }} className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-[var(--bg-hover)] text-emerald-600 dark:text-emerald-400 rounded-xl transition-colors">
+                                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex-shrink-0">
+                                                <ScanIcon className="text-base" />
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <span className="font-bold text-xs sm:text-sm block">Koreksi LJK (Scan Nilai)</span>
+                                                <span className="text-[10px] sm:text-[11px] text-[var(--text-secondary)] block">Penilaian foto/kamera otomatis, rekap & analisis</span>
                                             </div>
                                         </button>
                                     </div>
@@ -418,11 +452,19 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
 
                     {/* Right: Smart Fit Button & Audit Health Indicator */}
                     <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-                        {/* Page Count & Smart Page Fit Trigger */}
+                        {/* Page Count & Smart Page Fit Trigger & Gaya Visual */}
                         <div className="flex items-center gap-1.5">
                             <span className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-[var(--bg-secondary)] border border-[var(--border-primary)] text-[var(--text-secondary)] shadow-2xs">
                                 {pageCount} Lembar
                             </span>
+                            <button
+                                onClick={() => setIsTemplateModalOpen(true)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border border-[var(--border-primary)] bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] shadow-2xs"
+                                title="Ubah Preset Layout Instan: Madrasah / Kemenag, Kurikulum Merdeka, Cambridge"
+                            >
+                                <PaletteIcon className="text-xs text-blue-600 dark:text-blue-400" />
+                                <span>Gaya Visual</span>
+                            </button>
                             <button
                                 onClick={() => setIsSmartFitModalOpen(true)}
                                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border shadow-2xs ${
@@ -433,7 +475,7 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
                                 title="Optimalkan tata letak naskah agar hemat kertas fotokopi"
                             >
                                 <SparklesIcon className="text-xs text-amber-500" />
-                                <span>Pas Halaman (Smart Fit)</span>
+                                <span>Pas Halaman</span>
                                 {pageCount > 1 && pageCount % 2 !== 0 && (
                                     <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-ping"></span>
                                 )}
@@ -466,44 +508,110 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
                 </div>
             </header>
             
-            <main ref={mainContainerRef} className="flex-grow overflow-auto px-2 py-3 sm:p-8 flex justify-center app-bottom-safe" style={{ scrollbarWidth: 'thin', scrollbarColor: '#94a3b8 #e2e8f0' }}>
-                <div className="my-1 sm:my-8 origin-top transition-transform duration-200 ease-in-out flex-shrink-0 rounded-[14px] border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-1 shadow-[var(--shadow-card)] sm:rounded-[24px] sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none" style={{ transform: `scale(${zoom})`, width: settings.paperSize === 'A4' ? '210mm' : settings.paperSize === 'F4' ? '215mm' : '216mm' }}>
-                    <iframe ref={iframeRef} onLoad={syncIframeHeight} sandbox="allow-modals allow-same-origin allow-scripts" srcDoc={showAnswerKey ? answerKeyHtml : examHtml} title="Pratinjau Ujian" className="w-full rounded-[12px] sm:rounded-none shadow-lg sm:shadow-2xl" style={{ height: iframeHeight }} />
+            <main ref={mainContainerRef} className="flex-grow overflow-auto p-4 sm:p-6 md:p-8 flex justify-center items-start app-bottom-safe" style={{ scrollbarWidth: 'thin', scrollbarColor: '#94a3b8 #e2e8f0' }}>
+                {/* Scaled paper viewport container that accurately sizes to zoom and stays centered */}
+                <div 
+                    className="my-1 sm:my-2 mx-auto flex-shrink-0 flex justify-center items-start transition-[width,height] duration-200 ease-in-out"
+                    style={{
+                        width: `calc((${settings.paperSize === 'A4' ? '210mm' : settings.paperSize === 'F4' ? '215mm' : '216mm'} + 3rem) * ${zoom})`,
+                        height: iframeHeight ? `${iframeHeight * zoom}px` : 'auto'
+                    }}
+                >
+                    <div 
+                        className="origin-top transition-transform duration-200 ease-in-out flex-shrink-0" 
+                        style={{ 
+                            transform: `scale(${zoom})`, 
+                            width: `calc(${settings.paperSize === 'A4' ? '210mm' : settings.paperSize === 'F4' ? '215mm' : '216mm'} + 3rem)` 
+                        }}
+                    >
+                        <iframe 
+                            ref={iframeRef} 
+                            onLoad={syncIframeHeight} 
+                            sandbox="allow-modals allow-same-origin allow-scripts" 
+                            srcDoc={showAnswerKey ? answerKeyHtml : examHtml} 
+                            title="Pratinjau Ujian" 
+                            className="w-full border-0 bg-transparent block" 
+                            style={{ height: iframeHeight }} 
+                        />
+                    </div>
                 </div>
             </main>
 
             {/* Mobile Actions Bottom Sheet */}
             {isActionsMenuOpen && (
-                <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/45 p-0 md:hidden" onClick={() => setActionsMenuOpen(false)}>
-                    <div ref={mobileActionsMenuRef} className="w-full rounded-t-[28px] bg-[var(--bg-secondary)] border-t border-[var(--border-primary)] shadow-2xl animate-scale-in md:mt-16 md:w-[22rem] md:rounded-[22px] md:border md:border-[var(--border-primary)]" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex justify-center py-3 md:hidden">
-                            <div className="h-1.5 w-14 rounded-full bg-[var(--border-secondary)]"></div>
+                <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/50 backdrop-blur-xs p-0 md:hidden animate-fade-in" onClick={() => setActionsMenuOpen(false)}>
+                    <div ref={mobileActionsMenuRef} className="w-full rounded-t-3xl bg-[var(--bg-secondary)] border-t border-[var(--border-primary)] shadow-2xl animate-scale-in" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex justify-center py-2.5">
+                            <div className="h-1 w-12 rounded-full bg-[var(--border-secondary)]"></div>
                         </div>
-                        <div className="px-5 pb-2 pt-1 md:pt-4 border-b border-[var(--border-primary)]">
-                            <h4 className="text-base font-bold text-[var(--text-primary)] line-clamp-1">{exam.title}</h4>
-                            <p className="text-sm text-[var(--text-secondary)]">Pilih aksi ekspor atau cetak</p>
+                        <div className="px-5 pb-2.5 pt-1 border-b border-[var(--border-primary)]">
+                            <h4 className="text-sm font-bold text-[var(--text-primary)] line-clamp-1">{exam.title}</h4>
+                            <p className="text-[11px] text-[var(--text-secondary)]">Pilih aksi ekspor atau cetak</p>
                         </div>
-                        <div className="px-3 py-3 space-y-1">
-                            <button onClick={(e) => { e.stopPropagation(); handleExportWord(); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--bg-hover)] text-blue-600 dark:text-blue-400">
-                                {isExportingWord ? <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></div> : <WordIcon className="text-lg" />}
-                                <span className="font-medium">Ekspor Word (.docx)</span>
+                        <div className="px-3 py-2.5 space-y-1 max-h-[70vh] overflow-y-auto">
+                            <button onClick={(e) => { e.stopPropagation(); handleExportWord(); setActionsMenuOpen(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[var(--bg-hover)] text-blue-600 dark:text-blue-400 rounded-xl transition-colors">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex-shrink-0">
+                                    {isExportingWord ? <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></div> : <WordIcon className="text-base" />}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <span className="font-bold text-xs block">Ekspor Word (.docx)</span>
+                                    <span className="text-[10px] text-[var(--text-secondary)] block">Format standar cetak & kunci terpisah</span>
+                                </div>
                             </button>
-                            <button onClick={(e) => { e.stopPropagation(); setIsLmsModalOpen(true); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--bg-hover)] text-orange-600 dark:text-orange-400">
-                                <ServerIcon className="text-lg" />
-                                <span className="font-medium">Ekspor LMS & Bank Soal (Moodle, Canvas, CSV)</span>
+                            <button onClick={(e) => { e.stopPropagation(); setIsLmsModalOpen(true); setActionsMenuOpen(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[var(--bg-hover)] text-orange-600 dark:text-orange-400 rounded-xl transition-colors">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 flex-shrink-0">
+                                    <ServerIcon className="text-base" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <span className="font-bold text-xs block">Ekspor LMS & Bank Soal</span>
+                                    <span className="text-[10px] text-[var(--text-secondary)] block">Moodle, Canvas, CSV, GIFT</span>
+                                </div>
                             </button>
-                            <button onClick={(e) => { e.stopPropagation(); handleExportHtml(); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--bg-hover)] text-[var(--text-primary)]">
-                                <DownloadIcon className="text-lg" />
-                                <span className="font-medium">Ekspor HTML</span>
+                            <button onClick={(e) => { e.stopPropagation(); handleExportHtml(); setActionsMenuOpen(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[var(--bg-hover)] text-[var(--text-primary)] rounded-xl transition-colors">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex-shrink-0">
+                                    <DownloadIcon className="text-base" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <span className="font-bold text-xs block">Ekspor Web HTML</span>
+                                    <span className="text-[10px] text-[var(--text-secondary)] block">Naskah halaman web mandiri</span>
+                                </div>
                             </button>
-                            <button onClick={() => { handlePrint(); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--bg-hover)] text-[var(--text-primary)]">
-                                <PrinterIcon className="text-lg" />
-                                <span className="font-medium">Cetak / Simpan PDF</span>
+                            <button onClick={() => { handlePrint(); setActionsMenuOpen(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[var(--bg-hover)] text-[var(--text-primary)] rounded-xl transition-colors">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex-shrink-0">
+                                    <PrinterIcon className="text-base" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <span className="font-bold text-xs block">Cetak / Simpan PDF</span>
+                                    <span className="text-[10px] text-[var(--text-secondary)] block">Cetak langsung atau simpan PDF</span>
+                                </div>
                             </button>
                             <div className="border-t border-[var(--border-primary)] my-1"></div>
-                            <button onClick={() => { setIsValidationModalOpen(true); setActionsMenuOpen(false); }} className="w-full app-control flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--bg-hover)] text-teal-600 dark:text-teal-400">
-                                <ShieldCheckIcon className="text-lg" />
-                                <span className="font-medium">Audit & Validasi Naskah</span>
+                            <button onClick={() => { setIsValidationModalOpen(true); setActionsMenuOpen(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[var(--bg-hover)] text-teal-600 dark:text-teal-400 rounded-xl transition-colors">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 flex-shrink-0">
+                                    <ShieldCheckIcon className="text-base" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <span className="font-bold text-xs block">Audit & Validasi Naskah</span>
+                                    <span className="text-[10px] text-[var(--text-secondary)] block">Cek kelengkapan & format</span>
+                                </div>
+                            </button>
+                            <button onClick={() => { setIsLjkModalOpen(true); setActionsMenuOpen(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[var(--bg-hover)] text-blue-600 dark:text-blue-400 rounded-xl transition-colors">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex-shrink-0">
+                                    <i className="bi bi-grid-3x3-gap-fill text-base"></i>
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <span className="font-bold text-xs block">Lembar Jawab (LJK)</span>
+                                    <span className="text-[10px] text-[var(--text-secondary)] block">Template LJK hemat kertas</span>
+                                </div>
+                            </button>
+                            <button onClick={() => { setIsLjkScannerOpen(true); setActionsMenuOpen(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[var(--bg-hover)] text-emerald-600 dark:text-emerald-400 rounded-xl transition-colors">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex-shrink-0">
+                                    <ScanIcon className="text-base" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <span className="font-bold text-xs block">Koreksi LJK (Scan Nilai)</span>
+                                    <span className="text-[10px] text-[var(--text-secondary)] block">Penilaian foto/kamera otomatis</span>
+                                </div>
                             </button>
                         </div>
                     </div>
@@ -540,6 +648,40 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
                 onClose={() => setIsValidationModalOpen(false)}
                 exam={exam}
             />
+
+            {/* Template Preset Modal */}
+            {isTemplateModalOpen && settings && (
+                <TemplatePresetModal
+                    currentSettings={settings}
+                    onClose={() => setIsTemplateModalOpen(false)}
+                    onApplySettings={async (newSettings) => {
+                        setSettings(newSettings);
+                        await saveSettings(newSettings);
+                        addToast('Preset tata letak visual berhasil diterapkan!', 'success');
+                    }}
+                />
+            )}
+
+            {/* LJK Generator Modal */}
+            {exam && settings && (
+                <LjkGeneratorModal
+                    isOpen={isLjkModalOpen}
+                    onClose={() => setIsLjkModalOpen(false)}
+                    exam={exam}
+                    settings={settings}
+                    onOpenScanner={() => setIsLjkScannerOpen(true)}
+                />
+            )}
+
+            {/* LJK Scanner & Grader Modal */}
+            {exam && settings && (
+                <LjkScannerModal
+                    isOpen={isLjkScannerOpen}
+                    onClose={() => setIsLjkScannerOpen(false)}
+                    exam={exam}
+                    settings={settings}
+                />
+            )}
         </div>
     );
 };

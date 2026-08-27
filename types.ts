@@ -101,6 +101,15 @@ export interface Settings {
   lineSpacing: number;
   fontFamily: 'Liberation Serif' | 'Liberation Sans' | 'Amiri' | 'Areef Ruqaa';
   fontSize: number;
+  // Visual Template Preset Fields
+  templatePreset?: 'standard' | 'madrasah' | 'kemendikbud' | 'cambridge' | 'minimal';
+  headerStyle?: 'standard' | 'madrasah' | 'kemendikbud' | 'cambridge' | 'minimal';
+  showBasmalah?: boolean;
+  showHamdalah?: boolean;
+  arabicOptionStyle?: 'hijaiyah' | 'latin';
+  showPointsBadge?: boolean;
+  stimulusStyle?: 'modern_card' | 'bordered' | 'minimal';
+  dividerStyle?: 'double' | 'solid' | 'dashed' | 'modern' | 'none';
 }
 
 export interface BankQuestion {
@@ -109,4 +118,21 @@ export interface BankQuestion {
   subject: string;
   class: string;
   createdAt: string;
+}
+
+export interface QuestionPackage {
+  id: string;
+  title: string;
+  description?: string;
+  subject: string;
+  grade?: string;
+  curriculum?: string;
+  author?: string;
+  institution?: string;
+  tags?: string[];
+  version?: string;
+  createdAt: string;
+  updatedAt?: string;
+  questions: Question[];
+  metadata?: Record<string, any>;
 }

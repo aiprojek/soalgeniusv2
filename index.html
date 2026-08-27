@@ -193,7 +193,8 @@
 
       /* Adjust Quill toolbar button size, icon SVGs, and alignment */
       .so-genius-quill-wrapper .ql-toolbar.ql-snow .ql-formats button,
-      .so-genius-quill-wrapper .ql-toolbar.ql-snow .ql-formats .ql-picker-label {
+      .so-genius-quill-wrapper .ql-toolbar.ql-snow .ql-formats .ql-picker-label,
+      .ql-toolbar.ql-snow .ql-formats button {
         font-size: 1.1rem;
         width: 28px;
         height: 28px;
@@ -204,38 +205,97 @@
         padding: 4px;
         transition: background-color 0.15s ease, color 0.15s ease;
       }
-      .so-genius-quill-wrapper .ql-toolbar.ql-snow .ql-formats button:hover {
+      .so-genius-quill-wrapper .ql-toolbar.ql-snow .ql-formats button:hover,
+      .ql-toolbar.ql-snow .ql-formats button:hover {
         background-color: var(--bg-hover);
       }
-      .so-genius-quill-wrapper .ql-toolbar.ql-snow button svg {
+      .so-genius-quill-wrapper .ql-toolbar.ql-snow button svg,
+      .ql-toolbar.ql-snow button svg {
         width: 18px;
         height: 18px;
         display: block;
       }
 
+      /* Custom styling for Math (LaTeX) & AI Image Generator Buttons */
+      .ql-toolbar.ql-snow button.ql-math,
+      .ql-toolbar.ql-snow .ql-formats button.ql-math,
       .so-genius-quill-wrapper .ql-toolbar.ql-snow button.ql-math {
         color: #2563eb !important;
       }
+      .ql-toolbar.ql-snow button.ql-math svg,
       .so-genius-quill-wrapper .ql-toolbar.ql-snow button.ql-math svg {
-        stroke: #2563eb;
+        stroke: #2563eb !important;
       }
-      .so-genius-quill-wrapper .ql-toolbar.ql-snow button.ql-aiImage {
+      .ql-toolbar.ql-snow button.ql-math .ql-stroke,
+      .ql-toolbar.ql-snow button.ql-math path {
+        stroke: #2563eb !important;
+        fill: none !important;
+      }
+
+      .ql-toolbar.ql-snow button.ql-aiImage,
+      .ql-toolbar.ql-snow button.ql-aiimage,
+      .ql-toolbar.ql-snow .ql-formats button.ql-aiImage,
+      .ql-toolbar.ql-snow .ql-formats button.ql-aiimage,
+      .so-genius-quill-wrapper .ql-toolbar.ql-snow button.ql-aiImage,
+      .so-genius-quill-wrapper .ql-toolbar.ql-snow button.ql-aiimage {
         color: #9333ea !important;
       }
-      .so-genius-quill-wrapper .ql-toolbar.ql-snow button.ql-aiImage svg {
-        color: #9333ea;
+      .ql-toolbar.ql-snow button.ql-aiImage svg,
+      .ql-toolbar.ql-snow button.ql-aiimage svg,
+      .so-genius-quill-wrapper .ql-toolbar.ql-snow button.ql-aiImage svg,
+      .so-genius-quill-wrapper .ql-toolbar.ql-snow button.ql-aiimage svg {
+        color: #9333ea !important;
       }
+      .ql-toolbar.ql-snow button.ql-aiImage .ql-stroke,
+      .ql-toolbar.ql-snow button.ql-aiimage .ql-stroke,
+      .ql-toolbar.ql-snow button.ql-aiImage rect,
+      .ql-toolbar.ql-snow button.ql-aiimage rect {
+        stroke: #9333ea !important;
+        fill: none !important;
+      }
+      .ql-toolbar.ql-snow button.ql-aiImage .ql-fill,
+      .ql-toolbar.ql-snow button.ql-aiimage .ql-fill,
+      .ql-toolbar.ql-snow button.ql-aiImage circle,
+      .ql-toolbar.ql-snow button.ql-aiimage circle {
+        fill: #9333ea !important;
+      }
+
+      html.dark .ql-toolbar.ql-snow button.ql-math,
       html.dark .so-genius-quill-wrapper .ql-toolbar.ql-snow button.ql-math {
         color: #60a5fa !important;
       }
+      html.dark .ql-toolbar.ql-snow button.ql-math svg,
       html.dark .so-genius-quill-wrapper .ql-toolbar.ql-snow button.ql-math svg {
-        stroke: #60a5fa;
+        stroke: #60a5fa !important;
       }
-      html.dark .so-genius-quill-wrapper .ql-toolbar.ql-snow button.ql-aiImage {
+      html.dark .ql-toolbar.ql-snow button.ql-math .ql-stroke,
+      html.dark .ql-toolbar.ql-snow button.ql-math path {
+        stroke: #60a5fa !important;
+      }
+
+      html.dark .ql-toolbar.ql-snow button.ql-aiImage,
+      html.dark .ql-toolbar.ql-snow button.ql-aiimage,
+      html.dark .so-genius-quill-wrapper .ql-toolbar.ql-snow button.ql-aiImage,
+      html.dark .so-genius-quill-wrapper .ql-toolbar.ql-snow button.ql-aiimage {
         color: #c084fc !important;
       }
-      html.dark .so-genius-quill-wrapper .ql-toolbar.ql-snow button.ql-aiImage svg {
-        color: #c084fc;
+      html.dark .ql-toolbar.ql-snow button.ql-aiImage svg,
+      html.dark .ql-toolbar.ql-snow button.ql-aiimage svg,
+      html.dark .so-genius-quill-wrapper .ql-toolbar.ql-snow button.ql-aiImage svg,
+      html.dark .so-genius-quill-wrapper .ql-toolbar.ql-snow button.ql-aiimage svg {
+        color: #c084fc !important;
+      }
+      html.dark .ql-toolbar.ql-snow button.ql-aiImage .ql-stroke,
+      html.dark .ql-toolbar.ql-snow button.ql-aiimage .ql-stroke,
+      html.dark .ql-toolbar.ql-snow button.ql-aiImage rect,
+      html.dark .ql-toolbar.ql-snow button.ql-aiimage rect {
+        stroke: #c084fc !important;
+      }
+      html.dark .ql-toolbar.ql-snow button.ql-aiImage .ql-fill,
+      html.dark .ql-toolbar.ql-snow button.ql-aiimage .ql-fill,
+      html.dark .ql-toolbar.ql-snow button.ql-aiImage circle,
+      html.dark .ql-toolbar.ql-snow button.ql-aiimage circle {
+        fill: #c084fc !important;
       }
 
       /* Custom styles for compact option editors */

@@ -1,6 +1,7 @@
 import { db } from './db';
 import type { Exam, Settings, BankQuestion, Question, Folder } from '../types';
 import { QuestionType } from '../types';
+import type { LjkScanResult } from './ljkGenerator';
 
 // Kunci ini hanya digunakan untuk proses migrasi dari localStorage.
 export const EXAMS_STORAGE_KEY = 'soalgenius_exams';
@@ -371,27 +372,124 @@ export const saveSettings = async (settings: Settings): Promise<void> => {
 
 export const getBankQuestions = async (): Promise<BankQuestion[]> => {
     try {
-        return await db.bankQuestions.orderBy('createdAt').reverse().toArray();
+        const questions = await db.bankQuestions.toArray();
+        if (questions.length === 0) {
+            // Check if there are legacy questions in localStorage that weren't migrated
+            const legacyJson = localStorage.getItem(QBANK_STORAGE_KEY);
+            if (legacyJson) {
+                try {
+                    const legacyQuestions: BankQuestion[] = JSON.parse(legacyJson);
+                    if (legacyQuestions.length > 0) {
+                        await db.bankQuestions.bulkPut(legacyQuestions);
+                        return legacyQuestions.sort((a, b) => {
+                            const timeA = new Date(a.createdAt || 0).getTime();
+                            const timeB = new Date(b.createdAt || 0).getTime();
+                            return timeB - timeA;
+                        });
+                    }
+                } catch (e) {
+                    console.warn("Gagal membaca legacy bank questions", e);
+                }
+            }
+        }
+        return questions.sort((a, b) => {
+            const timeA = new Date(a.createdAt || 0).getTime();
+            const timeB = new Date(b.createdAt || 0).getTime();
+            return timeB - timeA;
+        });
     } catch (e) {
         console.error("Gagal memuat bank soal dari IndexedDB", e);
-        return [];
+        try {
+            const legacyJson = localStorage.getItem(QBANK_STORAGE_KEY);
+            return legacyJson ? JSON.parse(legacyJson) : [];
+        } catch {
+            return [];
+        }
     }
 };
 
-export const saveQuestionToBank = async (question: Question, metadata: { subject: string; class: string }): Promise<string> => {
+export const saveQuestionToBank = async (question: Question, metadata?: { subject?: string; class?: string }): Promise<string> => {
     try {
         const newBankQuestion: BankQuestion = {
             bankId: crypto.randomUUID(),
             question: JSON.parse(JSON.stringify(question)), // Deep copy
-            subject: metadata.subject,
-            class: metadata.class,
+            subject: metadata?.subject || 'Umum',
+            class: metadata?.class || 'Semua Kelas',
             createdAt: new Date().toISOString(),
         };
-        const id = await db.bankQuestions.add(newBankQuestion);
+        const id = await db.bankQuestions.put(newBankQuestion);
+        
+        // Also keep localStorage in sync as resilient fallback
+        try {
+            const existing = await getBankQuestions();
+            localStorage.setItem(QBANK_STORAGE_KEY, JSON.stringify(existing));
+        } catch (e) {
+            // ignore localStorage quota warnings
+        }
+
         touchLocalChange(); // Update timestamp
-        return id;
+        return id || newBankQuestion.bankId;
     } catch (e) {
         console.error("Gagal menyimpan soal ke bank", e);
+        // Fallback directly to localStorage if IndexedDB has unexpected issue
+        try {
+            const legacyJson = localStorage.getItem(QBANK_STORAGE_KEY);
+            const current: BankQuestion[] = legacyJson ? JSON.parse(legacyJson) : [];
+            const newBankQuestion: BankQuestion = {
+                bankId: crypto.randomUUID(),
+                question: JSON.parse(JSON.stringify(question)),
+                subject: metadata?.subject || 'Umum',
+                class: metadata?.class || 'Semua Kelas',
+                createdAt: new Date().toISOString(),
+            };
+            current.unshift(newBankQuestion);
+            localStorage.setItem(QBANK_STORAGE_KEY, JSON.stringify(current));
+            touchLocalChange();
+            return newBankQuestion.bankId;
+        } catch (storageError) {
+            throw e;
+        }
+    }
+};
+
+export const saveMultipleQuestionsToBank = async (
+    questions: Question[], 
+    metadata?: { subject?: string; class?: string }
+): Promise<number> => {
+    try {
+        const newBankQuestions: BankQuestion[] = questions.map(q => ({
+            bankId: crypto.randomUUID(),
+            question: JSON.parse(JSON.stringify(q)),
+            subject: metadata?.subject || 'Umum',
+            class: metadata?.class || 'Semua Kelas',
+            createdAt: new Date().toISOString(),
+        }));
+
+        await db.bankQuestions.bulkPut(newBankQuestions);
+        
+        try {
+            const all = await db.bankQuestions.toArray();
+            localStorage.setItem(QBANK_STORAGE_KEY, JSON.stringify(all));
+        } catch (e) {}
+
+        touchLocalChange();
+        return newBankQuestions.length;
+    } catch (e) {
+        console.error("Gagal menyimpan batch soal ke bank", e);
+        throw e;
+    }
+};
+
+export const updateBankQuestion = async (bankQuestion: BankQuestion): Promise<void> => {
+    try {
+        await db.bankQuestions.put(bankQuestion);
+        try {
+            const current = await db.bankQuestions.toArray();
+            localStorage.setItem(QBANK_STORAGE_KEY, JSON.stringify(current));
+        } catch (e) {}
+        touchLocalChange(); // Update timestamp
+    } catch (e) {
+        console.error("Gagal memperbarui soal di bank", e);
         throw e;
     }
 };
@@ -399,9 +497,27 @@ export const saveQuestionToBank = async (question: Question, metadata: { subject
 export const deleteQuestionFromBank = async (bankId: string): Promise<void> => {
     try {
         await db.bankQuestions.delete(bankId);
+        try {
+            const current = await db.bankQuestions.toArray();
+            localStorage.setItem(QBANK_STORAGE_KEY, JSON.stringify(current));
+        } catch (e) {}
         touchLocalChange(); // Update timestamp
     } catch (e) {
         console.error("Gagal menghapus soal dari bank", e);
+        throw e;
+    }
+};
+
+export const deleteMultipleQuestionsFromBank = async (bankIds: string[]): Promise<void> => {
+    try {
+        await db.bankQuestions.bulkDelete(bankIds);
+        try {
+            const current = await db.bankQuestions.toArray();
+            localStorage.setItem(QBANK_STORAGE_KEY, JSON.stringify(current));
+        } catch (e) {}
+        touchLocalChange(); // Update timestamp
+    } catch (e) {
+        console.error("Gagal menghapus beberapa soal dari bank", e);
         throw e;
     }
 };
@@ -569,5 +685,36 @@ export const restoreBackupData = async (jsonString: string): Promise<boolean> =>
     } catch (error) {
         console.error("Gagal restore:", error);
         throw error;
+    }
+};
+
+export const LJK_STORAGE_PREFIX = 'soalgenius_ljk_results_';
+
+export const saveLjkResults = async (examId: string, results: LjkScanResult[]): Promise<void> => {
+    try {
+        localStorage.setItem(`${LJK_STORAGE_PREFIX}${examId}`, JSON.stringify(results));
+        touchLocalChange();
+    } catch (e) {
+        console.error("Gagal menyimpan hasil LJK:", e);
+    }
+};
+
+export const getLjkResults = async (examId: string): Promise<LjkScanResult[]> => {
+    try {
+        const raw = localStorage.getItem(`${LJK_STORAGE_PREFIX}${examId}`);
+        if (!raw) return [];
+        return JSON.parse(raw);
+    } catch (e) {
+        console.error("Gagal membaca hasil LJK:", e);
+        return [];
+    }
+};
+
+export const clearLjkResults = async (examId: string): Promise<void> => {
+    try {
+        localStorage.removeItem(`${LJK_STORAGE_PREFIX}${examId}`);
+        touchLocalChange();
+    } catch (e) {
+        console.error("Gagal menghapus hasil LJK:", e);
     }
 };

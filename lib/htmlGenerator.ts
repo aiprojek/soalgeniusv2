@@ -3,8 +3,6 @@ import type { Exam, Settings } from '../types';
 import { QuestionType } from '../types';
 import { escapeHtml, sanitizeRichHtml } from './utils';
 import katexStyles from 'katex/dist/katex.min.css?inline';
-import katexScriptSource from 'katex/dist/katex.min.js?raw';
-import katexAutoRenderSource from 'katex/dist/contrib/auto-render.min.js?raw';
 
 // Helper functions for RTL
 const toArabicNumeral = (n: string | number): string => {
@@ -73,10 +71,33 @@ const instructionTranslations = {
 
 
 export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam' | 'answer_key' = 'exam', includePrintButton: boolean = true): string => {
-    const { paperSize, margins, lineSpacing, logos, examHeaderLines, fontFamily, fontSize } = settings;
+    const { 
+        paperSize, 
+        margins, 
+        lineSpacing, 
+        logos, 
+        examHeaderLines, 
+        fontFamily, 
+        fontSize,
+        templatePreset = 'standard',
+        headerStyle = templatePreset,
+        showBasmalah = templatePreset === 'madrasah',
+        showHamdalah = templatePreset === 'madrasah',
+        arabicOptionStyle = templatePreset === 'madrasah' ? 'hijaiyah' : 'latin',
+        showPointsBadge = templatePreset === 'cambridge',
+        stimulusStyle = templatePreset === 'kemendikbud' ? 'modern_card' : 'bordered',
+        dividerStyle = templatePreset === 'kemendikbud' ? 'modern' : (templatePreset === 'cambridge' ? 'solid' : 'double')
+    } = settings;
     const { direction, layoutColumns } = exam;
     const T = translations[direction];
     const isRTL = direction === 'rtl';
+    const useHijaiyah = isRTL || arabicOptionStyle === 'hijaiyah';
+
+    const getChoiceLetter = (idx: number, forAnswerKey: boolean = false) => {
+        if (useHijaiyah) return toArabicLetter(idx);
+        if (templatePreset === 'cambridge' || forAnswerKey) return String.fromCharCode(65 + idx);
+        return String.fromCharCode(97 + idx);
+    };
 
     const paperDimensions = {
         'A4': { width: '210mm', height: '297mm' },
@@ -93,7 +114,7 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
         const leftLogoContent = leftLogo ? `<img src="${leftLogo}" alt="Logo Kiri" class="logo" />` : '';
         const rightLogoContent = rightLogo ? `<img src="${rightLogo}" alt="Logo Kanan" class="logo" />` : '';
         const headerHtml = `
-            <header class="exam-header">
+            <header class="exam-header header-style-${headerStyle}">
                 <div class="logo-container logo-left ${!leftLogo ? 'is-empty' : ''}">${leftLogoContent}</div>
                 <div class="header-text">
                     ${examHeaderLines.map(line => {
@@ -111,16 +132,17 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
             const questionsHtml = section.questions.map(q => {
                 // If it is a stimulus type, render distinct block without numbering
                 if (q.type === QuestionType.STIMULUS) {
-                    return `<li class="question-item stimulus-block"><div class="question-body">${sanitizeRichHtml(q.text)}</div></li>`;
+                    return `<li class="question-item stimulus-block stimulus-${stimulusStyle}"><div class="stimulus-header-tag"><span class="tag-icon">📖</span> STIMULUS BACAAN / INFOGRAFIS</div><div class="question-body">${sanitizeRichHtml(q.text)}</div></li>`;
                 }
 
                 const questionNumber = isRTL ? toArabicNumeral(q.number) : q.number;
                 const questionText = sanitizeRichHtml(q.text);
+                const pointsBadgeHtml = showPointsBadge ? `<span class="points-badge">[1 mark]</span>` : '';
                 let choicesHtml = '';
                 switch(q.type) {
                     case QuestionType.MULTIPLE_CHOICE:
                         const mcListClass = q.isTwoColumns ? 'choices-list choices-list-2-col' : 'choices-list';
-                        choicesHtml = `<ol class="${mcListClass}">${(q.choices || []).map((c, idx) => `<li><span class="choice-marker"><bdi>${isRTL ? toArabicLetter(idx) : String.fromCharCode(97 + idx)}.</bdi></span><div class="choice-text">${sanitizeRichHtml(c.text)}</div></li>`).join('')}</ol>`;
+                        choicesHtml = `<ol class="${mcListClass}">${(q.choices || []).map((c, idx) => `<li><span class="choice-marker"><bdi>${getChoiceLetter(idx)}.</bdi></span><div class="choice-text">${sanitizeRichHtml(c.text)}</div></li>`).join('')}</ol>`;
                         break;
                     case QuestionType.COMPLEX_MULTIPLE_CHOICE:
                          const cmcGridClass = q.isTwoColumns ? 'choices-grid-complex choices-grid-complex-2-col' : 'choices-grid-complex';
@@ -129,7 +151,7 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
                                 ${(q.choices || []).map((choice, index) => `
                                     <div class="choice-item-complex">
                                         <span class="checkbox-box"></span>
-                                        <span class="choice-letter">${isRTL ? toArabicLetter(index) : String.fromCharCode(97 + index)}.</span>
+                                        <span class="choice-letter">${getChoiceLetter(index)}.</span>
                                         <div class="choice-text">${sanitizeRichHtml(choice.text)}</div>
                                     </div>
                                 `).join('')}
@@ -170,7 +192,7 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
                                 <tr>
                                     <td class="prompt-number">${prompt ? `<bdi>${isRTL ? `&rlm;${toArabicNumeral(i + 1)}.` : `${i + 1}.`}</bdi>` : ''}</td>
                                     <td class="prompt-text">${sanitizeRichHtml(prompt?.text || '')}</td>
-                                    <td class="answer-letter">${answer ? `<bdi>${isRTL ? toArabicLetter(i) : String.fromCharCode(65 + i)}.</bdi>` : ''}</td>
+                                    <td class="answer-letter">${answer ? `<bdi>${getChoiceLetter(i, true)}.</bdi>` : ''}</td>
                                     <td class="answer-text">${sanitizeRichHtml(answer?.text || '')}</td>
                                 </tr>
                             `;
@@ -231,21 +253,21 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
                                         ${(q.choices || []).map((choice, index) => `
                                             <div class="choice-item-complex">
                                                 <span class="checkbox-box"></span>
-                                                <span class="choice-letter">${isRTL ? toArabicLetter(index) : String.fromCharCode(97 + index)}.</span>
+                                                <span class="choice-letter">${getChoiceLetter(index)}.</span>
                                                 <div class="choice-text">${sanitizeRichHtml(choice.text)}</div>
                                             </div>
                                         `).join('')}
                                     </div>
                                 `;
                              } else {
-                                choiceRender = `<ol class="${listClass} choices-list-2-col">${(q.choices || []).map((c, idx) => `<li><span class="choice-marker"><bdi>${isRTL ? toArabicLetter(idx) : String.fromCharCode(97 + idx)}.</bdi></span><div class="choice-text">${sanitizeRichHtml(c.text)}</div></li>`).join('')}</ol>`;
+                                choiceRender = `<ol class="${listClass} choices-list-2-col">${(q.choices || []).map((c, idx) => `<li><span class="choice-marker"><bdi>${getChoiceLetter(idx)}.</bdi></span><div class="choice-text">${sanitizeRichHtml(c.text)}</div></li>`).join('')}</ol>`;
                              }
                              choicesHtml += choiceRender;
                         }
                         break;
                 }
                 const questionNumberDisplay = isRTL ? `&rlm;${questionNumber}.` : `${questionNumber}.`;
-                return `<li class="question-item"><div class="question-number"><bdi>${questionNumberDisplay}</bdi></div><div class="question-body">${questionText}${choicesHtml}</div></li>`;
+                return `<li class="question-item"><div class="question-number"><bdi>${questionNumberDisplay}</bdi></div><div class="question-body">${questionText}${choicesHtml}</div>${pointsBadgeHtml}</li>`;
             }).join('');
             
             const instructionParts = section.instructions.match(/^([^.]+)\.(.*)/);
@@ -254,7 +276,6 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
                 let text = instructionParts[2].trim();
                 if (isRTL) {
                     const translatedText = instructionTranslations[text as keyof typeof instructionTranslations] || text;
-                    // For RTL, as requested, we remove the number to avoid formatting issues.
                     instructionContent = `<span class="instruction-text">${escapeHtml(translatedText)}</span>`;
                 } else {
                     const roman = instructionParts[1].trim();
@@ -265,8 +286,8 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
                 instructionContent = `<span>${escapeHtml(section.instructions)}</span>`;
             }
 
-            // Legacy stimulus support (if old exams still have it)
-            const stimulusContent = section.stimulus ? `<div class="section-stimulus">${sanitizeRichHtml(section.stimulus)}</div>` : '';
+            // Legacy stimulus support
+            const stimulusContent = section.stimulus ? `<div class="section-stimulus stimulus-${stimulusStyle}"><div class="stimulus-header-tag"><span class="tag-icon">📖</span> STIMULUS BACAAN</div>${sanitizeRichHtml(section.stimulus)}</div>` : '';
 
             return `
                 <section class="exam-section">
@@ -287,52 +308,160 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
             </section>
             `
             : '';
+
+        const basmalahHtml = (showBasmalah || templatePreset === 'madrasah') 
+            ? `<div class="exam-basmalah" dir="rtl"><bdi>بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</bdi></div>`
+            : '';
+
+        const hamdalahHtml = (showHamdalah || templatePreset === 'madrasah')
+            ? `<div class="exam-hamdalah" dir="rtl"><bdi>— اَلْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ —</bdi></div>`
+            : '';
         
         const examBodyHtml = `
             ${generalInstructionsHtml}
+            ${basmalahHtml}
             ${sectionsHtml}
+            ${hamdalahHtml}
         `;
+
+        // Render Meta Container depending on Header Style
+        let metaHtml = '';
+        if (headerStyle === 'cambridge') {
+            metaHtml = `
+                <div class="meta-container meta-cambridge">
+                    <div class="cambridge-row">
+                        <div class="cambridge-field-name">
+                            <span class="cambridge-label">CANDIDATE NAME:</span>
+                            <span class="cambridge-line-dots">....................................................................................................</span>
+                        </div>
+                    </div>
+                    <div class="cambridge-grid">
+                        <div class="cambridge-box-group">
+                            <span class="cambridge-label">CENTRE NUMBER</span>
+                            <div class="cambridge-char-boxes">
+                                <span></span><span></span><span></span><span></span><span></span>
+                            </div>
+                        </div>
+                        <div class="cambridge-box-group">
+                            <span class="cambridge-label">CANDIDATE NUMBER</span>
+                            <div class="cambridge-char-boxes">
+                                <span></span><span></span><span></span><span></span>
+                            </div>
+                        </div>
+                        <div class="cambridge-details">
+                            <div><strong>SUBJECT:</strong> ${escapeHtml(exam.subject)}</div>
+                            <div><strong>CLASS:</strong> ${escapeHtml(exam.class)}</div>
+                            <div><strong>TIME:</strong> ${escapeHtml(exam.waktuUjian || '90 Minutes')}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else if (headerStyle === 'minimal') {
+            metaHtml = `
+                <div class="meta-container meta-compact">
+                    <div class="compact-meta-line">
+                        <span><strong>Nama:</strong> ........................................</span>
+                        <span><strong>Kelas:</strong> ${escapeHtml(exam.class)}</span>
+                        <span><strong>Mapel:</strong> ${escapeHtml(exam.subject)}</span>
+                        <span><strong>Waktu:</strong> ${escapeHtml(exam.waktuUjian || '-')}</span>
+                        <span class="compact-score-badge">Nilai: [ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ]</span>
+                    </div>
+                </div>
+            `;
+        } else if (headerStyle === 'kemendikbud') {
+            metaHtml = `
+                <div class="meta-container meta-kurmer">
+                    <div class="kurmer-badge-header">
+                        <span class="kurmer-tag">KURIKULUM MERDEKA</span>
+                        <span class="kurmer-sub-tag">ASESMEN SUMATIF / DIAGNOSTIK</span>
+                    </div>
+                    <div class="meta-flex-wrapper">
+                        <table class="student-info">
+                            <tbody>
+                                <tr>
+                                    <td>${T.name}</td>
+                                    <td class="colon">:</td>
+                                    <td class="value dots">................................................................</td>
+                                </tr>
+                                <tr>
+                                    <td>${T.class}</td>
+                                    <td class="colon">:</td>
+                                    <td class="value">${escapeHtml(exam.class)}</td>
+                                </tr>
+                                <tr>
+                                    <td>${T.subject}</td>
+                                    <td class="colon">:</td>
+                                    <td class="value">${escapeHtml(exam.subject)}</td>
+                                </tr>
+                                <tr>
+                                    <td>${T.date}</td>
+                                    <td class="colon">:</td>
+                                    <td class="value">${new Date(exam.date).toLocaleDateString(isRTL ? 'ar-SA-u-nu-arab' : 'id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</td>
+                                </tr>
+                                <tr>
+                                    <td>${T.examTime}</td>
+                                    <td class="colon">:</td>
+                                    <td class="value">${escapeHtml(exam.waktuUjian || '')}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="score-box-modern">
+                            <div class="score-title">NILAI / CAPAIAN</div>
+                            <div class="score-sub">Fase ${escapeHtml(exam.class)}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            // Standard / Madrasah / Classic
+            const scoreLabel = (headerStyle === 'madrasah' || isRTL) ? (isRTL ? 'الدرجة / Nilai' : 'Nilai (الدرجة)') : T.score;
+            metaHtml = `
+                <div class="meta-container meta-standard">
+                    <table class="student-info">
+                        <tbody>
+                            <tr>
+                                <td>${T.name}</td>
+                                <td class="colon">:</td>
+                                <td class="value dots">................................................................</td>
+                            </tr>
+                            <tr>
+                                <td>${T.class}</td>
+                                <td class="colon">:</td>
+                                <td class="value">${escapeHtml(exam.class)}</td>
+                            </tr>
+                            <tr>
+                                <td>${T.subject}</td>
+                                <td class="colon">:</td>
+                                <td class="value">${escapeHtml(exam.subject)}</td>
+                            </tr>
+                            <tr>
+                                <td>${T.date}</td>
+                                <td class="colon">:</td>
+                                <td class="value">${new Date(exam.date).toLocaleDateString(isRTL ? 'ar-SA-u-nu-arab' : 'id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</td>
+                            </tr>
+                            <tr>
+                                <td>${T.examTime}</td>
+                                <td class="colon">:</td>
+                                <td class="value">${escapeHtml(exam.waktuUjian || '')}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="score-box">
+                        <span>${scoreLabel}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        const dividerHtml = dividerStyle !== 'none' ? `<div class="header-divider divider-${dividerStyle}"></div>` : '';
 
         mainContentHtml = `
             ${headerHtml}
-            <div class="header-divider"></div>
+            ${dividerHtml}
             <div class="exam-title-container">
                  <h2>${escapeHtml(exam.title)}</h2>
             </div>
-            <div class="meta-container">
-                <table class="student-info">
-                    <tbody>
-                        <tr>
-                            <td>${T.name}</td>
-                            <td class="colon">:</td>
-                            <td class="value dots">................................................................</td>
-                        </tr>
-                        <tr>
-                            <td>${T.class}</td>
-                            <td class="colon">:</td>
-                            <td class="value">${escapeHtml(exam.class)}</td>
-                        </tr>
-                        <tr>
-                            <td>${T.subject}</td>
-                            <td class="colon">:</td>
-                            <td class="value">${escapeHtml(exam.subject)}</td>
-                        </tr>
-                        <tr>
-                            <td>${T.date}</td>
-                            <td class="colon">:</td>
-                            <td class="value">${new Date(exam.date).toLocaleDateString(isRTL ? 'ar-SA-u-nu-arab' : 'id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</td>
-                        </tr>
-                        <tr>
-                            <td>${T.examTime}</td>
-                            <td class="colon">:</td>
-                            <td class="value">${escapeHtml(exam.waktuUjian || '')}</td>
-                        </tr>
-                    </tbody>
-                </table>
-                <div class="score-box">
-                    <span>${T.score}</span>
-                </div>
-            </div>
+            ${metaHtml}
             <div class="exam-body" data-paginate-root="exam-body">
                 ${examBodyHtml}
             </div>
@@ -349,14 +478,14 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
                         const choice = (q.choices || []).find(c => c.id === q.answerKey);
                         if(choice) {
                             const choiceIndex = (q.choices || []).indexOf(choice);
-                            answerText = `<span><bdi>${isRTL ? toArabicLetter(choiceIndex) : String.fromCharCode(65 + choiceIndex)}.</bdi> ${sanitizeRichHtml(choice.text)}</span>`;
+                            answerText = `<span><bdi>${getChoiceLetter(choiceIndex, true)}.</bdi> ${sanitizeRichHtml(choice.text)}</span>`;
                         }
                         break;
                     }
                     case QuestionType.COMPLEX_MULTIPLE_CHOICE: {
                         const correctChoices = (q.choices || []).filter(c => (q.answerKey as string[] || []).includes(c.id));
                         if(correctChoices.length > 0) {
-                            answerText = `<span>${correctChoices.map(c => isRTL ? toArabicLetter((q.choices || []).indexOf(c)) : String.fromCharCode(65 + (q.choices || []).indexOf(c))).join(', ')}</span>`
+                            answerText = `<span>${correctChoices.map(c => getChoiceLetter((q.choices || []).indexOf(c), true)).join(', ')}</span>`
                         }
                         break;
                     }
@@ -519,7 +648,7 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
         /* Basic Reset & Document Setup */
         *, *::before, *::after { box-sizing: border-box; }
         html { -webkit-text-size-adjust: 100%; }
-        body { margin: 0; padding: 0; background-color: #f1f5f9; color: #1e293b; }
+        body { margin: 0; padding: 0; background-color: ${includePrintButton ? '#f1f5f9' : 'transparent'}; color: #0f172a; }
         p, h2, h3, h4, ol, ul, li, table, section, header { margin: 0; padding: 0; font-size: 1em; font-weight: normal; }
         ol, ul { list-style-position: outside; }
         table { border-collapse: collapse; width: 100%; }
@@ -538,13 +667,14 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
              display: flex;
              flex-direction: column;
              align-items: center;
-             gap: 1.5rem;
-             padding: 2rem 0;
-             min-height: 100vh;
+             gap: 2rem;
+             padding: ${includePrintButton ? '2rem 1.5rem' : '1.5rem 1.5rem 2rem 1.5rem'};
+             min-height: auto;
              box-sizing: border-box;
         }
         .exam-sheet {
-            background-color: white;
+            background-color: #ffffff;
+            color: #0f172a;
             width: ${paperDimensions[paperSize].width};
             min-height: ${paperDimensions[paperSize].height};
             height: ${paperDimensions[paperSize].height};
@@ -553,7 +683,8 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
             transform-origin: top;
             transition: transform 0.2s ease-in-out;
             position: relative; /* For footer positioning context if needed */
-            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.14), 0 0 0 1px rgba(0, 0, 0, 0.06);
+            border-radius: 3px;
             overflow: hidden;
             display: flex;
             flex-direction: column;
@@ -628,9 +759,6 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
             flex-shrink: 0;
             box-sizing: border-box;
         }
-            border-top: 1px dashed #cbd5e1;
-            padding-top: 0.5rem;
-        }
 
         /* --- Semantic Component Styles: HEADER --- */
         .exam-header { 
@@ -671,15 +799,57 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
             white-space: nowrap;
         }
         
-        .header-divider { border: 0; border-top: 2px solid black; margin: 0; }
-        .header-divider::after { content: ''; display: block; border-top: 1px solid black; margin-top: 1px; }
+        /* Header Dividers */
+        .header-divider { margin: 0.35rem 0 0.75rem 0; }
+        .header-divider.divider-double { border: 0; border-top: 2.5px solid black; }
+        .header-divider.divider-double::after { content: ''; display: block; border-top: 1px solid black; margin-top: 1.5px; }
+        .header-divider.divider-solid { border: 0; border-top: 2px solid black; }
+        .header-divider.divider-dashed { border: 0; border-top: 2px dashed black; }
+        .header-divider.divider-modern { 
+            border: 0; 
+            height: 2px; 
+            background: linear-gradient(90deg, #0f172a 0%, #334155 50%, #0f172a 100%); 
+            position: relative;
+        }
+        .header-divider.divider-modern::after {
+            content: '';
+            display: block;
+            height: 1px;
+            background: #94a3b8;
+            margin-top: 2px;
+        }
 
-        .exam-title-container { text-align: center; margin: 1rem 0; }
-        .exam-title-container h2 { font-size: 1.25em; font-weight: bold; text-transform: uppercase; }
+        .exam-title-container { text-align: center; margin: 0.75rem 0; }
+        .exam-title-container h2 { font-size: 1.25em; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
 
-        .meta-container { display: flex; justify-content: space-between; align-items: flex-start; margin: 1.5rem 0; }
+        /* Basmalah & Hamdalah */
+        .exam-basmalah {
+            text-align: center;
+            font-size: 1.4em;
+            font-family: 'Amiri', 'Traditional Arabic', 'Scheherazade New', serif;
+            margin: 0.6rem 0 1rem 0;
+            padding: 0.35rem 0;
+            font-weight: normal;
+            letter-spacing: 1px;
+            color: #0f172a;
+        }
+        .exam-hamdalah {
+            text-align: center;
+            font-size: 1.2em;
+            font-family: 'Amiri', 'Traditional Arabic', 'Scheherazade New', serif;
+            margin: 1.5rem 0 0.5rem 0;
+            padding: 0.5rem 0;
+            font-weight: normal;
+            letter-spacing: 0.5px;
+            color: #334155;
+            break-inside: avoid;
+        }
+
+        /* --- META CONTAINERS --- */
+        .meta-container { margin: 1rem 0; }
+        .meta-standard, .meta-kurmer { display: flex; justify-content: space-between; align-items: flex-start; }
         
-        .student-info { width: 66%; font-size: 0.95em; }
+        .student-info { width: 68%; font-size: 0.95em; }
         .student-info td { padding-block: 0.1rem; vertical-align: top; }
         .student-info td:first-child { font-weight: 600; white-space: nowrap; }
         .student-info .colon { padding-inline: 0.5rem; }
@@ -693,10 +863,159 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
         [dir="rtl"] .student-info { text-align: right; }
         [dir="rtl"] .student-info .colon { padding-inline: 0.2rem 0.8rem; }
 
-        .score-box { width: 25%; border: 2px solid black; height: 6rem; position: relative; padding: 0.5rem; }
+        .score-box { width: 26%; border: 2px solid black; height: 5.8rem; position: relative; padding: 0.4rem; box-sizing: border-box; text-align: center; }
         .score-box span { position: absolute; top: 0.25rem; font-weight: bold; font-size: 0.9em; }
         [dir="ltr"] .score-box span { left: 0.5rem; }
         [dir="rtl"] .score-box span { right: 0.5rem; }
+
+        /* Kurikulum Merdeka Style Meta */
+        .meta-kurmer {
+            flex-direction: column;
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            padding: 0.6rem 0.8rem;
+            margin-bottom: 1.2rem;
+        }
+        .kurmer-badge-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+            border-bottom: 1px dashed #cbd5e1;
+            padding-bottom: 0.4rem;
+        }
+        .kurmer-tag {
+            background: #0f172a;
+            color: #ffffff;
+            font-size: 0.75em;
+            font-weight: bold;
+            padding: 0.15rem 0.5rem;
+            border-radius: 3px;
+            letter-spacing: 0.5px;
+        }
+        .kurmer-sub-tag {
+            font-size: 0.75em;
+            font-weight: 600;
+            color: #475569;
+            text-transform: uppercase;
+        }
+        .meta-flex-wrapper {
+            display: flex;
+            width: 100%;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        .score-box-modern {
+            width: 25%;
+            border: 1.5px solid #0f172a;
+            border-radius: 4px;
+            height: 5.5rem;
+            background: #ffffff;
+            padding: 0.35rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            box-sizing: border-box;
+        }
+        .score-box-modern .score-title {
+            font-size: 0.8em;
+            font-weight: bold;
+            color: #0f172a;
+            border-bottom: 1px solid #e2e8f0;
+            width: 100%;
+            text-align: center;
+            padding-bottom: 0.2rem;
+        }
+        .score-box-modern .score-sub {
+            font-size: 0.7em;
+            color: #64748b;
+            margin-top: 0.2rem;
+        }
+
+        /* Cambridge Style Meta */
+        .meta-cambridge {
+            border: 1.5px solid black;
+            padding: 0.6rem 0.8rem;
+            margin-bottom: 1.2rem;
+            font-size: 0.9em;
+        }
+        .cambridge-row {
+            margin-bottom: 0.5rem;
+        }
+        .cambridge-field-name {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .cambridge-label {
+            font-weight: bold;
+            font-size: 0.85em;
+            white-space: nowrap;
+        }
+        .cambridge-line-dots {
+            flex: 1;
+            overflow: hidden;
+            letter-spacing: 2px;
+        }
+        .cambridge-grid {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 1rem;
+            border-top: 1px solid black;
+            padding-top: 0.5rem;
+        }
+        .cambridge-box-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+        .cambridge-char-boxes {
+            display: flex;
+            gap: 2px;
+        }
+        .cambridge-char-boxes span {
+            display: inline-block;
+            width: 1.2rem;
+            height: 1.4rem;
+            border: 1px solid black;
+        }
+        .cambridge-details {
+            font-size: 0.85em;
+            text-align: right;
+            line-height: 1.3;
+        }
+
+        /* Minimal / Compact Style Meta */
+        .meta-compact {
+            border-top: 1px solid black;
+            border-bottom: 1px solid black;
+            padding: 0.35rem 0;
+            margin-bottom: 0.8rem;
+        }
+        .compact-meta-line {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.88em;
+            gap: 0.5rem;
+        }
+        .compact-score-badge {
+            font-weight: bold;
+        }
+
+        /* Points / Marks Badge */
+        .points-badge {
+            font-size: 0.85em;
+            font-weight: bold;
+            color: #334155;
+            margin-inline-start: auto;
+            padding-inline-start: 0.5rem;
+            white-space: nowrap;
+        }
         
         /* --- Semantic Component Styles: BODY --- */
         .exam-body { margin-top: 1rem; }
@@ -727,21 +1046,53 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
         }
         
         /* Stimulus Styles */
-        .section-stimulus {
-            margin-bottom: 1rem;
+        .section-stimulus, .question-item.stimulus-block {
+            margin-bottom: 1.2rem;
             text-align: justify;
         }
-        .section-stimulus img {
+        .section-stimulus img, .question-item.stimulus-block img {
             max-width: 100%;
             height: auto;
             margin: 0.5rem auto;
             display: block;
         }
+        .stimulus-header-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.75em;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+            color: #334155;
+        }
+        .stimulus-header-tag .tag-icon {
+            font-size: 1.1em;
+        }
+
+        /* Stimulus Variants */
+        .stimulus-modern_card {
+            background-color: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-left: 4px solid #0f172a;
+            border-radius: 6px;
+            padding: 0.75rem 1rem;
+        }
+        .stimulus-bordered {
+            border: 1px solid black;
+            border-radius: 4px;
+            padding: 0.75rem 0.9rem;
+        }
+        .stimulus-minimal {
+            border-top: 1px dashed #94a3b8;
+            border-bottom: 1px dashed #94a3b8;
+            padding: 0.6rem 0.2rem;
+        }
         
         /* New Question Type: Stimulus Block */
         .question-item.stimulus-block {
             display: block; /* Overrides default flex */
-            margin-bottom: 1rem;
             width: 100%;
         }
         .question-item.stimulus-block .question-body {
@@ -896,10 +1247,9 @@ export const generateHtmlContent = (exam: Exam, settings: Settings, mode: 'exam'
     `;
 
     const mathRenderScript = `
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/contrib/auto-render.min.js"></script>
     <script>
-      ${katexScriptSource}
-      ${katexAutoRenderSource}
-
       function renderSoalGeniusMath() {
         if (typeof renderMathInElement !== 'function') return;
         try {

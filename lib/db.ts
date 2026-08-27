@@ -21,8 +21,11 @@ class SoalGeniusDB extends Dexie {
       // Menambahkan indeks 'date' untuk memungkinkan pengurutan yang efisien.
       exams: 'id, date, folderId', // Primary key 'id', indexes 'date', 'folderId'
       settings: 'key', // Primary key 'key'
-      bankQuestions: 'bankId', // Primary key 'bankId'
+      bankQuestions: 'bankId, createdAt', // Primary key 'bankId', index 'createdAt'
       folders: 'id', // Primary key 'id'
+    });
+    this.version(4).stores({
+      bankQuestions: 'bankId, createdAt',
     });
   }
 }
