@@ -29,7 +29,7 @@ const HelpView: React.FC<HelpViewProps> = ({ onNavigate }) => {
     };
 
     return (
-        <div className="mx-auto w-full max-w-7xl 2xl:max-w-[1536px] flex flex-col space-y-5 pb-8 px-1 sm:px-2 md:px-4 animate-fade-in">
+        <div className="w-full flex flex-col space-y-5 pb-8 animate-fade-in">
             {/* Header Area with Title & Global Search */}
             <div className="app-surface p-4 sm:p-5 rounded-[var(--radius-card)] space-y-4">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">

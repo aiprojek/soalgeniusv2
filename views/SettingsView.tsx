@@ -805,7 +805,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ initialTab = 'template', on
     const dropboxPercent = dropboxUsage ? Math.min(100, (dropboxUsage.used / dropboxUsage.allocation.allocated) * 100) : 0;
 
     return (
-        <div className="mx-auto w-full max-w-7xl 2xl:max-w-[1536px] flex flex-col space-y-5 pb-8 px-1 sm:px-2 md:px-4 animate-fade-in">
+        <div className="w-full flex flex-col space-y-5 pb-8 animate-fade-in">
             <input type="file" ref={restoreInputRef} onChange={handleFileRestore} className="hidden" accept="application/json" />
 
             {/* QR Scanner Modal */}
@@ -931,7 +931,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ initialTab = 'template', on
                             </div>
 
                             {/* Preset Cards Grid */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4">
                                 {TEMPLATE_PRESETS.map((preset) => {
                                     const isCurrent = settings.templatePreset === preset.id;
                                     return (

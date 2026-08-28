@@ -1437,7 +1437,7 @@ const EditorView: React.FC<{ examId: string; onBack: () => void; onPreview?: () 
             {/* Sticky Header & Toolbar Container */}
             <div className="sticky top-0 z-20 bg-[var(--bg-secondary)] border-b border-[var(--border-primary)] shadow-xs">
                 {/* Row 1: Primary Identity & Navigation Bar */}
-                <div className="px-3 py-2.5 sm:px-5 sm:py-3 flex items-center justify-between gap-3">
+                <div className="mx-auto w-full max-w-7xl 2xl:max-w-[1536px] px-3 py-2.5 sm:px-5 sm:py-3 lg:px-6 2xl:px-8 flex items-center justify-between gap-3">
                     <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3.5">
                         <button 
                             onClick={onBack} 
@@ -1531,9 +1531,10 @@ const EditorView: React.FC<{ examId: string; onBack: () => void; onPreview?: () 
                 </div>
 
                 {/* Row 2: Secondary Scrollable Action Toolbar */}
-                <div className="border-t border-[var(--border-primary)] bg-[var(--bg-tertiary)]/75 px-3 py-1.5 sm:px-5 sm:py-2 flex items-center justify-between gap-2.5 overflow-x-auto whitespace-nowrap scrollbar-none">
-                    {/* Left: History & Audit Health */}
-                    <div className="flex items-center gap-2 flex-shrink-0">
+                <div className="border-t border-[var(--border-primary)] bg-[var(--bg-tertiary)]/75">
+                    <div className="mx-auto w-full max-w-7xl 2xl:max-w-[1536px] px-3 py-1.5 sm:px-5 sm:py-2 lg:px-6 2xl:px-8 flex items-center justify-between gap-2.5 overflow-x-auto whitespace-nowrap scrollbar-none">
+                        {/* Left: History & Audit Health */}
+                        <div className="flex items-center gap-2 flex-shrink-0">
                         {/* Undo / Redo */}
                         <div className="flex items-center bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-xl p-0.5 shadow-2xs">
                             <button 
@@ -1649,8 +1650,9 @@ const EditorView: React.FC<{ examId: string; onBack: () => void; onPreview?: () 
                     </div>
                 </div>
             </div>
+        </div>
 
-            <div dir={exam.direction} className="flex-grow overflow-y-auto px-2.5 py-3 sm:p-4 md:p-8 space-y-5 sm:space-y-6 max-w-6xl mx-auto w-full pb-28 md:pb-24">
+        <div dir={exam.direction} className="flex-grow overflow-y-auto px-2.5 py-3 sm:p-4 md:p-6 lg:p-8 space-y-5 sm:space-y-6 max-w-5xl 2xl:max-w-6xl mx-auto w-full pb-28 md:pb-24">
                 {/* Exam Info Card */}
                 <div className="app-surface overflow-hidden rounded-[var(--radius-card)]">
                      <button

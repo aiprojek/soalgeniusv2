@@ -77,7 +77,7 @@ const AboutTab: React.FC<AboutTabProps> = ({ onNavigate, onSwitchTab }) => {
     };
 
     return (
-        <div className="space-y-6 max-w-4xl mx-auto">
+        <div className="space-y-6">
             {/* Hero Identity Card */}
             <div className="app-surface p-5 sm:p-7 rounded-[var(--radius-card)] border border-[var(--border-primary)] space-y-5 shadow-xs">
                 <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-5 text-center sm:text-left">

@@ -278,7 +278,7 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
         <div className="fixed inset-0 app-shell-page z-50 flex flex-col print:bg-white">
             <header className="relative z-30 flex-shrink-0 print:hidden border-b border-[var(--border-primary)] bg-[var(--bg-secondary)] shadow-xs">
                 {/* Row 1: Primary Identity, Navigation & Export Action */}
-                <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-3 py-2.5 sm:px-5 sm:py-3">
+                <div className="mx-auto flex w-full max-w-7xl 2xl:max-w-[1536px] items-center justify-between gap-3 px-3 py-2.5 sm:px-5 sm:py-3 md:px-6 lg:px-6 2xl:px-8">
                     <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3.5">
                         <button 
                             onClick={onBack} 

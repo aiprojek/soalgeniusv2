@@ -105,7 +105,7 @@ const MainLayout: React.FC<{
             <div className="flex flex-col flex-grow">
                 {/* Changed z-10 to z-20 to stack above page content sticky headers */}
                 <header className="sticky top-0 z-20 border-b border-[var(--border-primary)] bg-[color:color-mix(in_srgb,var(--bg-secondary)_88%,transparent)] backdrop-blur-md">
-                    <div className="mx-auto flex w-full max-w-7xl justify-between items-center gap-2 px-2.5 py-2.5 sm:gap-3 sm:px-4 sm:py-3 md:px-6 lg:px-8">
+                    <div className="mx-auto flex w-full max-w-7xl 2xl:max-w-[1536px] justify-between items-center gap-2 px-2.5 py-2.5 sm:gap-3 sm:px-4 sm:py-3 md:px-5 lg:px-6 2xl:px-8">
                         <div className="min-w-0">
                             <h1 className="text-lg font-bold tracking-tight text-[var(--text-primary)] sm:text-xl md:text-2xl">
                                 Soal<span className="text-[var(--text-accent)]">Genius</span>
@@ -181,7 +181,7 @@ const MainLayout: React.FC<{
                         </div>
                     </div>
                 </header>
-                <main className="mx-auto w-full max-w-[1536px] 2xl:max-w-[1720px] flex-grow px-2.5 py-3 sm:px-4 sm:py-4 md:px-5 md:py-6 lg:px-7 app-bottom-safe transition-all">
+                <main className="mx-auto w-full max-w-7xl 2xl:max-w-[1536px] flex-grow px-2.5 py-3 sm:px-4 sm:py-4 md:px-5 md:py-6 lg:px-6 2xl:px-8 app-bottom-safe transition-all">
                     {children}
                 </main>
                 <footer className="text-center py-4 px-4 text-xs sm:text-sm text-[var(--text-secondary)] bg-[var(--bg-tertiary)] border-t border-[var(--border-primary)] mb-14 md:mb-0">

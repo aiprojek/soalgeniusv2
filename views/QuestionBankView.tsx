@@ -1092,7 +1092,7 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
     }, [bank, searchTerm, subjectFilter, classFilter, typeFilter]);
 
     return (
-        <div className={isModalMode ? 'flex flex-col h-full space-y-4' : 'mx-auto w-full max-w-7xl 2xl:max-w-[1536px] flex flex-col space-y-5 pb-8 px-1 sm:px-2 md:px-4 animate-fade-in'}>
+        <div className={isModalMode ? 'flex flex-col h-full space-y-4' : 'w-full flex flex-col space-y-5 pb-8 animate-fade-in'}>
             
             {/* Header Card with Clean Responsive Action Buttons */}
             <div className="app-surface p-4 sm:p-5 rounded-[var(--radius-card)] space-y-4 shadow-sm border border-[var(--border-primary)]">
