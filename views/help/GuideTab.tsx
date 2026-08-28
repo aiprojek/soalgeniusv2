@@ -519,38 +519,75 @@ const GuideTab: React.FC<GuideTabProps> = ({ searchQuery = '', onClearSearch, on
         {
             id: 'ljk-correction',
             category: 'LJK',
-            title: 'Cetak LJK Hemat Kertas & Koreksi Scan Kamera / HP',
+            title: 'Cetak LJK Hemat Kertas & Koreksi Scan Kamera (Termasuk Multi-Paket)',
             icon: SparklesIcon,
-            badge: 'Penilaian Cepat',
+            badge: 'Penilaian Cepat & Akurat',
             badgeColor: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800',
-            readTime: '3 mnt baca',
-            summary: 'Cetak template LJK split 2-in-1 A4 dan nilai lembar jawaban siswa secara otomatis menggunakan kamera atau berkas scan.',
-            keywords: ['ljk', 'koreksi', 'scan', 'kamera', 'webcam', 'rekap nilai', 'analisis butir', 'lembar jawab'],
+            readTime: '4 mnt baca',
+            summary: 'Cetak template LJK hemat kertas (2-in-1 A4), panduan scan kamera/unggah foto, serta alur koreksi ujian multi-paket (Paket A & B).',
+            keywords: ['ljk', 'koreksi', 'scan', 'kamera', 'webcam', 'rekap nilai', 'analisis butir', 'lembar jawab', 'multi paket', 'paket a', 'paket b'],
             content: () => (
                 <div className="space-y-4 text-xs sm:text-sm">
                     <p className="leading-relaxed">
                         Fitur <strong>Lembar Jawab Komputer (LJK) & Pemeriksa Cerdas</strong> memungkinkan guru mencetak lembar jawaban standar dengan tata letak hemat kertas, lalu menilai hasil jawaban siswa secara instan menggunakan kamera HP, webcam laptop, atau unggahan berkas foto/scan.
                     </p>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-3">
+                        {/* Section 1: Cetak Template LJK */}
                         <div className="p-3.5 rounded-[var(--radius-card)] border border-[var(--border-primary)] bg-[var(--bg-secondary)] space-y-2">
-                            <span className="font-bold text-[var(--text-primary)]">1. Mencetak Template LJK:</span>
-                            <ul className="list-disc list-inside space-y-1 text-[var(--text-secondary)] leading-relaxed">
-                                <li>Buka naskah ujian → Klik tombol <strong>Lembar Jawab (LJK)</strong> di editor / pratinjau.</li>
-                                <li>Pilih model tata letak: <strong>2 Lembar / A4 Split</strong> (Rekomendasi hemat 50% kertas), 1 Lembar Penuh, atau 4 Lembar Mini.</li>
-                                <li>Tentukan jumlah soal (25, 30, 40, 50) dan opsi jawaban (A-D atau A-E).</li>
-                                <li>Klik <strong>Cetak LJK / Simpan PDF</strong>.</li>
+                            <div className="flex items-center gap-2 font-bold text-[var(--text-primary)]">
+                                <span className="w-5 h-5 rounded-full bg-[var(--bg-accent)] text-[var(--text-on-accent)] text-[11px] flex items-center justify-center font-extrabold">1</span>
+                                <span>Mencetak Template Lembar Jawaban (LJK):</span>
+                            </div>
+                            <ul className="list-disc list-inside space-y-1 text-[var(--text-secondary)] pl-7 leading-relaxed">
+                                <li>Buka naskah ujian di <strong>Editor</strong> atau <strong>Pratinjau Cetak</strong> → Klik tombol <strong>Lembar Jawab (LJK)</strong>.</li>
+                                <li>Pilih model tata letak: <strong>2 Lembar / A4 Split</strong> (Rekomendasi hemat 50% kertas), <strong>1 Lembar Penuh</strong>, atau <strong>4 Lembar Mini</strong>.</li>
+                                <li>Tentukan kapasitas soal (25, 30, 40, 50 butir) dan pilihan opsi jawaban (A–D atau A–E).</li>
+                                <li>Klik <strong>Cetak LJK / Simpan PDF</strong> untuk menggandakan lembar bagi siswa.</li>
                             </ul>
                         </div>
 
+                        {/* Section 2: Koreksi Scan Kamera */}
                         <div className="p-3.5 rounded-[var(--radius-card)] border border-[var(--border-primary)] bg-[var(--bg-secondary)] space-y-2">
-                            <span className="font-bold text-[var(--text-primary)]">2. Penilaian Otomatis (Scan):</span>
-                            <ul className="list-disc list-inside space-y-1 text-[var(--text-secondary)] leading-relaxed">
-                                <li>Buka menu <strong>Koreksi LJK (Scan Nilai)</strong>.</li>
-                                <li>Pilih metode: <strong>Kamera Langsung</strong> atau <strong>Unggah Foto Lembar Siswa</strong>.</li>
-                                <li>Sistem otomatis mendeteksi bulatan, mencocokkannya dengan kunci jawaban, dan menghitung skor nilai (0-100).</li>
-                                <li>Klik <strong>Simpan Nilai Siswa</strong> untuk rekap dan analisis butir soal.</li>
-                            </ul>
+                            <div className="flex items-center gap-2 font-bold text-[var(--text-primary)]">
+                                <span className="w-5 h-5 rounded-full bg-[var(--bg-accent)] text-[var(--text-on-accent)] text-[11px] flex items-center justify-center font-extrabold">2</span>
+                                <span>Alur Penilaian Otomatis (Scan Kamera / Foto):</span>
+                            </div>
+                            <ol className="list-decimal list-inside space-y-1.5 text-[var(--text-secondary)] pl-7 leading-relaxed">
+                                <li>Buka naskah ujian terkait, lalu klik menu <strong>Koreksi LJK (Scan Nilai)</strong>.</li>
+                                <li>Pilih metode pemindaian: <strong>Kamera Langsung</strong> (arahkan 4 jangkar sudut LJK ke bingkai kamera) atau <strong>Unggah Foto Lembar Siswa</strong>.</li>
+                                <li>Sistem mendeteksi bulatan jawaban siswa, membandingkannya dengan kunci jawaban master, dan menghitung jumlah Benar, Salah, serta Nilai Akhir (0–100).</li>
+                                <li>Gunakan panel review untuk memeriksa jika ada bulatan siswa yang terlalu tipis atau salah hapus, lalu klik <strong>Simpan Nilai Siswa</strong>.</li>
+                            </ol>
+                        </div>
+
+                        {/* Section 3: Prosedur Koreksi Multi-Paket (Paket A & Paket B) */}
+                        <div className="p-3.5 rounded-[var(--radius-card)] border border-amber-200 dark:border-amber-800/60 bg-amber-50/50 dark:bg-amber-950/20 space-y-2">
+                            <div className="flex items-center gap-2 font-bold text-amber-900 dark:text-amber-300">
+                                <span className="w-5 h-5 rounded-full bg-amber-600 dark:bg-amber-500 text-white text-[11px] flex items-center justify-center font-extrabold">3</span>
+                                <span>Prosedur Koreksi Ujian Multi-Paket (Paket A, Paket B, dst.):</span>
+                            </div>
+                            <ol className="list-decimal list-inside space-y-2 text-amber-950 dark:text-amber-100 pl-7 leading-relaxed">
+                                <li>
+                                    <strong>Kelompokkan Berkas LJK Siswa:</strong> Pisahkan tumpukan lembar jawaban siswa berdasarkan paket soal yang mereka kerjakan (tumpukan Paket A dan tumpukan Paket B).
+                                </li>
+                                <li>
+                                    <strong>Koreksi Naskah Paket A:</strong>
+                                    <ul className="list-disc list-inside pl-4 mt-1 space-y-1 text-xs text-amber-900/90 dark:text-amber-200/90">
+                                        <li>Buka naskah <em>Ujian Paket A</em> di aplikasi &rarr; Buka <strong>Koreksi LJK</strong>.</li>
+                                        <li>Scan seluruh tumpukan lembar jawaban siswa Paket A. Nilai otomatis dicocokkan dengan kunci Paket A.</li>
+                                        <li>Unduh rekapan nilai Excel/CSV untuk kelompok Paket A.</li>
+                                    </ul>
+                                </li>
+                                <li>
+                                    <strong>Koreksi Naskah Paket B:</strong>
+                                    <ul className="list-disc list-inside pl-4 mt-1 space-y-1 text-xs text-amber-900/90 dark:text-amber-200/90">
+                                        <li>Kembali ke <strong>Arsip Ujian</strong> &rarr; Buka naskah <em>Ujian Paket B</em> &rarr; Buka <strong>Koreksi LJK</strong>.</li>
+                                        <li>Scan seluruh tumpukan lembar jawaban siswa Paket B. Nilai otomatis dicocokkan dengan kunci Paket B.</li>
+                                        <li>Unduh rekapan nilai Excel/CSV untuk kelompok Paket B.</li>
+                                    </ul>
+                                </li>
+                            </ol>
                         </div>
                     </div>
                 </div>

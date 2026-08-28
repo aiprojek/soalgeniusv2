@@ -41,6 +41,11 @@ const AboutTab: React.FC<AboutTabProps> = ({ onNavigate, onSwitchTab }) => {
             a: 'Tentu saja! Di Bank Soal, tandai butir-butir soal yang ingin diujikan lalu klik "Buat Ujian dari Terpilih". Sistem akan otomatis menyusun naskah ujian baru dengan pengelompokan format soal (PG, PGK, Esai, dll.), penomoran berurutan, perhitungan bobot nilai, serta judul dan alokasi waktu ujian.'
         },
         {
+            category: 'Penilaian & Koreksi LJK',
+            q: 'Bagaimana cara mengoreksi ujian yang memiliki beberapa paket soal (misal Paket A dan Paket B)?',
+            a: 'Pisahkan tumpukan lembar LJK siswa sesuai paketnya (Paket A dan Paket B). Buka naskah Paket A di aplikasi lalu scan seluruh lembar Paket A. Setelah selesai dan mengunduh rekapan nilai, buka naskah Paket B di Arsip lalu scan seluruh lembar Paket B.'
+        },
+        {
             category: 'Penyimpanan & Keamanan',
             q: 'Bagaimana cara mencegah data hilang jika ganti laptop atau browser dibersihkan?',
             a: 'Anda dapat memanfaatkan fitur Sinkronisasi Dropbox di menu Pengaturan untuk pencadangan otomatis ke cloud pribadi Anda. Selain itu, Anda juga dapat mengekspor berkas Backup Arsip (.json) atau mengekspor paket bank soal (.sgpkg) secara berkala untuk disimpan di flashdisk atau Google Drive.'
