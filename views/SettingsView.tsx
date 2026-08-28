@@ -100,6 +100,8 @@ const SettingsView: React.FC<SettingsViewProps> = ({ initialTab = 'template', on
         loadSettings();
     }, []);
 
+    const OFFLINE_CACHE_NAME = 'soalgenius-cache-v11-offline-first';
+
     const checkOfflineStatus = useCallback(async () => {
         if (!('caches' in window)) {
             setOfflineStatus('not_ready');
@@ -107,9 +109,14 @@ const SettingsView: React.FC<SettingsViewProps> = ({ initialTab = 'template', on
         }
 
         try {
-            const cache = await caches.open('soalgenius-cache-v10-offline-first');
+            const cache = await caches.open(OFFLINE_CACHE_NAME);
             const keys = await cache.keys();
-            const hasIndex = (await cache.match('./index.html')) || (await cache.match('./')) || (await cache.match(window.location.origin + '/')) || (await cache.match(window.location.href));
+            const hasIndex = (await cache.match('./index.html')) || 
+                             (await cache.match('/index.html')) || 
+                             (await cache.match('./')) || 
+                             (await cache.match('/')) ||
+                             (await cache.match(window.location.origin + '/')) || 
+                             (await cache.match(window.location.href));
 
             setOfflineStatus(hasIndex || keys.length >= 2 ? 'ready' : 'not_ready');
         } catch (error) {
@@ -254,35 +261,55 @@ const SettingsView: React.FC<SettingsViewProps> = ({ initialTab = 'template', on
                 './index.html',
                 './manifest.json',
                 './icon.svg',
+                './sw.js',
                 window.location.origin + '/',
+                window.location.origin + '/index.html',
                 window.location.href,
             ]);
 
-            document.querySelectorAll('script[src], link[rel="stylesheet"]').forEach((el) => {
+            // Ambil dari script dan link stylesheet yang aktif
+            document.querySelectorAll('script[src], link[rel="stylesheet"], link[rel="icon"]').forEach((el) => {
                 const src = el instanceof HTMLScriptElement ? el.src : (el as HTMLLinkElement).href;
                 if (src && (src.startsWith('http://') || src.startsWith('https://'))) {
                     urlsToCache.add(src);
                 }
             });
 
-            document.querySelectorAll('link[rel="stylesheet"]').forEach((el) => {
-                const href = (el as HTMLLinkElement).href;
-                if (href && (href.startsWith('http://') || href.startsWith('https://'))) {
-                    urlsToCache.add(href);
+            // Ambil seluruh modul JS/CSS/Fonts (Amiri, Aref Ruqaa, Bootstrap Icons, KaTeX) yang telah dimuat browser
+            if (typeof window.performance !== 'undefined' && typeof window.performance.getEntriesByType === 'function') {
+                const resources = window.performance.getEntriesByType('resource') as PerformanceResourceTiming[];
+                for (const res of resources) {
+                    if (res.name && (res.name.startsWith('http://') || res.name.startsWith('https://'))) {
+                        try {
+                            const resUrl = new URL(res.name);
+                            if (
+                                !resUrl.hostname.includes('dropbox') &&
+                                !resUrl.hostname.includes('generativelanguage.googleapis.com') &&
+                                !resUrl.hostname.includes('pollinations.ai') &&
+                                !resUrl.hostname.includes('saweria.co') &&
+                                !resUrl.hostname.includes('lynk.id')
+                            ) {
+                                urlsToCache.add(res.name);
+                            }
+                        } catch {
+                            // Abaikan URL tidak valid
+                        }
+                    }
                 }
-            });
+            }
 
             const allUrls = Array.from(urlsToCache);
 
             // 2. Simpan langsung ke Cache Storage API
+            let savedCount = 0;
             if ('caches' in window) {
-                const cache = await caches.open('soalgenius-cache-v10-offline-first');
+                const cache = await caches.open(OFFLINE_CACHE_NAME);
                 
                 await Promise.allSettled(
                     allUrls.map(async (url) => {
                         try {
                             const controller = new AbortController();
-                            const timeoutId = setTimeout(() => controller.abort(), 6000);
+                            const timeoutId = setTimeout(() => controller.abort(), 8000);
                             
                             let response: Response;
                             try {
@@ -300,6 +327,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ initialTab = 'template', on
                             clearTimeout(timeoutId);
                             if (response && (response.ok || response.type === 'opaque')) {
                                 await cache.put(url, response.clone());
+                                savedCount++;
                             }
                         } catch (err) {
                             console.warn('Gagal menyimpan cache asset:', url, err);
@@ -308,7 +336,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ initialTab = 'template', on
                 );
             }
 
-            // 3. Daftarkan Service Worker
+            // 3. Daftarkan dan kirim instruksi ke Service Worker
             if ('serviceWorker' in navigator) {
                 try {
                     const reg = await navigator.serviceWorker.register('./sw.js');
@@ -327,7 +355,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ initialTab = 'template', on
             }
 
             await checkOfflineStatus();
-            addToast('Unduh library selesai! Seluruh komponen aplikasi telah tersimpan untuk penggunaan offline.', 'success');
+            addToast(`Unduh library offline berhasil! ${savedCount || allUrls.length} file aset telah tersimpan di browser.`, 'success');
         } catch (error) {
             console.error('Failed to refresh offline cache:', error);
             addToast('Gagal mengunduh library. Pastikan internet aktif dan coba lagi.', 'error');
@@ -1285,10 +1313,13 @@ const SettingsView: React.FC<SettingsViewProps> = ({ initialTab = 'template', on
                                         <div className="space-y-1">
                                             <p className="font-bold text-[var(--text-primary)]">Cara Pakai Mode Offline</p>
                                             <p className="leading-relaxed">
-                                                Klik <strong>Unduh & Perbarui Library Offline</strong> saat internet aktif. Seluruh aset aplikasi (JS, CSS, font, ikon KaTeX, dan mesin DOCX/PDF) akan disimpan ke cache browser lokal Anda.
+                                                1. Klik <strong>Unduh & Perbarui Library Offline</strong> saat ada koneksi internet. Seluruh aset aplikasi (JS, CSS, font, ikon KaTeX, dan mesin DOCX/PDF) akan tersimpan ke cache browser lokal Anda.
+                                            </p>
+                                            <p className="leading-relaxed">
+                                                2. <strong>Buka di Tab Baru / Instal PWA:</strong> Pastikan Anda membuka aplikasi langsung di tab browser mandiri atau menginstalnya sebagai PWA (ikon pasang di bilah alamat browser).
                                             </p>
                                             <p className="leading-relaxed text-[var(--text-muted)]">
-                                                Setelah berstatus siap offline, Anda bisa membuka aplikasi kapan saja tanpa perlu sinyal internet.
+                                                <em>Catatan: Di dalam jendela pratinjau editor (iframe sandbox), browser membatasi Service Worker demi keamanan. Mode offline akan bekerja penuh saat dijalankan di tab browser tersendiri.</em>
                                             </p>
                                         </div>
                                     </div>
