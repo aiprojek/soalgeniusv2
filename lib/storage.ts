@@ -564,6 +564,61 @@ export const deleteMultipleQuestionsFromBank = async (bankIds: string[]): Promis
     }
 };
 
+// --- FUNGSI LJK SCANNER RESULTS ---
+export const LJK_STORAGE_PREFIX = 'soalgenius_ljk_results_';
+
+export const saveLjkResults = async (examId: string, results: LjkScanResult[]): Promise<void> => {
+    try {
+        localStorage.setItem(`${LJK_STORAGE_PREFIX}${examId}`, JSON.stringify(results));
+        touchLocalChange();
+    } catch (e) {
+        console.error("Gagal menyimpan hasil LJK:", e);
+    }
+};
+
+export const getLjkResults = async (examId: string): Promise<LjkScanResult[]> => {
+    try {
+        const raw = localStorage.getItem(`${LJK_STORAGE_PREFIX}${examId}`);
+        if (!raw) return [];
+        return JSON.parse(raw);
+    } catch (e) {
+        console.error("Gagal membaca hasil LJK:", e);
+        return [];
+    }
+};
+
+export const clearLjkResults = async (examId: string): Promise<void> => {
+    try {
+        localStorage.removeItem(`${LJK_STORAGE_PREFIX}${examId}`);
+        touchLocalChange();
+    } catch (e) {
+        console.error("Gagal menghapus hasil LJK:", e);
+    }
+};
+
+export const getAllLjkResults = async (): Promise<Record<string, LjkScanResult[]>> => {
+    const resultsMap: Record<string, LjkScanResult[]> = {};
+    try {
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith(LJK_STORAGE_PREFIX)) {
+                const examId = key.replace(LJK_STORAGE_PREFIX, '');
+                const raw = localStorage.getItem(key);
+                if (raw) {
+                    try {
+                        resultsMap[examId] = JSON.parse(raw);
+                    } catch (err) {
+                        console.warn('Gagal memparsing LJK result untuk key:', key, err);
+                    }
+                }
+            }
+        }
+    } catch (e) {
+        console.warn('Gagal membaca semua hasil LJK dari localStorage:', e);
+    }
+    return resultsMap;
+};
+
 // --- FUNGSI BACKUP & RESTORE DATA (HELPER) ---
 
 export const createBackupData = async (): Promise<string> => {
@@ -572,18 +627,23 @@ export const createBackupData = async (): Promise<string> => {
     const bankQuestions = await db.bankQuestions.toArray();
     const folders = await getFolders();
     const geminiApiKey = localStorage.getItem('soalgenius_gemini_api_key') || '';
+    const theme = localStorage.getItem('soalgenius_theme') || '';
+    const ljkResults = await getAllLjkResults();
 
     const backupData = {
         source: 'SoalGeniusDB',
-        version: 3, // Current schema version
+        appName: 'SoalGenius',
+        version: 4, // Upgraded schema version with complete features
         createdAt: new Date().toISOString(),
         data: { 
             exams, 
             settings, 
             bankQuestions, 
             folders,
+            ljkResults,
             preferences: {
-                geminiApiKey
+                geminiApiKey,
+                theme
             }
         }
     };
@@ -606,7 +666,7 @@ export const restoreBackupData = async (jsonString: string): Promise<boolean> =>
             throw new Error('Struktur data backup tidak valid.');
         }
 
-        // 1. Normalize Exams
+        // 1. Normalize Exams & Questions
         let rawExams: any[] = [];
         if (Array.isArray(rawPayload.exams)) {
             rawExams = rawPayload.exams;
@@ -625,11 +685,27 @@ export const restoreBackupData = async (jsonString: string): Promise<boolean> =>
                         instructions: 'I. Jawablah pertanyaan-pertanyaan berikut dengan benar!',
                         questions: Array.isArray(exam.questions) ? exam.questions.map((q: any, qIdx: number) => ({
                             ...q,
-                            number: q.number || String(qIdx + 1)
+                            id: q.id || crypto.randomUUID(),
+                            number: q.number || String(qIdx + 1),
+                            type: q.type || QuestionType.MULTIPLE_CHOICE,
+                            text: q.text || ''
                         })) : []
                     }
                 ];
-            } else if (!Array.isArray(sections)) {
+            } else if (Array.isArray(sections)) {
+                sections = sections.map((sec: any) => ({
+                    id: sec.id || crypto.randomUUID(),
+                    instructions: sec.instructions || '',
+                    stimulus: sec.stimulus || undefined,
+                    questions: Array.isArray(sec.questions) ? sec.questions.map((q: any, qIdx: number) => ({
+                        ...q,
+                        id: q.id || crypto.randomUUID(),
+                        number: q.number || String(qIdx + 1),
+                        type: q.type || QuestionType.MULTIPLE_CHOICE,
+                        text: q.text || ''
+                    })) : []
+                }));
+            } else {
                 sections = [];
             }
 
@@ -651,7 +727,7 @@ export const restoreBackupData = async (jsonString: string): Promise<boolean> =>
             };
         });
 
-        // 2. Normalize Settings
+        // 2. Normalize Settings & Preset Visuals
         let settingsToSave: Settings | null = null;
         if (rawPayload.settings) {
             const rawSettings = rawPayload.settings;
@@ -689,7 +765,8 @@ export const restoreBackupData = async (jsonString: string): Promise<boolean> =>
             },
             subject: bq.subject || '',
             class: bq.class || '',
-            createdAt: bq.createdAt || new Date().toISOString()
+            createdAt: bq.createdAt || new Date().toISOString(),
+            tags: Array.isArray(bq.tags) ? bq.tags : (bq.tags ? [bq.tags] : [])
         }));
 
         // Execute atomic database write
@@ -716,10 +793,25 @@ export const restoreBackupData = async (jsonString: string): Promise<boolean> =>
             }
         });
 
-        // 5. Restore Preferences if available
+        // 5. Restore LJK Scanner Results if available
+        const rawLjk = rawPayload.ljkResults || backupData.ljkResults;
+        if (rawLjk && typeof rawLjk === 'object') {
+            for (const [examId, results] of Object.entries(rawLjk)) {
+                if (examId && Array.isArray(results)) {
+                    localStorage.setItem(`${LJK_STORAGE_PREFIX}${examId}`, JSON.stringify(results));
+                }
+            }
+        }
+
+        // 6. Restore Preferences if available
         const prefs = rawPayload.preferences || backupData.preferences;
-        if (prefs?.geminiApiKey && typeof prefs.geminiApiKey === 'string') {
-            localStorage.setItem('soalgenius_gemini_api_key', prefs.geminiApiKey);
+        if (prefs && typeof prefs === 'object') {
+            if (prefs.geminiApiKey && typeof prefs.geminiApiKey === 'string') {
+                localStorage.setItem('soalgenius_gemini_api_key', prefs.geminiApiKey);
+            }
+            if (prefs.theme && typeof prefs.theme === 'string') {
+                localStorage.setItem('soalgenius_theme', prefs.theme);
+            }
         }
         
         touchLocalChange(); // Update change tracking for cloud sync
@@ -727,36 +819,5 @@ export const restoreBackupData = async (jsonString: string): Promise<boolean> =>
     } catch (error) {
         console.error("Gagal restore:", error);
         throw error;
-    }
-};
-
-export const LJK_STORAGE_PREFIX = 'soalgenius_ljk_results_';
-
-export const saveLjkResults = async (examId: string, results: LjkScanResult[]): Promise<void> => {
-    try {
-        localStorage.setItem(`${LJK_STORAGE_PREFIX}${examId}`, JSON.stringify(results));
-        touchLocalChange();
-    } catch (e) {
-        console.error("Gagal menyimpan hasil LJK:", e);
-    }
-};
-
-export const getLjkResults = async (examId: string): Promise<LjkScanResult[]> => {
-    try {
-        const raw = localStorage.getItem(`${LJK_STORAGE_PREFIX}${examId}`);
-        if (!raw) return [];
-        return JSON.parse(raw);
-    } catch (e) {
-        console.error("Gagal membaca hasil LJK:", e);
-        return [];
-    }
-};
-
-export const clearLjkResults = async (examId: string): Promise<void> => {
-    try {
-        localStorage.removeItem(`${LJK_STORAGE_PREFIX}${examId}`);
-        touchLocalChange();
-    } catch (e) {
-        console.error("Gagal menghapus hasil LJK:", e);
     }
 };

@@ -439,7 +439,8 @@ const SettingsView: React.FC<SettingsViewProps> = ({ initialTab = 'template', on
             if (format === 'json') {
                 const backupPayload = {
                     source: 'SoalGeniusDB',
-                    version: 3,
+                    appName: 'SoalGenius',
+                    version: 4,
                     createdAt: new Date().toISOString(),
                     data: { exams: [exam] }
                 };
@@ -729,7 +730,8 @@ const SettingsView: React.FC<SettingsViewProps> = ({ initialTab = 'template', on
 
         const backupPayload = {
             source: 'SoalGeniusDB',
-            version: 3,
+            appName: 'SoalGenius',
+            version: 4,
             createdAt: new Date().toISOString(),
             data: { exams: selectedExams }
         };
