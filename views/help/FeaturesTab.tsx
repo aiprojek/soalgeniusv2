@@ -226,22 +226,40 @@ const FeaturesTab: React.FC<FeaturesTabProps> = ({ searchQuery = '', onClearSear
             keywords: ['lms', 'moodle', 'gift', 'aiken', 'blackboard', 'qti', 'google forms', 'elearning']
         },
         {
+            id: 'bank-soal-system',
+            category: 'STORAGE',
+            title: 'Bank Soal Pintar, Edit Massal & Generator Ujian',
+            badge: 'Pustaka Guru & Otomasi',
+            badgeColor: 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800',
+            icon: BankIcon,
+            description: 'Penyimpanan butir soal berkualitas permanen dengan kemampuan edit massal metadata, pelabelan tag, dan pembuatan naskah ujian otomatis.',
+            highlights: [
+                'Edit Massal (Bulk Edit) Mapel, Jenjang/Kelas, dan Label Tag materi (#HOTS, #AKM)',
+                'Generator Ujian Instan dari butir soal terpilih dengan pengelompokan format otomatis',
+                'Pencarian multi-kriteria: teks butir, filter mapel, kelas, dan tipe soal',
+                'Kontrol seleksi responsif di mobile dan integrasi paket MGMP (.sgpkg)'
+            ],
+            actionLabel: 'Buka Bank Soal',
+            actionView: 'bank',
+            keywords: ['bank soal', 'bulk edit', 'edit massal', 'buat ujian', 'generator ujian', 'tags', 'label', 'pustaka', 'koleksi']
+        },
+        {
             id: 'archive-management',
             category: 'STORAGE',
-            title: 'Manajemen Arsip & Bank Soal',
+            title: 'Manajemen Arsip Naskah Ujian',
             badge: 'Manajemen Data',
-            badgeColor: 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800',
+            badgeColor: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800',
             icon: ArchiveIcon,
-            description: 'Kelola puluhan naskah ujian dan ribuan butir bank soal dengan struktur rapi, pelabelan status, serta pencarian instan.',
+            description: 'Kelola puluhan naskah ujian dengan struktur rapi, pelabelan status, pencadangan massal, serta riwayat tanggal pembuatan.',
             highlights: [
                 'Penyortiran berdasarkan mata pelajaran, jenjang kelas, dan tanggal',
                 'Penandaan status naskah: Draft, Siap Cetak, atau Terarsip',
-                'Penyimpanan Bank Soal mandiri untuk digunakan kembali pada ujian berikutnya',
-                'Pencadangan massal (Bulk Backup) seluruh arsip ke file JSON'
+                'Pencadangan massal (Bulk Backup) seluruh arsip ke file JSON',
+                'Restorasi dan kloning naskah ujian untuk semester berikutnya'
             ],
             actionLabel: 'Buka Arsip Ujian',
             actionView: 'archive',
-            keywords: ['arsip', 'bank soal', 'koleksi', 'manajemen', 'mapel', 'kelas', 'backup', 'draft']
+            keywords: ['arsip', 'koleksi', 'manajemen', 'mapel', 'kelas', 'backup', 'draft', 'status']
         },
         {
             id: 'dropbox-sync',

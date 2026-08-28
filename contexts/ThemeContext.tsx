@@ -1,9 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 
-type Theme = 'light' | 'dark';
+export type Theme = 'system' | 'light' | 'dark';
+export type ResolvedTheme = 'light' | 'dark';
 
 interface ThemeContextType {
   theme: Theme;
+  resolvedTheme: ResolvedTheme;
   toggleTheme: () => void;
   setTheme: (theme: Theme) => void;
 }
@@ -20,38 +22,79 @@ export const useTheme = () => {
 
 export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [theme, setThemeState] = useState<Theme>(() => {
-        // Get theme from local storage or default to system preference
         try {
             const storedTheme = localStorage.getItem('soalgenius_theme');
-            if (storedTheme === 'light' || storedTheme === 'dark') {
-                return storedTheme;
+            if (storedTheme === 'light' || storedTheme === 'dark' || storedTheme === 'system') {
+                return storedTheme as Theme;
             }
         } catch (error) {
             console.error('Failed to read theme from localStorage', error);
         }
-        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        return 'system';
     });
+
+    const [systemDark, setSystemDark] = useState<boolean>(() => {
+        if (typeof window !== 'undefined' && window.matchMedia) {
+            return window.matchMedia('(prefers-color-scheme: dark)').matches;
+        }
+        return false;
+    });
+
+    // Listen to OS color scheme preference changes
+    useEffect(() => {
+        if (typeof window === 'undefined' || !window.matchMedia) return;
+
+        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        const handleChange = (e: MediaQueryListEvent) => {
+            setSystemDark(e.matches);
+        };
+
+        if (mediaQuery.addEventListener) {
+            mediaQuery.addEventListener('change', handleChange);
+        } else {
+            mediaQuery.addListener(handleChange);
+        }
+
+        return () => {
+            if (mediaQuery.removeEventListener) {
+                mediaQuery.removeEventListener('change', handleChange);
+            } else {
+                mediaQuery.removeListener(handleChange);
+            }
+        };
+    }, []);
+
+    const resolvedTheme: ResolvedTheme = useMemo(() => {
+        if (theme === 'system') {
+            return systemDark ? 'dark' : 'light';
+        }
+        return theme;
+    }, [theme, systemDark]);
 
     useEffect(() => {
         const root = window.document.documentElement;
-        root.classList.remove(theme === 'light' ? 'dark' : 'light');
-        root.classList.add(theme);
+        root.classList.remove(resolvedTheme === 'light' ? 'dark' : 'light');
+        root.classList.add(resolvedTheme);
         try {
             localStorage.setItem('soalgenius_theme', theme);
         } catch (error) {
             console.error('Failed to save theme to localStorage', error);
         }
-    }, [theme]);
+    }, [theme, resolvedTheme]);
     
     const toggleTheme = () => {
-        setThemeState(prevTheme => (prevTheme === 'light' ? 'dark' : 'light'));
+        setThemeState(prevTheme => {
+            if (prevTheme === 'light') return 'dark';
+            if (prevTheme === 'dark') return 'system';
+            return 'light';
+        });
     };
 
     const setTheme = (newTheme: Theme) => {
         setThemeState(newTheme);
     };
 
-    const value = useMemo(() => ({ theme, toggleTheme, setTheme }), [theme]);
+    const value = useMemo(() => ({ theme, resolvedTheme, toggleTheme, setTheme }), [theme, resolvedTheme]);
 
     return (
         <ThemeContext.Provider value={value}>

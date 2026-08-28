@@ -3,8 +3,10 @@ import {
     getBankQuestions, 
     saveQuestionToBank, 
     updateBankQuestion, 
+    updateMultipleBankQuestions,
     deleteQuestionFromBank, 
-    deleteMultipleQuestionsFromBank 
+    deleteMultipleQuestionsFromBank,
+    saveExam
 } from '../lib/storage';
 import { useModal } from '../contexts/ModalContext';
 import { useToast } from '../contexts/ToastContext';
@@ -15,7 +17,8 @@ import type {
     MatchingItem, 
     TableData, 
     TableRowData, 
-    TableCellData 
+    TableCellData,
+    Exam
 } from '../types';
 import { QuestionType } from '../types';
 import { 
@@ -30,19 +33,23 @@ import {
     BookmarkPlusIcon,
     TagIcon,
     EyeIcon,
-    UndoIcon
+    UndoIcon,
+    CloseIcon
 } from '../components/Icons';
 import { sanitizeRichHtml, stripHtml } from '../lib/utils';
 import ReactQuill from 'react-quill';
 import Quill from 'quill';
 import MathModal from '../components/MathModal';
 import AiImagePromptModal from '../components/AiImagePromptModal';
+import { CreateExamFromBankModal } from '../components/CreateExamFromBankModal';
+import { BulkEditBankModal } from '../components/BulkEditBankModal';
 
 interface QuestionBankViewProps {
   isModalMode?: boolean;
   onAddQuestions?: (questions: Question[]) => void;
   onClose?: () => void;
   onNavigateToCommunity?: () => void;
+  onCreateExam?: (exam: Exam) => void;
 }
 
 const COMMON_SUBJECTS = [
@@ -749,7 +756,8 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
     isModalMode = false,
     onAddQuestions,
     onClose,
-    onNavigateToCommunity
+    onNavigateToCommunity,
+    onCreateExam
 }) => {
     const { addToast } = useToast();
     const { showConfirm } = useModal();
@@ -761,6 +769,8 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
     const [bank, setBank] = useState<BankQuestion[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [selectedQuestionIds, setSelectedQuestionIds] = useState<Set<string>>(new Set());
+    const [isCreateExamModalOpen, setIsCreateExamModalOpen] = useState<boolean>(false);
+    const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState<boolean>(false);
 
     // Search & Filter State
     const [searchTerm, setSearchTerm] = useState<string>('');
@@ -1007,6 +1017,44 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
         onAddQuestions?.(selectedQuestions);
     };
 
+    const handleClearSelection = () => {
+        setSelectedQuestionIds(new Set());
+    };
+
+    const handleConfirmBulkEdit = async (updates: {
+        subject?: string;
+        class?: string;
+        tags?: string[];
+        appendTags?: boolean;
+    }) => {
+        try {
+            const ids = Array.from(selectedQuestionIds);
+            const count = await updateMultipleBankQuestions(ids, updates);
+            addToast(`Berhasil memperbarui ${count} butir soal secara massal!`, 'success');
+            setSelectedQuestionIds(new Set());
+            await loadBank();
+        } catch (error) {
+            console.error('Gagal memperbarui massal bank soal:', error);
+            addToast('Gagal memperbarui soal secara massal.', 'error');
+        }
+    };
+
+    const handleConfirmCreateExam = async (newExam: Exam) => {
+        setIsCreateExamModalOpen(false);
+        setSelectedQuestionIds(new Set());
+        if (onCreateExam) {
+            onCreateExam(newExam);
+        } else {
+            try {
+                await saveExam(newExam);
+                addToast('Ujian baru berhasil dibuat dari Bank Soal!', 'success');
+            } catch (error) {
+                console.error('Gagal menyimpan ujian baru:', error);
+                addToast('Gagal membuat ujian baru dari Bank Soal.', 'error');
+            }
+        }
+    };
+
     const handleCopyText = (text: string) => {
         navigator.clipboard.writeText(stripHtml(text));
         addToast('Teks soal berhasil disalin ke clipboard.', 'info');
@@ -1030,10 +1078,12 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
 
     const filteredBank = useMemo(() => {
         return bank.filter(bq => {
+            const searchLower = searchTerm.toLowerCase();
             const searchMatch = !searchTerm || 
-                (bq.question.text && bq.question.text.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                (bq.subject && bq.subject.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                (bq.class && bq.class.toLowerCase().includes(searchTerm.toLowerCase()));
+                (bq.question.text && bq.question.text.toLowerCase().includes(searchLower)) ||
+                (bq.subject && bq.subject.toLowerCase().includes(searchLower)) ||
+                (bq.class && bq.class.toLowerCase().includes(searchLower)) ||
+                (bq.tags && bq.tags.some(t => t.toLowerCase().includes(searchLower)));
             const subjectMatch = !subjectFilter || bq.subject === subjectFilter;
             const classMatch = !classFilter || bq.class === classFilter;
             const typeMatch = !typeFilter || bq.question.type === typeFilter;
@@ -1042,10 +1092,10 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
     }, [bank, searchTerm, subjectFilter, classFilter, typeFilter]);
 
     return (
-        <div className={isModalMode ? 'flex flex-col h-full space-y-4' : 'mx-auto w-full max-w-5xl flex flex-col space-y-5 pb-10 px-2 sm:px-4 md:px-6 animate-fade-in'}>
+        <div className={isModalMode ? 'flex flex-col h-full space-y-4' : 'mx-auto w-full max-w-7xl 2xl:max-w-[1536px] flex flex-col space-y-5 pb-8 px-1 sm:px-2 md:px-4 animate-fade-in'}>
             
             {/* Header Card with Clean Responsive Action Buttons */}
-            <div className="app-surface p-4 sm:p-5 md:p-6 rounded-[var(--radius-card)] space-y-4 shadow-sm border border-[var(--border-primary)]">
+            <div className="app-surface p-4 sm:p-5 rounded-[var(--radius-card)] space-y-4 shadow-sm border border-[var(--border-primary)]">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="space-y-1">
                         <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-[var(--radius-control)] bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[11px] font-bold text-[var(--text-accent)]">
@@ -1181,49 +1231,89 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
 
                         {/* Bulk Action Controls */}
                         {filteredBank.length > 0 && (
-                            <div className="pt-2 border-t border-[var(--border-primary)] flex flex-wrap items-center justify-between gap-2 text-xs">
-                                <div className="flex items-center gap-3">
-                                    <label className="inline-flex items-center gap-2 cursor-pointer font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
-                                        <input 
-                                            type="checkbox" 
-                                            checked={selectedQuestionIds.size > 0 && selectedQuestionIds.size === filteredBank.length}
-                                            onChange={handleSelectAll}
-                                            className="rounded text-[var(--bg-accent)] focus:ring-[var(--bg-accent)]"
-                                        />
-                                        <span>Pilih Semua ({filteredBank.length} Butir)</span>
-                                    </label>
+                            <div className="pt-2 border-t border-[var(--border-primary)] space-y-2.5 text-xs">
+                                {/* Top Row: Select All + Info + Reset */}
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <label className="inline-flex items-center gap-2 cursor-pointer font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] select-none">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={selectedQuestionIds.size > 0 && selectedQuestionIds.size === filteredBank.length}
+                                                onChange={handleSelectAll}
+                                                className="w-4 h-4 rounded text-[var(--bg-accent)] focus:ring-[var(--bg-accent)]"
+                                            />
+                                            <span>Pilih Semua ({filteredBank.length} Butir)</span>
+                                        </label>
 
-                                    {selectedQuestionIds.size > 0 && (
-                                        <span className="text-[var(--text-accent)] font-bold">
-                                            {selectedQuestionIds.size} soal dipilih
-                                        </span>
+                                        {selectedQuestionIds.size > 0 && (
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[var(--bg-accent)]/10 text-[var(--text-accent)] font-extrabold text-[11px] border border-[var(--bg-accent)]/20">
+                                                {selectedQuestionIds.size} dipilih
+                                            </span>
+                                        )}
+
+                                        {selectedQuestionIds.size > 0 && (
+                                            <button
+                                                type="button"
+                                                onClick={handleClearSelection}
+                                                className="inline-flex items-center gap-1 text-[var(--text-secondary)] hover:text-rose-600 font-medium px-2 py-0.5 rounded-[var(--radius-control)] hover:bg-[var(--bg-hover)] transition-colors"
+                                                title="Batalkan semua pilihan"
+                                            >
+                                                <CloseIcon className="text-[10px]" />
+                                                <span>Batalkan</span>
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {(searchTerm || subjectFilter || classFilter || typeFilter) && (
+                                        <div className="flex justify-end">
+                                            <button
+                                                onClick={() => {
+                                                    setSearchTerm('');
+                                                    setSubjectFilter('');
+                                                    setClassFilter('');
+                                                    setTypeFilter('');
+                                                }}
+                                                className="text-[11px] text-[var(--text-muted)] hover:text-[var(--text-primary)] underline"
+                                            >
+                                                Reset Filter
+                                            </button>
+                                        </div>
                                     )}
                                 </div>
 
-                                <div className="flex items-center gap-2">
-                                    {selectedQuestionIds.size > 0 && !isModalMode && (
+                                {/* Bottom Row: Action Buttons for Selected Items (Clean Responsive Grid on Mobile, Flex on Desktop) */}
+                                {selectedQuestionIds.size > 0 && !isModalMode && (
+                                    <div className="pt-2 border-t border-[var(--border-primary)]/70 grid grid-cols-1 sm:grid-cols-3 sm:flex sm:items-center sm:justify-end gap-2 animate-fade-in">
                                         <button
+                                            type="button"
+                                            onClick={() => setIsBulkEditModalOpen(true)}
+                                            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 text-xs font-semibold rounded-[var(--radius-control)] border border-[var(--border-secondary)] bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] transition-all shadow-2xs"
+                                            title="Ubah Mapel, Kelas, atau Tag sekaligus"
+                                        >
+                                            <EditIcon className="text-xs text-[var(--text-accent)]" />
+                                            <span>Edit Massal ({selectedQuestionIds.size})</span>
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsCreateExamModalOpen(true)}
+                                            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3.5 py-2 sm:py-1.5 text-xs font-bold rounded-[var(--radius-control)] bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] text-[var(--text-on-accent)] transition-all shadow-xs"
+                                            title="Buat naskah ujian baru dari soal terpilih"
+                                        >
+                                            <SparklesIcon className="text-xs" />
+                                            <span>Buat Ujian ({selectedQuestionIds.size})</span>
+                                        </button>
+
+                                        <button
+                                            type="button"
                                             onClick={handleBulkDelete}
-                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-control)] bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800 hover:bg-rose-100 font-semibold"
+                                            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 text-xs font-semibold rounded-[var(--radius-control)] bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800/80 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors"
                                         >
                                             <TrashIcon className="text-xs" />
                                             <span>Hapus Terpilih</span>
                                         </button>
-                                    )}
-                                    {(searchTerm || subjectFilter || classFilter || typeFilter) && (
-                                        <button
-                                            onClick={() => {
-                                                setSearchTerm('');
-                                                setSubjectFilter('');
-                                                setClassFilter('');
-                                                setTypeFilter('');
-                                            }}
-                                            className="text-[var(--text-muted)] hover:text-[var(--text-primary)] underline"
-                                        >
-                                            Reset Filter
-                                        </button>
-                                    )}
-                                </div>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -1270,6 +1360,15 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                                                 <span className="text-[11px] text-[var(--text-secondary)] font-medium">
                                                     {bq.class}
                                                 </span>
+                                                {bq.tags && bq.tags.length > 0 && (
+                                                    <div className="flex items-center gap-1 flex-wrap">
+                                                        {bq.tags.map((tag, tIdx) => (
+                                                            <span key={tIdx} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 font-medium">
+                                                                #{tag}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </div>
 
                                             {/* Action Buttons */}
@@ -1791,9 +1890,20 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
             {/* Modal Mode Action Footer */}
             {isModalMode && activeTab === 'list' && (
                 <div className="pt-3 border-t border-[var(--border-primary)] flex justify-between items-center gap-3">
-                    <span className="text-xs text-[var(--text-secondary)] font-semibold">
-                        {selectedQuestionIds.size} butir soal dipilih
-                    </span>
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs text-[var(--text-secondary)] font-semibold">
+                            {selectedQuestionIds.size} butir soal dipilih
+                        </span>
+                        {selectedQuestionIds.size > 0 && (
+                            <button
+                                type="button"
+                                onClick={handleClearSelection}
+                                className="text-[11px] text-[var(--text-muted)] hover:text-rose-600 underline"
+                            >
+                                Batalkan Pilihan
+                            </button>
+                        )}
+                    </div>
                     <div className="flex items-center gap-2">
                         <button 
                             onClick={onClose} 
@@ -1811,6 +1921,26 @@ export const QuestionBankView: React.FC<QuestionBankViewProps> = ({
                         </button>
                     </div>
                 </div>
+            )}
+
+            {/* Modal Dialog Konfirmasi Pembuatan Naskah Ujian dari Bank Soal */}
+            {isCreateExamModalOpen && (
+                <CreateExamFromBankModal
+                    isOpen={isCreateExamModalOpen}
+                    onClose={() => setIsCreateExamModalOpen(false)}
+                    selectedQuestions={bank.filter(bq => selectedQuestionIds.has(bq.bankId))}
+                    onConfirmCreate={handleConfirmCreateExam}
+                />
+            )}
+
+            {/* Modal Dialog Edit Massal Metadata Bank Soal */}
+            {isBulkEditModalOpen && (
+                <BulkEditBankModal
+                    isOpen={isBulkEditModalOpen}
+                    onClose={() => setIsBulkEditModalOpen(false)}
+                    selectedQuestions={bank.filter(bq => selectedQuestionIds.has(bq.bankId))}
+                    onConfirmBulkEdit={handleConfirmBulkEdit}
+                />
             )}
         </div>
     );

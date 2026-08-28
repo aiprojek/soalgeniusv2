@@ -118,6 +118,7 @@ export interface BankQuestion {
   subject: string;
   class: string;
   createdAt: string;
+  tags?: string[];
 }
 
 export interface QuestionPackage {

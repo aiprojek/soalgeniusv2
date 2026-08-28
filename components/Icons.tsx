@@ -131,4 +131,6 @@ export const TreeIcon = ({ className }: IconProps) => <i className={`bi bi-tree-
 export const LayoutTemplateIcon = ({ className }: IconProps) => <i className={`bi bi-layout-text-window-reverse ${className || ''}`}></i>;
 export const CheckCircleIcon = CheckIcon;
 export const ArrowLeftIcon = ChevronLeftIcon;
+export const ArrowUpIcon = ({ className }: IconProps) => <i className={`bi bi-arrow-up ${className || ''}`}></i>;
+export const ArrowDownIcon = ({ className }: IconProps) => <i className={`bi bi-arrow-down ${className || ''}`}></i>;
 

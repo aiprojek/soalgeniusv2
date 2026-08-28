@@ -75,7 +75,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ initialTab = 'template', on
     
     const { addToast } = useToast();
     const { showConfirm } = useModal();
-    const { theme, setTheme } = useTheme();
+    const { theme, setTheme, resolvedTheme } = useTheme();
 
     // Update active tab when prop changes
     useEffect(() => {
@@ -805,7 +805,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ initialTab = 'template', on
     const dropboxPercent = dropboxUsage ? Math.min(100, (dropboxUsage.used / dropboxUsage.allocation.allocated) * 100) : 0;
 
     return (
-        <div className="mx-auto w-full max-w-5xl flex flex-col space-y-5 pb-12 px-1 sm:px-2 md:px-4 animate-fade-in">
+        <div className="mx-auto w-full max-w-7xl 2xl:max-w-[1536px] flex flex-col space-y-5 pb-8 px-1 sm:px-2 md:px-4 animate-fade-in">
             <input type="file" ref={restoreInputRef} onChange={handleFileRestore} className="hidden" accept="application/json" />
 
             {/* QR Scanner Modal */}
@@ -1138,8 +1138,41 @@ const SettingsView: React.FC<SettingsViewProps> = ({ initialTab = 'template', on
                                 </p>
                             </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
                                 <button
+                                    type="button"
+                                    onClick={() => setTheme('system')}
+                                    className={`p-4 rounded-[var(--radius-card)] border text-left transition-all flex items-center justify-between ${
+                                        theme === 'system'
+                                            ? 'border-[var(--bg-accent)] bg-blue-50/40 dark:bg-blue-950/20 shadow-xs ring-1 ring-[var(--bg-accent)]'
+                                            : 'border-[var(--border-primary)] bg-[var(--bg-secondary)] hover:border-[var(--border-secondary)]'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-9 h-9 rounded-[var(--radius-control)] bg-teal-50 dark:bg-teal-950/50 text-teal-600 dark:text-teal-400 border border-teal-200 dark:border-teal-800 flex items-center justify-center font-bold">
+                                            <i className="bi bi-display text-base"></i>
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                                <h4 className="text-xs sm:text-sm font-bold text-[var(--text-primary)]">Otomatis (Sistem)</h4>
+                                                {theme === 'system' && (
+                                                    <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-[var(--bg-tertiary)] text-[var(--text-secondary)] border border-[var(--border-primary)]">
+                                                        {resolvedTheme === 'dark' ? 'Gelap' : 'Terang'}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <p className="text-xs text-[var(--text-secondary)]">Mengikuti tema OS (otomatis menyesuaikan terang/gelap).</p>
+                                        </div>
+                                    </div>
+                                    {theme === 'system' && (
+                                        <span className="w-5 h-5 rounded-full bg-[var(--bg-accent)] text-white flex items-center justify-center text-xs shrink-0 ml-2">
+                                            <CheckIcon />
+                                        </span>
+                                    )}
+                                </button>
+
+                                <button
+                                    type="button"
                                     onClick={() => setTheme('light')}
                                     className={`p-4 rounded-[var(--radius-card)] border text-left transition-all flex items-center justify-between ${
                                         theme === 'light'
@@ -1148,7 +1181,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ initialTab = 'template', on
                                     }`}
                                 >
                                     <div className="flex items-center gap-3">
-                                        <div className="w-9 h-9 rounded-[var(--radius-control)] bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center font-bold">
+                                        <div className="w-9 h-9 rounded-[var(--radius-control)] bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 flex items-center justify-center font-bold">
                                             <i className="bi bi-sun-fill text-lg"></i>
                                         </div>
                                         <div>
@@ -1157,13 +1190,14 @@ const SettingsView: React.FC<SettingsViewProps> = ({ initialTab = 'template', on
                                         </div>
                                     </div>
                                     {theme === 'light' && (
-                                        <span className="w-5 h-5 rounded-full bg-[var(--bg-accent)] text-white flex items-center justify-center text-xs">
+                                        <span className="w-5 h-5 rounded-full bg-[var(--bg-accent)] text-white flex items-center justify-center text-xs shrink-0 ml-2">
                                             <CheckIcon />
                                         </span>
                                     )}
                                 </button>
 
                                 <button
+                                    type="button"
                                     onClick={() => setTheme('dark')}
                                     className={`p-4 rounded-[var(--radius-card)] border text-left transition-all flex items-center justify-between ${
                                         theme === 'dark'
@@ -1181,7 +1215,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ initialTab = 'template', on
                                         </div>
                                     </div>
                                     {theme === 'dark' && (
-                                        <span className="w-5 h-5 rounded-full bg-[var(--bg-accent)] text-white flex items-center justify-center text-xs">
+                                        <span className="w-5 h-5 rounded-full bg-[var(--bg-accent)] text-white flex items-center justify-center text-xs shrink-0 ml-2">
                                             <CheckIcon />
                                         </span>
                                     )}

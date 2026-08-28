@@ -181,7 +181,7 @@ const MainLayout: React.FC<{
                         </div>
                     </div>
                 </header>
-                <main className="mx-auto w-full max-w-7xl flex-grow px-2.5 py-3 sm:px-4 sm:py-4 md:px-6 md:py-8 lg:px-8 app-bottom-safe">
+                <main className="mx-auto w-full max-w-[1536px] 2xl:max-w-[1720px] flex-grow px-2.5 py-3 sm:px-4 sm:py-4 md:px-5 md:py-6 lg:px-7 app-bottom-safe transition-all">
                     {children}
                 </main>
                 <footer className="text-center py-4 px-4 text-xs sm:text-sm text-[var(--text-secondary)] bg-[var(--bg-tertiary)] border-t border-[var(--border-primary)] mb-14 md:mb-0">

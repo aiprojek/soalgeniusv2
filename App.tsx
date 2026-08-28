@@ -221,6 +221,17 @@ function AppContent() {
         }
     }, [addToast, pushViewHistory]);
 
+    const handleCreateExamFromBank = useCallback(async (newExam: Exam) => {
+        try {
+            await saveExam(newExam);
+            addToast('Naskah ujian berhasil dibuat dari Bank Soal!', 'success');
+            pushViewHistory('editor', { examId: newExam.id });
+        } catch (error) {
+            console.error("Gagal membuat ujian dari Bank Soal:", error);
+            addToast('Gagal membuat ujian dari Bank Soal.', 'error');
+        }
+    }, [addToast, pushViewHistory]);
+
     const handleBackToArchive = useCallback(() => {
         // Panggil history.back() — akan memicu popstate yang handle state secara atomik
         window.history.back();
@@ -253,7 +264,12 @@ function AppContent() {
         >
             {nav.view === 'archive' && <ArchiveView onEditExam={handleEditExam} onCreateExam={handleCreateExam} onPreviewExam={handlePreviewExam} />}
             {nav.view === 'settings' && <SettingsView initialTab={nav.settingsTab} />}
-            {nav.view === 'bank' && <QuestionBankView onNavigateToCommunity={() => handleNavigate('community')} />}
+            {nav.view === 'bank' && (
+                <QuestionBankView 
+                    onNavigateToCommunity={() => handleNavigate('community')} 
+                    onCreateExam={handleCreateExamFromBank}
+                />
+            )}
             {nav.view === 'community' && <CommunityView onEditExam={handleEditExam} onNavigateToBank={() => handleNavigate('bank')} />}
             {nav.view === 'help' && <HelpView onNavigate={handleNavigate} />}
         </MainLayout>

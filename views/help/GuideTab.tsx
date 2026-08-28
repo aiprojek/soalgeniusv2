@@ -5,7 +5,7 @@ import {
     ShieldCheckIcon, LayoutSplitIcon, ServerIcon, PaletteIcon,
     MoonStarsIcon, MortarboardIcon, GlobeIcon, TreeIcon, BuildingIcon,
     CheckIcon, BookmarkPlusIcon, FolderIcon, TagIcon, CloseIcon,
-    BankIcon, ArchiveIcon, ShuffleIcon, EyeIcon
+    BankIcon, ArchiveIcon, ShuffleIcon, EyeIcon, EditIcon
 } from '../../components/Icons';
 import type { View } from '../../App';
 import type { HelpTab } from '../HelpView';
@@ -36,7 +36,7 @@ interface AccordionGuide {
 
 const GuideTab: React.FC<GuideTabProps> = ({ searchQuery = '', onClearSearch, onNavigate, onSwitchTab }) => {
     const [selectedCategory, setSelectedCategory] = useState<GuideCategory>('ALL');
-    const [openGuideId, setOpenGuideId] = useState<string | null>('mgmp-package');
+    const [openGuideId, setOpenGuideId] = useState<string | null>(null);
     const [copiedIndex, setCopiedIndex] = useState<string | null>(null);
 
     const handleCopy = (text: string, id: string) => {
@@ -206,50 +206,120 @@ const GuideTab: React.FC<GuideTabProps> = ({ searchQuery = '', onClearSearch, on
         {
             id: 'bank-soal-guide',
             category: 'BANK',
-            title: 'Panduan Manajemen Bank Soal & Koleksi Mandiri',
+            title: 'Panduan Bank Soal, Edit Massal & Generator Ujian Otomatis',
             icon: BankIcon,
-            badge: 'Pustaka Guru',
+            badge: 'Pustaka Guru & Otomasi',
             badgeColor: 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800',
-            readTime: '3 mnt baca',
-            summary: 'Simpan butir soal berkualitas ke Bank Soal, kategorikan berdasarkan mata pelajaran dan tingkat kelas, lalu pakai ulang pada ujian semester.',
-            keywords: ['bank soal', 'koleksi', 'pustaka', 'arsip', 'reusable', 'import', 'bookmark'],
+            readTime: '4 mnt baca',
+            summary: 'Simpan butir soal berkualitas, edit massal mapel/kelas/tag materi, buat naskah ujian baru otomatis, dan kelola koleksi mandiri.',
+            keywords: ['bank soal', 'koleksi', 'pustaka', 'arsip', 'reusable', 'import', 'bookmark', 'bulk edit', 'edit massal', 'buat ujian', 'tags', 'label'],
             actionLabel: 'Buka Bank Soal',
             actionView: 'bank',
             content: (navigate) => (
                 <div className="space-y-4 text-xs sm:text-sm">
                     <p className="leading-relaxed">
-                        <strong>Bank Soal</strong> adalah brankas penyimpanan mandiri Anda untuk butir-butir soal berkualitas tinggi. Butir soal yang disimpan di Bank Soal tidak akan terhapus meskipun naskah ujian terkait dihapus atau direset.
+                        <strong>Bank Soal</strong> adalah brankas penyimpanan mandiri Anda untuk butir-butir soal berkualitas tinggi. Butir soal yang disimpan di Bank Soal bersifat permanen dan tidak akan terhapus meskipun naskah ujian terkait telah dihapus atau direset.
                     </p>
 
                     <div className="space-y-3">
+                        {/* Step 1: Simpan ke Bank */}
                         <div className="p-3.5 rounded-[var(--radius-card)] border border-[var(--border-primary)] bg-[var(--bg-secondary)] space-y-2">
-                            <span className="font-bold text-[var(--text-primary)]">Cara Menyimpan Butir Soal ke Bank:</span>
-                            <ol className="list-decimal list-inside space-y-1.5 text-[var(--text-secondary)] leading-relaxed">
-                                <li>Saat sedang menyunting naskah di <strong>Editor</strong>, klik ikon <strong>Bookmark (+ Bank Soal)</strong> di sudut butir soal.</li>
-                                <li>Pilih atau ketik label mata pelajaran, kelas, dan topik kompetensi dasar/materi.</li>
-                                <li>Butir soal langsung tersimpan secara permanen di basis data lokal browser Anda.</li>
+                            <div className="flex items-center gap-2 font-bold text-[var(--text-primary)]">
+                                <span className="w-5 h-5 rounded-full bg-[var(--bg-accent)] text-[var(--text-on-accent)] text-[11px] flex items-center justify-center font-extrabold">1</span>
+                                <span>Menyimpan Butir Soal ke Bank Soal:</span>
+                            </div>
+                            <ol className="list-decimal list-inside space-y-1.5 text-[var(--text-secondary)] pl-7 leading-relaxed">
+                                <li>Saat sedang menyunting naskah di <strong>Editor</strong>, klik ikon <strong>Bookmark (+ Bank Soal)</strong> di sudut kartu butir soal.</li>
+                                <li>Pilih atau ketik label mata pelajaran, kelas, dan topik kompetensi dasar/tag materi.</li>
+                                <li>Butir soal langsung tersimpan secara permanen di database lokal browser (IndexedDB) Anda.</li>
                             </ol>
                         </div>
 
-                        <div className="p-3.5 rounded-[var(--radius-card)] border border-[var(--border-primary)] bg-[var(--bg-secondary)] space-y-2">
-                            <span className="font-bold text-[var(--text-primary)]">Mengambil Soal dari Bank ke Ujian Baru:</span>
-                            <ol className="list-decimal list-inside space-y-1.5 text-[var(--text-secondary)] leading-relaxed">
-                                <li>Buat naskah ujian baru atau buka naskah yang sedang disusun.</li>
-                                <li>Klik tombol <strong>+ Ambil dari Bank Soal</strong> pada toolbar editor.</li>
-                                <li>Gunakan filter mata pelajaran, kelas, atau kotak pencarian kata kunci untuk menemukan butir soal yang sesuai.</li>
-                                <li>Centang butir soal yang diinginkan lalu klik <strong>Sisipkan ke Naskah</strong>. Nomor soal dan format akan disesuaikan secara otomatis!</li>
+                        {/* Step 2: Edit Massal (Bulk Edit) */}
+                        <div className="p-3.5 rounded-[var(--radius-card)] border border-blue-200 dark:border-blue-800/60 bg-blue-50/50 dark:bg-blue-950/20 space-y-2">
+                            <div className="flex items-center gap-2 font-bold text-blue-800 dark:text-blue-300">
+                                <span className="w-5 h-5 rounded-full bg-blue-600 dark:bg-blue-500 text-white text-[11px] flex items-center justify-center font-extrabold">2</span>
+                                <span>Edit Massal (Bulk Edit) Mapel, Kelas & Tag Materi:</span>
+                            </div>
+                            <p className="text-blue-900/80 dark:text-blue-200/80 leading-relaxed pl-7">
+                                Anda dapat memperbarui metadata puluhan butir soal sekaligus dalam satu langkah efisien:
+                            </p>
+                            <ol className="list-decimal list-inside space-y-1.5 text-blue-950 dark:text-blue-100 pl-7 leading-relaxed">
+                                <li>Buka menu <strong>Bank Soal</strong>, centang butir-butir soal yang ingin diperbarui (atau gunakan tombol <em>Pilih Semua</em>).</li>
+                                <li>Klik tombol <strong>Edit Massal ({'{'}jumlah{'}'})</strong> pada bilah aksi seleksi.</li>
+                                <li>
+                                    Centang atribut yang ingin diubah (pola pembaruan selektif):
+                                    <ul className="list-disc list-inside pl-4 mt-1 space-y-1 text-xs text-blue-900/90 dark:text-blue-200/90">
+                                        <li><strong>Mata Pelajaran:</strong> Pilih dari daftar cepat atau ketik mapel kustom.</li>
+                                        <li><strong>Jenjang / Kelas:</strong> Pilih dari kelas VII–XII, Fase A–F, atau ketik jenjang spesifik.</li>
+                                        <li><strong>Label / Tag Materi:</strong> Tambahkan tag baru (misal: <code>#HOTS</code>, <code>#Sumatif</code>, <code>#Bab 1</code>) atau ganti seluruh tag lama.</li>
+                                    </ul>
+                                </li>
+                                <li>Klik <strong>Simpan Perubahan Massal</strong>. Butir soal yang tidak dicentang atributnya akan tetap mempertahankan data aslinya.</li>
                             </ol>
+                        </div>
+
+                        {/* Step 3: Buat Naskah Ujian Baru Otomatis dari Bank */}
+                        <div className="p-3.5 rounded-[var(--radius-card)] border border-purple-200 dark:border-purple-800/60 bg-purple-50/50 dark:bg-purple-950/20 space-y-2">
+                            <div className="flex items-center gap-2 font-bold text-purple-800 dark:text-purple-300">
+                                <span className="w-5 h-5 rounded-full bg-purple-600 dark:bg-purple-500 text-white text-[11px] flex items-center justify-center font-extrabold">3</span>
+                                <span>Membuat Naskah Ujian Baru Otomatis dari Soal Terpilih:</span>
+                            </div>
+                            <p className="text-purple-900/80 dark:text-purple-200/80 leading-relaxed pl-7">
+                                Menggabungkan bank butir soal menjadi naskah ujian semester baru tanpa perlu mengetik ulang dari awal:
+                            </p>
+                            <ol className="list-decimal list-inside space-y-1.5 text-purple-950 dark:text-purple-100 pl-7 leading-relaxed">
+                                <li>Di Bank Soal, gunakan filter pencarian lalu tandai butir-butir soal yang akan diujikan.</li>
+                                <li>Klik tombol <strong>Buat Ujian ({'{'}jumlah{'}'})</strong> di bilah aksi bawah.</li>
+                                <li>
+                                    Sistem membuka dialog konfigurasi ujian otomatis:
+                                    <ul className="list-disc list-inside pl-4 mt-1 space-y-1 text-xs text-purple-900/90 dark:text-purple-200/90">
+                                        <li><strong>Pengelompokan Otomatis:</strong> Soal otomatis dikelompokkan berdasarkan jenis (Pilihan Ganda, PG Kompleks, Menjodohkan, Esai, dll.) dengan nomor berurutan.</li>
+                                        <li><strong>Distribusi Bobot:</strong> Sistem menghitung total skor estimasi (default 100) serta proporsi poin per butir.</li>
+                                        <li><strong>Informasi Naskah:</strong> Tentukan Judul Ujian, Mata Pelajaran, Kelas, Alokasi Waktu, dan Petunjuk Ujian.</li>
+                                    </ul>
+                                </li>
+                                <li>Pilih apakah ingin <em>Menimpa Editor Saat Ini</em> atau <em>Simpan Langsung ke Arsip Ujian</em>, lalu klik <strong>Buat Naskah Ujian Sekarang</strong>.</li>
+                            </ol>
+                        </div>
+
+                        {/* Step 4: Mengambil Soal dari Editor */}
+                        <div className="p-3.5 rounded-[var(--radius-card)] border border-[var(--border-primary)] bg-[var(--bg-secondary)] space-y-2">
+                            <div className="flex items-center gap-2 font-bold text-[var(--text-primary)]">
+                                <span className="w-5 h-5 rounded-full bg-[var(--bg-accent)] text-[var(--text-on-accent)] text-[11px] flex items-center justify-center font-extrabold">4</span>
+                                <span>Menyisipkan Soal dari Bank ke Naskah Aktif:</span>
+                            </div>
+                            <ol className="list-decimal list-inside space-y-1.5 text-[var(--text-secondary)] pl-7 leading-relaxed">
+                                <li>Buka naskah ujian yang sedang disusun di menu <strong>Editor</strong>.</li>
+                                <li>Klik tombol <strong>+ Ambil dari Bank Soal</strong> pada toolbar atas editor.</li>
+                                <li>Gunakan filter mata pelajaran, kelas, tipe soal, atau kotak pencarian kata kunci.</li>
+                                <li>Centang butir soal yang diinginkan lalu klik <strong>Sisipkan ke Naskah</strong>. Nomor soal dan kunci jawaban akan disesuaikan secara otomatis.</li>
+                            </ol>
+                        </div>
+
+                        {/* Step 5: Ekspor & Impor Paket Komunitas */}
+                        <div className="p-3.5 rounded-[var(--radius-card)] border border-[var(--border-primary)] bg-[var(--bg-secondary)] space-y-2">
+                            <div className="flex items-center gap-2 font-bold text-[var(--text-primary)]">
+                                <span className="w-5 h-5 rounded-full bg-[var(--bg-accent)] text-[var(--text-on-accent)] text-[11px] flex items-center justify-center font-extrabold">5</span>
+                                <span>Berbagi & Impor Koleksi MGMP (.sgpkg):</span>
+                            </div>
+                            <p className="text-[var(--text-secondary)] leading-relaxed pl-7">
+                                Bank soal Anda dapat diekspor menjadi berkas paket portabel <code>.sgpkg</code> melalui menu <strong>Pusat Berbagi MGMP</strong> untuk dibagikan ke rekan guru atau diimpor dari koleksi MGMP tanpa membutuhkan akun internet.
+                            </p>
                         </div>
                     </div>
 
                     {navigate && (
-                        <div className="pt-2 flex justify-end">
+                        <div className="pt-2 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border-primary)]">
+                            <span className="text-xs text-[var(--text-muted)]">
+                                Tersedia kontrol seleksi responsif di smartphone dan tampilan adaptif layar lebar.
+                            </span>
                             <button
                                 onClick={() => navigate('bank')}
                                 className="inline-flex items-center gap-2 px-4 py-2 rounded-[var(--radius-control)] bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] text-[var(--text-on-accent)] text-xs font-semibold shadow-xs transition-colors"
                             >
                                 <BankIcon className="text-sm" />
-                                <span>Buka Bank Soal Saya Sekarang</span>
+                                <span>Buka Bank Soal Saya</span>
                             </button>
                         </div>
                     )}

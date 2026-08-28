@@ -494,6 +494,48 @@ export const updateBankQuestion = async (bankQuestion: BankQuestion): Promise<vo
     }
 };
 
+export const updateMultipleBankQuestions = async (
+    bankIds: string[], 
+    updates: { subject?: string; class?: string; tags?: string[]; appendTags?: boolean }
+): Promise<number> => {
+    try {
+        let updatedCount = 0;
+        await (db as any).transaction('rw', db.bankQuestions, async () => {
+            for (const id of bankIds) {
+                const item = await db.bankQuestions.get(id);
+                if (item) {
+                    if (updates.subject !== undefined) {
+                        item.subject = updates.subject;
+                    }
+                    if (updates.class !== undefined) {
+                        item.class = updates.class;
+                    }
+                    if (updates.tags !== undefined) {
+                        if (updates.appendTags && item.tags) {
+                            item.tags = Array.from(new Set([...item.tags, ...updates.tags]));
+                        } else {
+                            item.tags = updates.tags;
+                        }
+                    }
+                    await db.bankQuestions.put(item);
+                    updatedCount++;
+                }
+            }
+        });
+
+        try {
+            const current = await db.bankQuestions.toArray();
+            localStorage.setItem(QBANK_STORAGE_KEY, JSON.stringify(current));
+        } catch (e) {}
+
+        touchLocalChange();
+        return updatedCount;
+    } catch (e) {
+        console.error("Gagal memperbarui massal bank soal", e);
+        throw e;
+    }
+};
+
 export const deleteQuestionFromBank = async (bankId: string): Promise<void> => {
     try {
         await db.bankQuestions.delete(bankId);

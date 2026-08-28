@@ -19,7 +19,7 @@ interface FaqItemData {
 }
 
 const AboutTab: React.FC<AboutTabProps> = ({ onNavigate, onSwitchTab }) => {
-    const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
+    const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
 
     const rawBuildVersion = (import.meta as any).env?.VITE_APP_BUILD_VERSION;
     const displayVersion = rawBuildVersion ? `Build ${rawBuildVersion}` : 'v1.4.0 (Latest)';
@@ -29,6 +29,16 @@ const AboutTab: React.FC<AboutTabProps> = ({ onNavigate, onSwitchTab }) => {
             category: 'Penyimpanan & Keamanan',
             q: 'Di mana seluruh naskah ujian dan butir soal saya disimpan?',
             a: 'Seluruh naskah ujian, butir soal, kunci jawaban, dan konfigurasi disimpan secara lokal di dalam browser Anda menggunakan database IndexedDB (Dexie.js). Data tidak dikirimkan ke server pengembang mana pun sehingga privasi naskah ujian rahasia Anda terjamin 100% aman.'
+        },
+        {
+            category: 'Bank Soal & Manajemen Butir',
+            q: 'Bagaimana cara mengubah mata pelajaran, kelas, atau label tag pada puluhan butir bank soal sekaligus?',
+            a: 'Buka menu Bank Soal, centang butir-butir soal yang ingin diperbarui (atau klik "Pilih Semua"), lalu klik tombol "Edit Massal". Pada dialog modal, centang atribut yang ingin diubah (Mata Pelajaran, Jenjang/Kelas, atau Tag materi seperti #HOTS, #Sumatif, #Bab 1) tanpa mengubah atribut butir soal lainnya.'
+        },
+        {
+            category: 'Bank Soal & Manajemen Butir',
+            q: 'Bisakah saya langsung membuat naskah ujian baru dari kumpulan butir di Bank Soal?',
+            a: 'Tentu saja! Di Bank Soal, tandai butir-butir soal yang ingin diujikan lalu klik "Buat Ujian dari Terpilih". Sistem akan otomatis menyusun naskah ujian baru dengan pengelompokan format soal (PG, PGK, Esai, dll.), penomoran berurutan, perhitungan bobot nilai, serta judul dan alokasi waktu ujian.'
         },
         {
             category: 'Penyimpanan & Keamanan',
