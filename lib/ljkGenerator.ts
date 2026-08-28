@@ -261,28 +261,34 @@ export function generateLjkHtml(
     <title>LJK - ${escapeHtml(examTitle)} - SoalGenius</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
+        html, body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             color: #000;
-            background-color: #f1f5f9;
+            background: #ffffff;
+            margin: 0;
+            padding: 0;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
+            width: 100%;
+            height: 100%;
         }
 
         @page {
             size: A4 portrait;
-            margin: 6mm;
+            margin: 0;
         }
 
         .a4-page {
             width: 210mm;
+            height: 297mm;
             min-height: 297mm;
-            margin: 10px auto;
-            padding: 8mm;
-            background: #fff;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            max-height: 297mm;
+            margin: 0 auto;
+            padding: 6mm;
+            background: #ffffff;
             position: relative;
             box-sizing: border-box;
+            overflow: hidden;
         }
 
         .split-2-layout {
@@ -290,11 +296,11 @@ export function generateLjkHtml(
             flex-direction: column;
             justify-content: space-between;
             height: 285mm;
-            padding: 6mm;
+            padding: 4mm;
         }
 
         .split-half {
-            height: 134mm;
+            height: 135mm;
             position: relative;
         }
 
@@ -304,7 +310,7 @@ export function generateLjkHtml(
             color: #64748b;
             font-style: italic;
             border-top: 1.5px dashed #94a3b8;
-            margin: 3mm 0;
+            margin: 2mm 0;
             padding-top: 1mm;
             letter-spacing: 0.5px;
         }
@@ -313,15 +319,13 @@ export function generateLjkHtml(
             display: grid;
             grid-template-columns: 1fr 1fr;
             grid-template-rows: 1fr 1fr;
-            gap: 4mm;
+            gap: 3mm;
             height: 285mm;
-            padding: 5mm;
+            padding: 4mm;
         }
 
         .quad-item {
-            border: 1px dashed #cbd5e1;
-            padding: 2mm;
-            border-radius: 4px;
+            padding: 0;
             position: relative;
         }
 

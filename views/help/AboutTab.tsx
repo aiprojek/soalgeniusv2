@@ -86,15 +86,12 @@ const AboutTab: React.FC<AboutTabProps> = ({ onNavigate, onSwitchTab }) => {
                     </div>
 
                     <div className="space-y-2 flex-grow">
-                        <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                            <h2 className="text-xl sm:text-2xl font-extrabold text-[var(--text-primary)]">
+                        <div className="flex flex-col items-center sm:items-start">
+                            <h2 className="text-xl sm:text-2xl font-extrabold text-[var(--text-primary)] leading-tight">
                                 SoalGenius
                             </h2>
-                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-[var(--radius-control)] bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-mono">
+                            <span className="inline-block mt-0.5 text-xs font-mono font-medium text-[var(--text-muted)]">
                                 {displayVersion}
-                            </span>
-                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-[var(--radius-control)] bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                                100% Offline-First
                             </span>
                         </div>
 

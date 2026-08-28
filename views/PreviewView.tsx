@@ -327,7 +327,7 @@ const PreviewView: React.FC<{ examId: string; onBack: () => void; }> = ({ examId
                             </button>
 
                             {isActionsMenuOpen && (
-                                <div ref={actionsMenuRef} className="animate-scale-in absolute right-0 top-[calc(100%+0.5rem)] z-[120] w-80 sm:w-92 rounded-2xl border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-2 shadow-2xl origin-top-right">
+                                <div ref={actionsMenuRef} className="hidden md:block animate-scale-in absolute right-0 top-[calc(100%+0.5rem)] z-[120] w-80 sm:w-92 rounded-2xl border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-2 shadow-2xl origin-top-right">
                                     <div className="px-3 pb-2 pt-1 border-b border-[var(--border-primary)] mb-1">
                                         <p className="text-xs font-bold text-[var(--text-primary)]">Format Ekspor & Dokumen</p>
                                         <p className="text-[11px] text-[var(--text-secondary)]">Pilih format unduhan naskah ujian atau kuis online</p>

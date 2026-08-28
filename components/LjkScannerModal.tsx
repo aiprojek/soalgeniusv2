@@ -319,32 +319,43 @@ export const LjkScannerModal: React.FC<LjkScannerModalProps> = ({
         <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/60 p-2 sm:p-4 backdrop-blur-xs animate-fade-in print:p-0">
             <div className="flex h-[94vh] w-full max-w-6xl flex-col rounded-2xl border border-[var(--border-primary)] bg-[var(--bg-primary)] shadow-2xl overflow-hidden print:border-0 print:shadow-none print:h-auto">
                 {/* Modal Header */}
-                <div className="flex flex-wrap items-center justify-between border-b border-[var(--border-primary)] bg-[var(--bg-secondary)] px-4 py-2.5 sm:px-6 print:hidden">
-                    <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600/10 text-emerald-600 dark:text-emerald-400">
-                            <ScanIcon className="text-xl" />
-                        </div>
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <h2 className="text-base sm:text-lg font-bold text-[var(--text-primary)]">
-                                    Pemeriksa & Scanner LJK Cerdas
-                                </h2>
-                                <span className="rounded-md bg-blue-100 dark:bg-blue-950/50 px-2 py-0.5 text-[10px] font-bold text-blue-700 dark:text-blue-300">
-                                    {scanResults.length} Siswa Dinilai
-                                </span>
+                <div className="flex flex-col gap-2.5 border-b border-[var(--border-primary)] bg-[var(--bg-secondary)] px-3.5 py-2.5 sm:px-6 sm:py-3 print:hidden">
+                    <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                            <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-emerald-600/10 text-emerald-600 dark:text-emerald-400 flex-shrink-0">
+                                <ScanIcon className="text-lg sm:text-xl" />
                             </div>
-                            <p className="text-xs text-[var(--text-secondary)]">
-                                {exam.title || 'Ujian'} • {exam.subject || 'Mapel'} ({totalQuestions} Soal PG)
-                            </p>
+                            <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                    <h2 className="text-sm sm:text-base md:text-lg font-bold text-[var(--text-primary)] truncate">
+                                        Pemeriksa & Scanner LJK Cerdas
+                                    </h2>
+                                    <span className="rounded-md bg-blue-100 dark:bg-blue-950/50 px-1.5 py-0.5 text-[10px] font-bold text-blue-700 dark:text-blue-300 flex-shrink-0">
+                                        {scanResults.length} Dinilai
+                                    </span>
+                                </div>
+                                <p className="text-[11px] sm:text-xs text-[var(--text-secondary)] truncate">
+                                    {exam.title || 'Ujian'} • {exam.subject || 'Mapel'} ({totalQuestions} Soal PG)
+                                </p>
+                            </div>
                         </div>
+
+                        <button
+                            onClick={onClose}
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors flex-shrink-0"
+                            title="Tutup Modal"
+                            aria-label="Tutup Modal"
+                        >
+                            <CloseIcon className="text-lg" />
+                        </button>
                     </div>
 
-                    {/* Nav Tabs */}
-                    <div className="flex items-center gap-1 mt-2 sm:mt-0 rounded-xl bg-[var(--bg-tertiary)] p-1 border border-[var(--border-primary)]">
+                    {/* Nav Tabs (Scrollable on mobile without wrapping/cramping) */}
+                    <div className="w-full overflow-x-auto scrollbar-none flex items-center gap-1.5 p-1 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--border-primary)]">
                         <button
                             type="button"
                             onClick={() => setActiveTab('scan')}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                            className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
                                 activeTab === 'scan'
                                     ? 'bg-emerald-600 text-white shadow-xs'
                                     : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
@@ -356,7 +367,7 @@ export const LjkScannerModal: React.FC<LjkScannerModalProps> = ({
                         <button
                             type="button"
                             onClick={() => setActiveTab('records')}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                            className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
                                 activeTab === 'records'
                                     ? 'bg-emerald-600 text-white shadow-xs'
                                     : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
@@ -368,7 +379,7 @@ export const LjkScannerModal: React.FC<LjkScannerModalProps> = ({
                         <button
                             type="button"
                             onClick={() => setActiveTab('analytics')}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                            className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
                                 activeTab === 'analytics'
                                     ? 'bg-emerald-600 text-white shadow-xs'
                                     : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
@@ -380,7 +391,7 @@ export const LjkScannerModal: React.FC<LjkScannerModalProps> = ({
                         <button
                             type="button"
                             onClick={() => setActiveTab('keys')}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                            className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
                                 activeTab === 'keys'
                                     ? 'bg-emerald-600 text-white shadow-xs'
                                     : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
@@ -390,13 +401,6 @@ export const LjkScannerModal: React.FC<LjkScannerModalProps> = ({
                             <span>Kunci Jawaban</span>
                         </button>
                     </div>
-
-                    <button
-                        onClick={onClose}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors ml-2"
-                    >
-                        <CloseIcon className="text-lg" />
-                    </button>
                 </div>
 
                 {/* Modal Body */}
@@ -407,30 +411,30 @@ export const LjkScannerModal: React.FC<LjkScannerModalProps> = ({
                             {/* Left Column: Input Source (Camera / Upload) */}
                             <div className="lg:col-span-5 flex flex-col gap-3">
                                 {/* Mode Selector */}
-                                <div className="flex items-center rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-primary)] p-1">
+                                <div className="flex items-center rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-primary)] p-1 gap-1">
                                     <button
                                         type="button"
                                         onClick={() => setScanInputMode('upload')}
-                                        className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                                        className={`flex-1 py-2 px-2 sm:px-3 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 min-w-0 ${
                                             scanInputMode === 'upload'
                                                 ? 'bg-blue-600 text-white shadow-xs'
-                                                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                                                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
                                         }`}
                                     >
-                                        <i className="bi bi-cloud-arrow-up-fill"></i>
-                                        <span>Unggah Foto / File Scan</span>
+                                        <i className="bi bi-cloud-arrow-up-fill text-sm flex-shrink-0"></i>
+                                        <span className="truncate">Unggah Foto<span className="hidden sm:inline"> / Berkas Scan</span></span>
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => setScanInputMode('camera')}
-                                        className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                                        className={`flex-1 py-2 px-2 sm:px-3 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 min-w-0 ${
                                             scanInputMode === 'camera'
                                                 ? 'bg-blue-600 text-white shadow-xs'
-                                                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                                                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
                                         }`}
                                     >
-                                        <i className="bi bi-camera-video-fill"></i>
-                                        <span>Kamera Langsung (HP/Webcam)</span>
+                                        <i className="bi bi-camera-video-fill text-sm flex-shrink-0"></i>
+                                        <span className="truncate">Kamera Langsung<span className="hidden sm:inline"> (HP/Webcam)</span></span>
                                     </button>
                                 </div>
 

@@ -282,7 +282,7 @@ const FeaturesTab: React.FC<FeaturesTabProps> = ({ searchQuery = '', onClearSear
         {
             id: 'privacy-offline-first',
             category: 'STORAGE',
-            title: '100% Offline-First & Privasi Guru',
+            title: 'Privasi & Mode Offline Guru',
             badge: 'Tanpa Server',
             badgeColor: 'bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-300 border border-teal-200 dark:border-teal-800',
             icon: ShieldCheckIcon,

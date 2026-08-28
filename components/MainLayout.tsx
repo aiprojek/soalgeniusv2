@@ -99,6 +99,9 @@ const MainLayout: React.FC<{
         { id: 'help', label: 'Bantuan', icon: HelpIcon, action: handleHelp },
     ];
 
+    const rawBuildVersion = (import.meta as any).env?.VITE_APP_BUILD_VERSION;
+    const buildVersion = rawBuildVersion ? `Build ${rawBuildVersion}` : 'v1.4.0 (Latest)';
+
     return (
         <div className="app-shell-page min-h-screen flex flex-col">
             {/* Main Page Content */}
